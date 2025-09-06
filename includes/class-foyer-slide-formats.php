@@ -41,6 +41,26 @@ class Foyer_Slide_Formats {
 		return $slide_formats;
 	}
 
+    /**
+     * Adds the Instagram slide format.
+     *
+     * @since 1.7.6
+     */
+    static function add_instagram_slide_format( $slide_formats ) {
+
+        $slide_format_backgrounds = array( 'default', 'image' );
+
+        $slide_formats['instagram'] = array(
+            'title' => _x( 'Instagram', 'slide-format', 'foyer' ),
+            'description' => __( 'Displays the latest media from an Instagram account.', 'foyer' ),
+            'meta_box' => array( 'Foyer_Admin_Slide_Format_Instagram', 'slide_meta_box' ),
+            'save_post' => array( 'Foyer_Admin_Slide_Format_Instagram', 'save_slide' ),
+            'slide_backgrounds' => $slide_format_backgrounds,
+            'stack' => true,
+        );
+
+        return $slide_formats;
+    }
 	/**
 	 * Adds the Iframe slide format.
 	 *
@@ -219,7 +239,7 @@ class Foyer_Slide_Formats {
 	 * @param 	array	$slide_formats	The current slide formats.
 	 * @return	array					The slide formats with the Text slide format added.
 	 */
-	static function add_text_slide_format( $slide_formats ) {
+    static function add_text_slide_format( $slide_formats ) {
 
 		$slide_format_backgrounds = array( 'default', 'image', 'html5-video', 'video' );
 
@@ -238,8 +258,10 @@ class Foyer_Slide_Formats {
 			'save_post' => array( 'Foyer_Admin_Slide_Format_Text', 'save_slide' ),
 			'slide_backgrounds' => $slide_format_backgrounds,
 		);
-		return $slide_formats;
-	}
+        return $slide_formats;
+    }
+
+    
 
 	/**
 	 * Adds the Upcoming Productions slide format.
