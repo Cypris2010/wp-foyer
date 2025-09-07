@@ -19,7 +19,8 @@ My code is not clean at the moment but it works ;)
 
 
 **Check out this demo sign:**
-[http://demo.foyer.tv](http://demo.foyer.tv)
+[http://demo.foyer.tv](http://demo.foyer.tv) (This demo is for the 1.7 realese of mennolui)
+
 
 ## Features
 
