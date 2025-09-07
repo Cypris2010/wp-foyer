@@ -12,7 +12,7 @@ The project form mennolui seemed inactive but we are using the plugin and needed
 * Scheduling of more than one channel for a display (implemented)
 * Scheduler for global scheduling for multiple channels on muliple displays (development)
 * New types of slides (planned)
-* Splied channels for showing two channels on one display (planed)
+* Splited channels for showing two channels on one display (planed)
 
 My code is not clean at the moment but it works ;)
 
