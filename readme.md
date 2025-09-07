@@ -4,6 +4,20 @@ A free Digital Signage / Narrowcasting plugin for WordPress.
 
 Create slideshows and show them off on any networked display. Hardware not included :-)
 
+# Forked and new development
+
+The project form mennolui seemed inactive but we are using the plugin and needed some more fratures:
+
+* Scheduling of slides in a channel (implemented)
+* Scheduling of more than one channel for a display (implemented)
+* Scheduler for global scheduling for multiple channels on muliple displays (development)
+* New types of slides (planned)
+* Splied channels for showing two channels on one display (planed)
+
+My code is not clean at the moment but it works ;)
+
+
+
 **Check out this demo sign:**
 [http://demo.foyer.tv](http://demo.foyer.tv)
 
