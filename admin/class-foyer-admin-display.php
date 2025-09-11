@@ -61,7 +61,7 @@ class Foyer_Admin_Display {
     static function add_channel_scheduler_list_meta_box() {
         add_meta_box(
             'foyer_channel_scheduler_list',
-            __( 'Schedule channels (list)', 'foyer' ),
+            __( 'Schedule channels', 'foyer' ),
             array( __CLASS__, 'channel_scheduler_list_meta_box' ),
             Foyer_Display::post_type_name,
             'normal',
@@ -84,78 +84,6 @@ class Foyer_Admin_Display {
 
         ob_start();
         ?>
-        <h4><?php echo esc_html__( 'Add channels', 'foyer' ); ?></h4>
-        <?php
-            $channels_ordered = array();
-            $favorites = array();
-            $others = array();
-            foreach ( $channels as $ch ) {
-                $is_fav = get_post_meta( $ch->ID, 'foyer_channel_is_favorite', true );
-                if ( $is_fav ) { $favorites[] = $ch; } else { $others[] = $ch; }
-            }
-            foreach ( $favorites as $ch ) { $channels_ordered[] = $ch; }
-            foreach ( $others as $ch ) { $channels_ordered[] = $ch; }
-        ?>
-        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:4px 0 8px;">
-            <label for="foyer_sched_selector_search" style="margin-right:6px;">
-                <?php echo esc_html__( 'Search', 'foyer' ); ?>
-            </label>
-            <input type="search" id="foyer_sched_selector_search" class="regular-text" placeholder="<?php echo esc_attr__( 'Search by title or author…', 'foyer' ); ?>" style="max-width:280px;" />
-            <label for="foyer_sched_selector_per_page" style="margin-left:auto;">
-                <?php echo esc_html__( 'Rows per page', 'foyer' ); ?>
-            </label>
-                        <select id="foyer_sched_selector_per_page">
-                            <option value="10" selected>10</option>
-                            <option value="20">20</option>
-                            <option value="50">50</option>
-                            <option value="100">100</option>
-                        </select>
-        </div>
-        <table class="widefat fixed striped" id="foyer_sched_selector" style="margin-bottom:12px;">
-            <thead>
-                <tr>
-                    <th style="width:110px;">&nbsp;</th>
-                    <th style="width:30px; text-align:center;" title="<?php echo esc_attr__( 'Favorite', 'foyer' ); ?>">★</th>
-                    <th data-sort="title" class="foyer-sort-col"><span class="sort-label"><?php echo esc_html_x( 'Title', 'post title', 'foyer' ); ?></span> <span class="sort-ind"></span></th>
-                    <th data-sort="author" class="foyer-sort-col" style="width:160px;"><span class="sort-label"><?php echo esc_html__( 'Author', 'foyer' ); ?></span> <span class="sort-ind"></span></th>
-                    <th data-sort="date" class="foyer-sort-col" style="width:180px;"><span class="sort-label"><?php echo esc_html__( 'Date', 'foyer' ); ?></span> <span class="sort-ind"></span></th>
-                    <th data-sort="slides" class="foyer-sort-col" style="width:120px;"><span class="sort-label"><?php echo esc_html__( 'Slides', 'foyer' ); ?></span> <span class="sort-ind"></span></th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if ( empty( $channels_ordered ) ) : ?>
-                    <tr><td colspan="6"><?php echo esc_html__( 'No channels found.', 'foyer' ); ?></td></tr>
-                <?php else : ?>
-                    <?php foreach ( $channels_ordered as $ch ) :
-                        $author_name = get_the_author_meta( 'display_name', $ch->post_author );
-                        $date_str = get_the_date( get_option( 'date_format' ), $ch ) . ' ' . get_the_time( get_option( 'time_format' ), $ch );
-                        $date_ts = get_post_time( 'U', true, $ch );
-                        $channel_obj = new Foyer_Channel( $ch );
-                        $slides_count = count( $channel_obj->get_slides() );
-                        $is_fav = get_post_meta( $ch->ID, 'foyer_channel_is_favorite', true );
-                    ?>
-                    <tr data-title="<?php echo esc_attr( get_the_title( $ch->ID ) ); ?>" data-author="<?php echo esc_attr( $author_name ); ?>" data-date-ts="<?php echo esc_attr( $date_ts ); ?>" data-slides="<?php echo esc_attr( $slides_count ); ?>" data-fav="<?php echo $is_fav ? '1' : '0'; ?>">
-                        <td>
-                            <button type="button" class="button button-primary foyer_sched_add_btn" data-channel-id="<?php echo intval( $ch->ID ); ?>" data-channel-title="<?php echo esc_attr( get_the_title( $ch->ID ) ); ?>"><?php echo esc_html__( 'Add', 'foyer' ); ?></button>
-                        </td>
-                        <td style="text-align:center;">
-                            <?php if ( $is_fav ) { echo '<span style="color:#d98900; font-size:16px;">&#9733;</span>'; } ?>
-                        </td>
-                        <td><?php echo esc_html( get_the_title( $ch->ID ) ); ?></td>
-                        <td><?php echo esc_html( $author_name ); ?></td>
-                        <td><?php echo esc_html( $date_str ); ?></td>
-                        <td><?php echo esc_html( $slides_count ); ?></td>
-                    </tr>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </tbody>
-        </table>
-        <div id="foyer_sched_selector_pager" style="display:flex; gap:8px; align-items:center; justify-content:flex-end; margin:6px 0 12px;">
-            <button type="button" class="button" id="foyer_sched_selector_prev">&laquo; <?php echo esc_html__( 'Prev', 'foyer' ); ?></button>
-            <span id="foyer_sched_selector_page_info"></span>
-            <button type="button" class="button" id="foyer_sched_selector_next"><?php echo esc_html__( 'Next', 'foyer' ); ?> &raquo;</button>
-        </div>
-
         <h4><?php echo esc_html__( 'Scheduled channels', 'foyer' ); ?></h4>
         <style>
             /* Row highlighting for schedule status */
@@ -227,7 +155,79 @@ class Foyer_Admin_Display {
                 <?php } endif; ?>
             </tbody>
         </table>
-        <p class="description"><?php echo esc_html__( 'Use the list above to add channels, then set the time window here. You have to Update the channel so that changes take effect.', 'foyer' ); ?></p>
+        <p class="description"><?php echo esc_html__( 'Use the selector below to add channels; then set the time window here. You have to Update the channel so that changes take effect.', 'foyer' ); ?></p>
+
+        <h4><?php echo esc_html__( 'Add channels', 'foyer' ); ?></h4>
+        <?php
+            $channels_ordered = array();
+            $favorites = array();
+            $others = array();
+            foreach ( $channels as $ch ) {
+                $is_fav = get_post_meta( $ch->ID, 'foyer_channel_is_favorite', true );
+                if ( $is_fav ) { $favorites[] = $ch; } else { $others[] = $ch; }
+            }
+            foreach ( $favorites as $ch ) { $channels_ordered[] = $ch; }
+            foreach ( $others as $ch ) { $channels_ordered[] = $ch; }
+        ?>
+        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:4px 0 8px;">
+            <label for="foyer_sched_selector_search" style="margin-right:6px;">
+                <?php echo esc_html__( 'Search', 'foyer' ); ?>
+            </label>
+            <input type="search" id="foyer_sched_selector_search" class="regular-text" placeholder="<?php echo esc_attr__( 'Search by title or author…', 'foyer' ); ?>" style="max-width:280px;" />
+            <label for="foyer_sched_selector_per_page" style="margin-left:auto;">
+                <?php echo esc_html__( 'Rows per page', 'foyer' ); ?>
+            </label>
+            <select id="foyer_sched_selector_per_page">
+                <option value="10" selected>10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+        </div>
+        <table class="widefat fixed striped" id="foyer_sched_selector" style="margin-bottom:12px;">
+            <thead>
+                <tr>
+                    <th style="width:110px;">&nbsp;</th>
+                    <th style="width:30px; text-align:center;" title="<?php echo esc_attr__( 'Favorite', 'foyer' ); ?>">★</th>
+                    <th data-sort="title" class="foyer-sort-col"><span class="sort-label"><?php echo esc_html_x( 'Title', 'post title', 'foyer' ); ?></span> <span class="sort-ind"></span></th>
+                    <th data-sort="author" class="foyer-sort-col" style="width:160px;"><span class="sort-label"><?php echo esc_html__( 'Author', 'foyer' ); ?></span> <span class="sort-ind"></span></th>
+                    <th data-sort="date" class="foyer-sort-col" style="width:180px;"><span class="sort-label"><?php echo esc_html__( 'Date', 'foyer' ); ?></span> <span class="sort-ind"></span></th>
+                    <th data-sort="slides" class="foyer-sort-col" style="width:120px;"><span class="sort-label"><?php echo esc_html__( 'Slides', 'foyer' ); ?></span> <span class="sort-ind"></span></th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if ( empty( $channels_ordered ) ) : ?>
+                    <tr><td colspan="6"><?php echo esc_html__( 'No channels found.', 'foyer' ); ?></td></tr>
+                <?php else : ?>
+                    <?php foreach ( $channels_ordered as $ch ) :
+                        $author_name = get_the_author_meta( 'display_name', $ch->post_author );
+                        $date_str = get_the_date( get_option( 'date_format' ), $ch ) . ' ' . get_the_time( get_option( 'time_format' ), $ch );
+                        $date_ts = get_post_time( 'U', true, $ch );
+                        $channel_obj = new Foyer_Channel( $ch );
+                        $slides_count = count( $channel_obj->get_slides() );
+                        $is_fav = get_post_meta( $ch->ID, 'foyer_channel_is_favorite', true );
+                    ?>
+                    <tr data-title="<?php echo esc_attr( get_the_title( $ch->ID ) ); ?>" data-author="<?php echo esc_attr( $author_name ); ?>" data-date-ts="<?php echo esc_attr( $date_ts ); ?>" data-slides="<?php echo esc_attr( $slides_count ); ?>" data-fav="<?php echo $is_fav ? '1' : '0'; ?>">
+                        <td>
+                            <button type="button" class="button button-primary foyer_sched_add_btn" data-channel-id="<?php echo intval( $ch->ID ); ?>" data-channel-title="<?php echo esc_attr( get_the_title( $ch->ID ) ); ?>"><?php echo esc_html__( 'Add', 'foyer' ); ?></button>
+                        </td>
+                        <td style="text-align:center;">
+                            <?php if ( $is_fav ) { echo '<span style="color:#d98900; font-size:16px;">&#9733;</span>'; } ?>
+                        </td>
+                        <td><?php echo esc_html( get_the_title( $ch->ID ) ); ?></td>
+                        <td><?php echo esc_html( $author_name ); ?></td>
+                        <td><?php echo esc_html( $date_str ); ?></td>
+                        <td><?php echo esc_html( $slides_count ); ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </tbody>
+        </table>
+        <div id="foyer_sched_selector_pager" style="display:flex; gap:8px; align-items:center; justify-content:flex-end; margin:6px 0 12px;">
+            <button type="button" class="button" id="foyer_sched_selector_prev">&laquo; <?php echo esc_html__( 'Prev', 'foyer' ); ?></button>
+            <span id="foyer_sched_selector_page_info"></span>
+            <button type="button" class="button" id="foyer_sched_selector_next"><?php echo esc_html__( 'Next', 'foyer' ); ?> &raquo;</button>
+        </div>
         <script>
         (function($){
             $(function(){
