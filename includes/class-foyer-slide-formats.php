@@ -47,6 +47,11 @@ class Foyer_Slide_Formats {
      * @since 1.7.6
      */
     static function add_instagram_slide_format( $slide_formats ) {
+        // Only register the Instagram format when its admin class is available.
+        // Prevents invalid callback errors when the class is not bundled/loaded.
+        if ( ! class_exists( 'Foyer_Admin_Slide_Format_Instagram' ) ) {
+            return $slide_formats;
+        }
 
         $slide_format_backgrounds = array( 'default', 'image' );
 
