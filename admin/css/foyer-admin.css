@@ -29,6 +29,20 @@ body.post-php.post-type-foyer_channel #edit-slug-box {
           transform-origin: top left;
   pointer-events: none;
 }
+/* 16:9 preview mode */
+.foyer_slides_editor_slides.ratio-16-9 .foyer_slides_editor_slides_slide .foyer_slides_editor_slides_slide_iframe_container {
+  width: 192px;
+  height: 108px;
+}
+.foyer_slides_editor_slides.ratio-16-9 .foyer_slides_editor_slides_slide .foyer_slides_editor_slides_slide_iframe_container iframe {
+  width: 1920px;
+  height: 1080px;
+  -webkit-transform: scale(0.1, 0.1);
+          transform: scale(0.1, 0.1);
+}
+.foyer_slides_editor_slides.ratio-16-9 .foyer-slide-window-badge {
+  max-width: 192px !important;
+}
 .foyer_slides_editor_slides .foyer_slides_editor_slides_slide .foyer_slides_editor_slides_slide_iframe_container .foyer_slides_editor_slides_slide_iframe_container_overlay {
   display: none;
   position: absolute;

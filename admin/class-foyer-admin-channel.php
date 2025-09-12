@@ -119,6 +119,57 @@ class Foyer_Admin_Channel {
 	}
 
 	/**
+	 * Adds the channel settings meta box (sidebar) to the channel admin page.
+	 *
+	 * @since 1.8.1
+	 */
+	static function add_channel_settings_meta_box() {
+		add_meta_box(
+			'foyer_channel_settings',
+			__( 'Channel settings', 'foyer' ),
+			array( __CLASS__, 'channel_settings_meta_box' ),
+			Foyer_Channel::post_type_name,
+			'side',
+			'high'
+		);
+	}
+
+	/**
+	 * Outputs the content of the channel settings (sidebar) meta box.
+	 *
+	 * @since 1.8.1
+	 *
+	 * @param WP_Post $post
+	 */
+	static function channel_settings_meta_box( $post ) {
+
+		// Nonce
+		wp_nonce_field( Foyer_Channel::post_type_name, Foyer_Channel::post_type_name . '_nonce' );
+
+		$saved_ratio = get_post_meta( $post->ID, 'foyer_channel_preview_ratio', true );
+		if ( empty( $saved_ratio ) ) { $saved_ratio = '9x16'; }
+
+        ?>
+        <div class="foyer_channel_settings_box">
+            <p style="margin:0 0 6px; color:#72777c;"><?php echo esc_html__( 'Preview ratio', 'foyer' ); ?></p>
+            <label style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+                <input type="radio" name="foyer_preview_ratio" value="9x16" <?php echo ( $saved_ratio === '9x16' ? 'checked="checked"' : '' ); ?> /> 9:16
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
+                <input type="radio" name="foyer_preview_ratio" value="16x9" <?php echo ( $saved_ratio === '16x9' ? 'checked="checked"' : '' ); ?> /> 16:9
+            </label>
+
+            <hr style="margin:10px 0;" />
+            <p style="margin:0 0 6px; color:#72777c;"><?php echo esc_html__( 'Favorite', 'foyer' ); ?></p>
+            <label style="display:flex; align-items:center; gap:6px;">
+                <input type="checkbox" id="foyer_channel_is_favorite" name="foyer_channel_is_favorite" value="1" <?php echo get_post_meta( $post->ID, 'foyer_channel_is_favorite', true ) ? 'checked="checked"' : ''; ?> />
+                <span><?php echo esc_html__( 'Mark this channel as favorite', 'foyer' ); ?></span>
+            </label>
+        </div>
+        <?php
+	}
+
+	/**
 	 * Outputs the Slides Count column.
 	 *
 	 * @since	1.0.0
@@ -618,6 +669,9 @@ class Foyer_Admin_Channel {
 
             $channel = new Foyer_Channel( $post );
             $slides = $channel->get_slides();
+            // Saved preview ratio for thumbnails (default: 9x16)
+            $saved_ratio = get_post_meta( $channel->ID, 'foyer_channel_preview_ratio', true );
+            if ( empty( $saved_ratio ) ) { $saved_ratio = '9x16'; }
 
             // Load existing per-slide windows (UTC timestamps)
             $slide_windows = get_post_meta( $channel->ID, 'foyer_channel_slide_windows', true );
@@ -638,7 +692,7 @@ class Foyer_Admin_Channel {
 		ob_start();
 
 		?>
-			<div class="foyer_slides_editor_slides">
+			<div class="foyer_slides_editor_slides<?php echo ( $saved_ratio === '16x9' ? ' ratio-16-9' : '' ); ?>">
 				<?php
 
 					if ( empty( $slides ) ) {
@@ -750,6 +804,44 @@ class Foyer_Admin_Channel {
                 <script type="text/javascript">
                 (function($){
                     $(function(){
+                        // Preview ratio toggle: update UI and persist to DB
+                        function applyRatio(val){
+                            var $metaBox = $('.foyer_meta_box.foyer_slides_editor');
+                            var $list = $metaBox.find('.foyer_slides_editor_slides');
+                            var isWide = (val === '16x9');
+                            $list.toggleClass('ratio-16-9', isWide);
+                            // Also set explicit sizes to ensure immediate visual update
+                            var contW = isWide ? 192 : 108;
+                            var contH = isWide ? 108 : 192;
+                            var frameW = isWide ? 1920 : 1080;
+                            var frameH = isWide ? 1080 : 1920;
+                            $list.find('.foyer_slides_editor_slides_slide .foyer_slides_editor_slides_slide_iframe_container')
+                                 .css({ width: contW + 'px', height: contH + 'px' });
+                            $list.find('.foyer_slides_editor_slides_slide .foyer_slides_editor_slides_slide_iframe_container iframe')
+                                 .css({ width: frameW + 'px', height: frameH + 'px' });
+                            $list.find('.foyer-slide-window-badge').css('max-width', contW + 'px');
+
+                            // No selector preview adjustments
+                        }
+
+                        // Initialize once from current selection
+                        var initVal = $('input[name="foyer_preview_ratio"]:checked').val() || '9x16';
+                        applyRatio(initVal);
+
+                        $(document).on('change', 'input[name="foyer_preview_ratio"]', function(){
+                            var val = $(this).val();
+                            applyRatio(val);
+                            var $metaBox = $('.foyer_meta_box.foyer_slides_editor');
+                            var channelId = $metaBox.data('channel-id');
+                            if(!channelId) return;
+                            $.post(ajaxurl, {
+                                action: 'foyer_channel_set_preview_ratio',
+                                channel_id: channelId,
+                                ratio: val,
+                                nonce: (window.foyer_slides_editor_security ? foyer_slides_editor_security.nonce : '')
+                            });
+                        });
+
                         // Init datetimepickers for per-slide windows (lazy on first open)
                         function initPickers($scope){
                             if (!window.foyer_channel_scheduler_defaults) return;
@@ -888,7 +980,7 @@ class Foyer_Admin_Channel {
         $chan_sec = array( 'nonce' => wp_create_nonce( 'foyer_channel_admin_ajax_nonce' ) );
         wp_localize_script( Foyer::get_plugin_name() . '-admin', 'foyer_channels_list_security', $chan_sec );
 
-        // Lightweight inline script to toggle favorite in list table
+        // Lightweight inline script: favorites toggle
         $inline_js = <<<'JS'
 (function($){$(function(){
 $(document).on('click','.foyer-fav-toggle',function(e){
@@ -1032,6 +1124,25 @@ JS;
     }
 
     /**
+     * Saves the channel preview ratio over AJAX.
+     *
+     * @since 1.8.1
+     */
+    static function set_preview_ratio_over_ajax() {
+        check_ajax_referer( 'foyer_slides_editor_ajax_nonce', 'nonce' , true );
+        $channel_id = isset( $_POST['channel_id'] ) ? intval( $_POST['channel_id'] ) : 0;
+        $ratio = isset( $_POST['ratio'] ) ? sanitize_text_field( wp_unslash( $_POST['ratio'] ) ) : '';
+        if ( empty( $channel_id ) || ! in_array( $ratio, array( '9x16', '16x9' ), true ) ) {
+            wp_send_json_error( array( 'message' => 'bad_request' ), 400 );
+        }
+        if ( ! current_user_can( 'edit_post', $channel_id ) ) {
+            wp_send_json_error( array( 'message' => 'forbidden' ), 403 );
+        }
+        update_post_meta( $channel_id, 'foyer_channel_preview_ratio', $ratio );
+        wp_send_json_success( array( 'ok' => true, 'ratio' => $ratio ) );
+    }
+
+    /**
      * Sets per-slide schedule window (start/end) over AJAX.
      *
      * Expects local datetime strings in WP timezone; converts to UTC timestamps.
@@ -1125,7 +1236,7 @@ JS;
 	 * @param 	int		$post_id	The channel id.
 	 * @return void
 	 */
-	static function save_channel( $post_id ) {
+    static function save_channel( $post_id ) {
 
 		/*
 		 * We need to verify this came from our screen and with proper authorization,
@@ -1154,13 +1265,22 @@ JS;
 			return $post_id;
 		}
 
-		/* Check if slides settings are included (empty or not) in form */
-		if (
-			! isset( $_POST['foyer_slides_settings_duration'] ) ||
-			! isset( $_POST['foyer_slides_settings_transition'] )
-		) {
-			return $post_id;
-		}
+        // Save preview ratio if present (independent of slides settings)
+        if ( isset( $_POST['foyer_preview_ratio'] ) ) {
+            $ratio = sanitize_text_field( wp_unslash( $_POST['foyer_preview_ratio'] ) );
+            if ( in_array( $ratio, array( '9x16', '16x9' ), true ) ) {
+                update_post_meta( $post_id, 'foyer_channel_preview_ratio', $ratio );
+            }
+        }
+
+        /* Check if slides settings are included (empty or not) in form */
+        if (
+            ! isset( $_POST['foyer_slides_settings_duration'] ) ||
+            ! isset( $_POST['foyer_slides_settings_transition'] )
+        ) {
+            // Slides settings not present; still allow saving of other sidebar fields above
+            return $post_id;
+        }
 
 		$foyer_slides_settings_duration = intval( $_POST['foyer_slides_settings_duration'] );
 		if ( empty( $foyer_slides_settings_duration ) ) {
@@ -1202,6 +1322,8 @@ JS;
 		?>
 			<div class="foyer_meta_box foyer_slides_editor" data-channel-id="<?php echo intval( $post->ID ); ?>">
 
+				<?php /* Preview ratio radios moved to sidebar */ ?>
+
 				<?php
 					echo self::get_slides_list_html( $post );
 					echo self::get_add_slide_html();
@@ -1237,7 +1359,6 @@ JS;
 
 						echo self::get_set_duration_html( $post );
 						echo self::get_set_transition_html( $post );
-						echo self::get_set_favorite_html( $post );
 
 					?>
 				</tbody>
