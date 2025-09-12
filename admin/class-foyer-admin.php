@@ -47,11 +47,14 @@ class Foyer_Admin {
 		add_filter( 'posts_clauses', array( 'Foyer_Admin_Channel', 'order_favorites_first_clause' ), 10, 2 );
 		add_action( 'add_meta_boxes', array( 'Foyer_Admin_Channel', 'add_slides_editor_meta_box' ), 20 );
 		add_action( 'add_meta_boxes', array( 'Foyer_Admin_Channel', 'add_slides_settings_meta_box' ), 40 );
+        // New: Channel settings (sidebar) meta box
+		add_action( 'add_meta_boxes', array( 'Foyer_Admin_Channel', 'add_channel_settings_meta_box' ), 30 );
 		add_action( 'save_post', array( 'Foyer_Admin_Channel', 'save_channel' ) );
 			add_action( 'wp_ajax_foyer_slides_editor_add_slide', array( 'Foyer_Admin_Channel', 'add_slide_over_ajax' ) );
 			add_action( 'wp_ajax_foyer_slides_editor_remove_slide', array( 'Foyer_Admin_Channel', 'remove_slide_over_ajax' ) );
 			add_action( 'wp_ajax_foyer_slides_editor_reorder_slides', array( 'Foyer_Admin_Channel', 'reorder_slides_over_ajax' ) );
 			add_action( 'wp_ajax_foyer_channel_set_slide_window', array( 'Foyer_Admin_Channel', 'set_slide_window_over_ajax' ) );
+			add_action( 'wp_ajax_foyer_channel_set_preview_ratio', array( 'Foyer_Admin_Channel', 'set_preview_ratio_over_ajax' ) );
 			add_action( 'wp_ajax_foyer_channel_toggle_favorite', array( 'Foyer_Admin_Channel', 'toggle_favorite_over_ajax' ) );
 		add_filter( 'get_sample_permalink_html', array( 'Foyer_Admin_Channel', 'remove_sample_permalink' ) );
 		add_filter( 'manage_'.Foyer_Channel::post_type_name.'_posts_columns', array( 'Foyer_Admin_Channel', 'add_slides_count_column' ) );
