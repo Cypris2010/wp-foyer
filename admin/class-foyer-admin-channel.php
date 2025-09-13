@@ -1446,9 +1446,20 @@ JS;
 		}
 
         $defaults = array(
-            'ratio'              => '9x16',
+            'ratio'              => '9x16',   // '9x16' or '16x9'
             'show_overlay'       => true,
             'wrap'               => true,
+            // Optional sizing controls (all optional):
+            // - width / height: pixel size of the container. If both are set, the slide is fully contained
+            //   (letterboxed if aspect differs). If only one is set, the other is derived from ratio.
+            // - scale: direct scaling factor of the full-size iframe (overrides width/height if set).
+            'width'              => null,
+            'height'             => null,
+            'scale'              => null,
+            // Optional extra class for the outer wrapper (when wrap is true)
+            'class'              => '',
+            // Optional extra inline CSS for the container div
+            'container_style'    => '',
             // If true, output small inline CSS so the overlay is hidden by default and shown on hover,
             // useful when used outside the Channel editor styles.
             // If not provided, it defaults to the value of 'wrap'.
@@ -1463,11 +1474,41 @@ JS;
 		$ratio = in_array( $args['ratio'], array( '9x16', '16x9' ), true ) ? $args['ratio'] : '9x16';
 		$is_wide = ( '16x9' === $ratio );
 
-		// Dimensions mimic admin CSS (scaled 0.1 of 1080x1920 or 1920x1080)
-		$cont_w = $is_wide ? 192 : 108;
-		$cont_h = $is_wide ? 108 : 192;
+		// Full iframe dimensions
 		$frame_w = $is_wide ? 1920 : 1080;
 		$frame_h = $is_wide ? 1080 : 1920;
+
+		// Resolve desired scale/size
+		$width  = is_numeric( $args['width'] )  ? max( 1, intval( $args['width'] ) )   : null;
+		$height = is_numeric( $args['height'] ) ? max( 1, intval( $args['height'] ) )  : null;
+		$scale  = ( is_numeric( $args['scale'] ) && $args['scale'] > 0 ) ? floatval( $args['scale'] ) : null;
+
+		if ( ! $scale ) {
+			$scale_x = $width  ? ( $width  / $frame_w ) : null;
+			$scale_y = $height ? ( $height / $frame_h ) : null;
+			if ( $scale_x && $scale_y ) {
+				// Contain: ensure whole slide is visible inside container
+				$scale = min( $scale_x, $scale_y );
+			} elseif ( $scale_x ) {
+				$scale = $scale_x;
+			} elseif ( $scale_y ) {
+				$scale = $scale_y;
+			} else {
+				$scale = 0.1; // default existing behavior
+			}
+		}
+
+		$scaled_w = $frame_w * $scale;
+		$scaled_h = $frame_h * $scale;
+
+		$cont_w = $width  ? $width  : intval( round( $scaled_w ) );
+		$cont_h = $height ? $height : intval( round( $scaled_h ) );
+
+		// Center the scaled iframe when container aspect differs (letterbox)
+		$offset_left = max( 0, ( $cont_w - $scaled_w ) / 2 );
+		$offset_top  = max( 0, ( $cont_h - $scaled_h ) / 2 );
+		$left_unscaled = $scale > 0 ? ( $offset_left / $scale ) : 0;
+		$top_unscaled  = $scale > 0 ? ( $offset_top  / $scale ) : 0;
 
 		$slide_url = get_permalink( $slide_id );
 		if ( empty( $slide_url ) ) { return ''; }
@@ -1497,9 +1538,9 @@ JS;
         }
 		?>
             <?php if ( $args['wrap'] ) { ?>
-            <div class="foyer_slides_editor_slides_slide foyer-preview-card" data-slide-id="<?php echo intval( $slide_id ); ?>">
+            <div class="foyer_slides_editor_slides_slide foyer-preview-card <?php echo esc_attr( $args['class'] ); ?>" data-slide-id="<?php echo intval( $slide_id ); ?>">
 			<?php } ?>
-				<div class="foyer_slides_editor_slides_slide_iframe_container" style="width: <?php echo intval( $cont_w ); ?>px; height: <?php echo intval( $cont_h ); ?>px; position: relative; border:1px solid #ccc; background:#e0e0e0; overflow:hidden;">
+				<div class="foyer_slides_editor_slides_slide_iframe_container" style="width: <?php echo intval( $cont_w ); ?>px; height: <?php echo intval( $cont_h ); ?>px; position: relative; border:1px solid #ccc; background:#e0e0e0; overflow:hidden; <?php echo esc_attr( $args['container_style'] ); ?>">
 					<?php if ( $args['show_overlay'] ) { ?>
 					<div class="foyer_slides_editor_slides_slide_iframe_container_overlay" style="position:absolute; top:0; bottom:0; left:0; right:0; z-index:10; background:#e0e0e0; padding:0.5em; overflow:hidden;">
 						<h4><?php echo esc_html( get_the_title( $slide_id ) ); ?></h4>
@@ -1519,7 +1560,7 @@ JS;
 					<?php } ?>
 					<iframe src="<?php echo esc_url( $slide_url ); ?>"
 							width="<?php echo intval( $frame_w ); ?>" height="<?php echo intval( $frame_h ); ?>"
-							style="display:block; transform:scale(0.1,0.1); transform-origin:top left; pointer-events:none;"></iframe>
+							style="display:block; position:absolute; left: <?php echo intval( round( $left_unscaled ) ); ?>px; top: <?php echo intval( round( $top_unscaled ) ); ?>px; transform:scale(<?php echo esc_attr( rtrim( rtrim( sprintf('%.6F',$scale), '0'), '.' ) ); ?>); transform-origin:top left; pointer-events:none;"></iframe>
 				</div>
 			<?php if ( $args['wrap'] ) { ?>
 			</div>

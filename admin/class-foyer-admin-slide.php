@@ -34,6 +34,107 @@ class Foyer_Admin_Slide {
 	}
 
 	/**
+	 * Registers the Slide Preview meta box above Slide Content.
+	 *
+	 * @since 1.8.1
+	 */
+	static function add_slide_preview_meta_box() {
+		add_meta_box(
+			'foyer_slide_preview',
+			__( 'Slide Preview', 'foyer' ),
+			array( __CLASS__, 'slide_preview_meta_box' ),
+			Foyer_Slide::post_type_name,
+			'normal',
+			'high'
+		);
+	}
+
+	/**
+	 * Renders a live slide preview when a slide exists; otherwise shows a placeholder text.
+	 * The preview container is responsive and uses 30% of the meta box width.
+	 *
+	 * @since 1.8.1
+	 *
+	 * @param WP_Post $post
+	 */
+    static function slide_preview_meta_box( $post ) {
+        if ( empty( $post ) || empty( $post->ID ) || 'auto-draft' === $post->post_status ) {
+            // No preview for new, unsaved slides
+            echo '<p style="color:#757575;">' . esc_html__( 'No preview available yet. Press publish to see the preview.', 'foyer' ) . '</p>';
+            return;
+        }
+
+        echo '<div id="foyer-slide-preview-box">';
+		// Use the reusable helper; set width via CSS (30% of metabox), overlay off, no outer wrap.
+		if ( method_exists( 'Foyer_Admin_Channel', 'get_slide_preview_html' ) ) {
+            echo Foyer_Admin_Channel::get_slide_preview_html( $post->ID, array(
+                'wrap'            => false,
+                'show_overlay'    => false,
+                'ratio'           => '16x9',
+            ) );
+        }
+        echo '</div>';
+
+        // Ratio controls (placed below the preview)
+        ?>
+        <div class="foyer-slide-preview-controls" style="margin-top:8px;">
+            <strong><?php echo esc_html__( 'Preview ratio:', 'foyer' ); ?></strong>
+            <label style="margin-left:12px;">
+                <input type="radio" name="foyer_slide_preview_ratio" value="16x9" checked>
+                16:9
+            </label>
+            <label style="margin-left:12px;">
+                <input type="radio" name="foyer_slide_preview_ratio" value="9x16">
+                9:16
+            </label>
+        </div>
+        <?php
+
+		// Inline script to scale preview to the container width and keep aspect.
+		?>
+<script type="text/javascript">
+(function($){
+    function foyerResizeSlidePreview(){
+        var $box = $('#foyer-slide-preview-box');
+        var $postbox = $box.closest('.postbox');
+        var $cont = $box.find('.foyer_slides_editor_slides_slide_iframe_container');
+        var $iframe = $cont.find('iframe');
+        if(!$cont.length || !$iframe.length){ return; }
+        var fw = parseInt($iframe.attr('width'), 10) || 1080;
+        var fh = parseInt($iframe.attr('height'), 10) || 1920;
+        // Target: container HEIGHT equals 30% of the meta box width
+        var mbw = $postbox.width() || $cont.width();
+        var targetH = Math.round((mbw || 600) * 0.30);
+        var scale = targetH / fh;
+        var targetW = Math.round(fw * scale);
+        $cont.css({ height: targetH + 'px', width: targetW + 'px' });
+        $iframe.css({ left: 0, top: 0, transform: 'scale(' + scale + ')' });
+    }
+    $(function(){
+        foyerResizeSlidePreview();
+        $(window).on('resize', foyerResizeSlidePreview);
+
+        // Handle ratio toggle by switching iframe native dimensions, then recompute scale
+        $(document).on('change', 'input[name=foyer_slide_preview_ratio]', function(){
+            var ratio = $('input[name=foyer_slide_preview_ratio]:checked').val();
+            var $box = $('#foyer-slide-preview-box');
+            var $cont = $box.find('.foyer_slides_editor_slides_slide_iframe_container');
+            var $iframe = $cont.find('iframe');
+            if(!$iframe.length){ return; }
+            if(ratio === '16x9'){
+                $iframe.attr({'width': 1920, 'height': 1080});
+            } else {
+                $iframe.attr({'width': 1080, 'height': 1920});
+            }
+            foyerResizeSlidePreview();
+        });
+    });
+})(jQuery);
+</script>
+		<?php
+	}
+
+	/**
 	 * Adds a Slide Format column to the Slides admin table, just after the title column.
 	 *
 	 * @since	1.0.0

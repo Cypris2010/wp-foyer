@@ -64,7 +64,9 @@ class Foyer_Admin {
 
 		/* Foyer_Admin_Slide */
 		add_action( 'admin_enqueue_scripts', array( 'Foyer_Admin_Slide', 'localize_scripts' ) );
-		add_action( 'add_meta_boxes', array( 'Foyer_Admin_Slide', 'add_slide_editor_meta_boxes' ) );
+		// Add Slide Preview above Slide Content
+		add_action( 'add_meta_boxes', array( 'Foyer_Admin_Slide', 'add_slide_preview_meta_box' ), 10 );
+		add_action( 'add_meta_boxes', array( 'Foyer_Admin_Slide', 'add_slide_editor_meta_boxes' ), 20 );
 		add_action( 'save_post', array( 'Foyer_Admin_Slide', 'save_slide' ) );
 		add_filter( 'get_sample_permalink_html', array( 'Foyer_Admin_Slide', 'remove_sample_permalink' ) );
 		add_filter( 'manage_'.Foyer_Slide::post_type_name.'_posts_columns', array( 'Foyer_Admin_Slide', 'add_slide_format_column' ) );
