@@ -70,6 +70,30 @@ class Foyer_Admin_Display {
     }
 
     /**
+     * Sets default sorting for the Displays list table to title (ASC).
+     *
+     * Only applies when no explicit orderby is requested by the user.
+     *
+     * @since 1.7.x
+     *
+     * @param WP_Query $query
+     * @return void
+     */
+    static function set_default_admin_order( $query ) {
+        if ( ! is_admin() ) { return; }
+        if ( ! $query->is_main_query() ) { return; }
+
+        // Only affect the Displays list table query, and only when no explicit ordering is set.
+        $post_type = $query->get( 'post_type' );
+        $orderby   = $query->get( 'orderby' );
+
+        if ( $post_type === Foyer_Display::post_type_name && empty( $orderby ) ) {
+            $query->set( 'orderby', 'title' );
+            $query->set( 'order', 'ASC' );
+        }
+    }
+
+    /**
      * Outputs the multi-entry scheduler.
      *
      * @since 1.7.6

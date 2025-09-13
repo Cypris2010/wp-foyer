@@ -49,6 +49,11 @@ class Foyer_Admin_Slide {
 		foreach( $columns as $key => $title ) {
 			$new_columns[$key] = $title;
 
+			// Insert Preview column right after the checkbox column
+			if ( 'cb' === $key ) {
+				$new_columns['slide_preview'] = __( 'Preview', 'foyer' );
+			}
+
 			if ( 'title' == $key ) {
 				// Add slides count column after the title column
 				$new_columns['slide_format'] = __( 'Slide format, background', 'foyer' );
@@ -78,6 +83,31 @@ class Foyer_Admin_Slide {
 
 			echo esc_html( $format['title'] ) . '<br />' . esc_html( $background['title'] );
 	    }
+
+		// Render preview column using the reusable helper
+		if ( 'slide_preview' === $column ) {
+			if ( method_exists( 'Foyer_Admin_Channel', 'get_slide_preview_html' ) ) {
+				echo Foyer_Admin_Channel::get_slide_preview_html( $post_id, array( 'ratio' => '16x9', 'wrap' => true, 'show_overlay' => false ) );
+			}
+		}
+	}
+
+	/**
+	 * Adds small CSS tweaks to the Slides list table (admin) for our custom columns.
+	 */
+	static function list_table_css() {
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+		if ( empty( $screen ) || 'edit-' . Foyer_Slide::post_type_name !== $screen->id ) {
+			return;
+		}
+		?>
+<style type="text/css">
+/* Set preview column width to ~200px */
+.wp-list-table .column-slide_preview { width: 200px; }
+/* Tidy preview wrapper alignment in list */
+.wp-list-table .column-slide_preview .foyer_slides_editor_slides_slide { display:inline-block; margin:4px 0; }
+</style>
+		<?php
 	}
 
 	/**

@@ -296,6 +296,10 @@ class Foyer_Admin_Channel {
                             foreach ( $current_slides as $s ) { $in_channel_ids[] = intval( $s->ID ); }
                         }
 
+                        // Saved preview ratio for selector thumbnails (default: 9x16)
+                        $selector_ratio = get_post_meta( $current_channel->ID, 'foyer_channel_preview_ratio', true );
+                        if ( empty( $selector_ratio ) ) { $selector_ratio = '9x16'; }
+
                         // Allow customization of the slides list via filters.
                         $query_args = apply_filters( 'foyer/admin/channel/add_slide_query_args', array( 'post_status' => 'publish', 'orderby' => 'title', 'order' => 'ASC' ) );
                         $slides = Foyer_Slides::get_posts( $query_args );
@@ -304,7 +308,8 @@ class Foyer_Admin_Channel {
                     <table class="widefat fixed striped" id="foyer_available_slides_table">
                         <thead>
                             <tr>
-                                <th style="width:110px;">&nbsp;</th>
+                                <th style="width:80px;">&nbsp;</th>
+                                <th style="width:200px;"><?php echo esc_html__( 'Preview', 'foyer' ); ?></th>
                                 <th data-sort="title" class="foyer-sort-col"><span class="sort-label"><?php echo esc_html_x( 'Title', 'post title', 'foyer' ); ?></span> <span class="sort-ind"></span></th>
                                 <th data-sort="author" class="foyer-sort-col" style="width:140px;"><span class="sort-label"><?php echo esc_html__( 'Author', 'foyer' ); ?></span> <span class="sort-ind"></span></th>
                                 <th data-sort="date" class="foyer-sort-col" style="width:160px;"><span class="sort-label"><?php echo esc_html__( 'Date', 'foyer' ); ?></span> <span class="sort-ind"></span></th>
@@ -315,7 +320,7 @@ class Foyer_Admin_Channel {
                         <tbody>
                         <?php if ( empty( $slides ) ) : ?>
                             <tr>
-                                <td colspan="6"><?php echo esc_html__( 'No slides found.', 'foyer' ); ?></td>
+                                <td colspan="7"><?php echo esc_html__( 'No slides found.', 'foyer' ); ?></td>
                             </tr>
                         <?php else : ?>
                             <?php foreach ( $slides as $slide ) :
@@ -329,6 +334,9 @@ class Foyer_Admin_Channel {
                             <tr data-slide-id="<?php echo intval( $slide->ID ); ?>" data-in-channel="<?php echo $is_in_channel ? '1' : '0'; ?>" data-title="<?php echo esc_attr( get_the_title( $slide->ID ) ); ?>" data-author="<?php echo esc_attr( $author_name ); ?>" data-date-ts="<?php echo esc_attr( get_post_time( 'U', true, $slide ) ); ?>" data-format="<?php echo esc_attr( isset( $format['title'] ) ? $format['title'] : '' ); ?>" data-background="<?php echo esc_attr( isset( $background['title'] ) ? $background['title'] : '' ); ?>">
                                 <td>
                                     <button type="button" class="button button-primary foyer_add_slide_btn" data-slide-id="<?php echo intval( $slide->ID ); ?>" <?php echo $is_in_channel ? 'disabled' : ''; ?>><?php echo $is_in_channel ? esc_html__( 'Added', 'foyer' ) : esc_html__( 'Add', 'foyer' ); ?></button>
+                                </td>
+                                <td>
+                                    <?php echo self::get_slide_preview_html( $slide->ID, array( 'ratio' => $selector_ratio, 'wrap' => false, 'show_overlay' => false ) ); ?>
                                 </td>
                                 <td><?php echo esc_html( get_the_title( $slide->ID ) ); ?></td>
                                 <td><?php echo esc_html( $author_name ); ?></td>
@@ -717,22 +725,32 @@ class Foyer_Admin_Channel {
 									data-slide-id="<?php echo intval( $slide->ID ); ?>"
 									data-slide-key="<?php echo $i; ?>"
 								>
-									<div class="foyer_slides_editor_slides_slide_iframe_container">
-										<div class="foyer_slides_editor_slides_slide_iframe_container_overlay">
-											<h4><?php echo esc_html( get_the_title( $slide->ID ) ); ?></h4>
-											<dl>
-												<dt><?php _e( 'Format', 'foyer'); ?></dt>
-												<dd><?php echo esc_html( $slide_format_data['title'] ); ?></dd>
-											</dl>
-											<dl>
-												<dt><?php _e( 'Background', 'foyer'); ?></dt>
-												<dd><?php echo esc_html( $slide_background_data['title'] ); ?></dd>
-											</dl>
-										</div>
-										<?php if ( $display_slide_previews ) { ?>
-											<iframe src="<?php echo esc_url( $slide_url ); ?>" width="1080" height="1920"></iframe>
-										<?php } ?>
-									</div>
+									<?php
+										// Reuse generic preview builder; fall back to overlay-only when previews are disabled
+										if ( $display_slide_previews ) {
+											echo self::get_slide_preview_html( $slide->ID, array(
+												'ratio'        => $saved_ratio,
+												'wrap'         => false,
+												'show_overlay' => true,
+											) );
+										} else {
+											?>
+											<div class="foyer_slides_editor_slides_slide_iframe_container">
+												<div class="foyer_slides_editor_slides_slide_iframe_container_overlay">
+													<h4><?php echo esc_html( get_the_title( $slide->ID ) ); ?></h4>
+													<dl>
+														<dt><?php _e( 'Format', 'foyer'); ?></dt>
+														<dd><?php echo esc_html( $slide_format_data['title'] ); ?></dd>
+													</dl>
+													<dl>
+														<dt><?php _e( 'Background', 'foyer'); ?></dt>
+														<dd><?php echo esc_html( $slide_background_data['title'] ); ?></dd>
+													</dl>
+												</div>
+											</div>
+											<?php
+										}
+									?>
                                 <div class="foyer_slides_editor_slides_slide_caption">
                                     <?php echo esc_html_x( 'Slide', 'slide cpt', 'foyer' ) . ' ' . ( $i + 1 ); ?>
                                     (<a href="#" class="foyer_slides_editor_slides_slide_remove">x</a>)
@@ -1400,5 +1418,113 @@ JS;
 
 		$html = ob_get_clean();
 		return $html;
+	}
+
+	/**
+	 * Returns HTML for a compact slide preview iframe.
+	 *
+	 * Generates the same mini preview used in the Channel editor: an iframe
+	 * pointing to the slide permalink with the `foyer-preview=1` query arg,
+	 * scaled down to thumbnail size. Useful for reusing slide previews elsewhere
+	 * in admin UIs.
+	 *
+	 * Args:
+	 * - ratio (string): '9x16' (default) or '16x9'.
+	 * - show_overlay (bool): include hover overlay with title/format/background. Default true.
+	 * - wrap (bool): wrap in a div with the standard classes used in the editor. Default true.
+	 *
+	 * @since 1.8.1
+	 *
+	 * @param int   $slide_id  The Slide post ID.
+	 * @param array $args      Optional args.
+	 * @return string          HTML markup for the preview.
+	 */
+    static function get_slide_preview_html( $slide_id, $args = array() ) {
+		$slide_id = intval( $slide_id );
+		if ( empty( $slide_id ) || is_null( get_post( $slide_id ) ) ) {
+			return '';
+		}
+
+        $defaults = array(
+            'ratio'              => '9x16',
+            'show_overlay'       => true,
+            'wrap'               => true,
+            // If true, output small inline CSS so the overlay is hidden by default and shown on hover,
+            // useful when used outside the Channel editor styles.
+            // If not provided, it defaults to the value of 'wrap'.
+            'inline_overlay_css' => null,
+        );
+        $args = wp_parse_args( $args, $defaults );
+
+        if ( is_null( $args['inline_overlay_css'] ) ) {
+            $args['inline_overlay_css'] = (bool) $args['wrap'];
+        }
+
+		$ratio = in_array( $args['ratio'], array( '9x16', '16x9' ), true ) ? $args['ratio'] : '9x16';
+		$is_wide = ( '16x9' === $ratio );
+
+		// Dimensions mimic admin CSS (scaled 0.1 of 1080x1920 or 1920x1080)
+		$cont_w = $is_wide ? 192 : 108;
+		$cont_h = $is_wide ? 108 : 192;
+		$frame_w = $is_wide ? 1920 : 1080;
+		$frame_h = $is_wide ? 1080 : 1920;
+
+		$slide_url = get_permalink( $slide_id );
+		if ( empty( $slide_url ) ) { return ''; }
+		$slide_url = add_query_arg( 'foyer-preview', 1, $slide_url );
+
+		$slide_format_data = null;
+		$slide_background_data = null;
+		if ( $args['show_overlay'] ) {
+			$slide = new Foyer_Slide( $slide_id );
+			$slide_format_data = Foyer_Slides::get_slide_format_by_slug( $slide->get_format() );
+			$slide_background_data = Foyer_Slides::get_slide_background_by_slug( $slide->get_background() );
+		}
+
+        ob_start();
+        // Emit inline hover CSS once per request when requested.
+        if ( $args['show_overlay'] && $args['inline_overlay_css'] ) {
+            static $foyer_preview_overlay_css_emitted = false;
+            if ( ! $foyer_preview_overlay_css_emitted ) {
+                $foyer_preview_overlay_css_emitted = true;
+                ?>
+<style type="text/css">
+.foyer-preview-card .foyer_slides_editor_slides_slide_iframe_container_overlay{display:none;}
+.foyer-preview-card .foyer_slides_editor_slides_slide_iframe_container:hover .foyer_slides_editor_slides_slide_iframe_container_overlay{display:block;}
+</style>
+                <?php
+            }
+        }
+		?>
+            <?php if ( $args['wrap'] ) { ?>
+            <div class="foyer_slides_editor_slides_slide foyer-preview-card" data-slide-id="<?php echo intval( $slide_id ); ?>">
+			<?php } ?>
+				<div class="foyer_slides_editor_slides_slide_iframe_container" style="width: <?php echo intval( $cont_w ); ?>px; height: <?php echo intval( $cont_h ); ?>px; position: relative; border:1px solid #ccc; background:#e0e0e0; overflow:hidden;">
+					<?php if ( $args['show_overlay'] ) { ?>
+					<div class="foyer_slides_editor_slides_slide_iframe_container_overlay" style="position:absolute; top:0; bottom:0; left:0; right:0; z-index:10; background:#e0e0e0; padding:0.5em; overflow:hidden;">
+						<h4><?php echo esc_html( get_the_title( $slide_id ) ); ?></h4>
+						<?php if ( ! empty( $slide_format_data ) ) { ?>
+							<dl>
+								<dt><?php _e( 'Format', 'foyer'); ?></dt>
+								<dd><?php echo esc_html( $slide_format_data['title'] ); ?></dd>
+							</dl>
+						<?php } ?>
+						<?php if ( ! empty( $slide_background_data ) ) { ?>
+							<dl>
+								<dt><?php _e( 'Background', 'foyer'); ?></dt>
+								<dd><?php echo esc_html( $slide_background_data['title'] ); ?></dd>
+							</dl>
+						<?php } ?>
+					</div>
+					<?php } ?>
+					<iframe src="<?php echo esc_url( $slide_url ); ?>"
+							width="<?php echo intval( $frame_w ); ?>" height="<?php echo intval( $frame_h ); ?>"
+							style="display:block; transform:scale(0.1,0.1); transform-origin:top left; pointer-events:none;"></iframe>
+				</div>
+			<?php if ( $args['wrap'] ) { ?>
+			</div>
+			<?php } ?>
+		<?php
+		return ob_get_clean();
 	}
 }
