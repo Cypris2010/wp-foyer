@@ -43,7 +43,9 @@ class Foyer_Admin_Slide_Format_Text {
 			$ecc = in_array( $slide_text_qr_ecc, array( 'L','M','Q','H' ), true ) ? $slide_text_qr_ecc : 'M';
 			$new_hash = md5( $slide_text_qr . '|' . $ecc );
 			$current_svg = get_post_meta( $post_id, 'slide_text_qr_svg', true );
-			if ( $new_hash !== $prev_hash || empty( $current_svg ) ) {
+			// Regenerate if content/ecc changed, if empty, or if legacy base64 data URI was stored
+			$needs_regen = ( $new_hash !== $prev_hash ) || empty( $current_svg ) || ( is_string( $current_svg ) && 0 === strpos( $current_svg, 'data:' ) );
+			if ( $needs_regen ) {
 				$svg = class_exists( 'Foyer_QR' ) ? Foyer_QR::svg( $slide_text_qr, $ecc, 0 ) : '';
 				if ( ! empty( $svg ) ) {
 					update_post_meta( $post_id, 'slide_text_qr_svg', $svg );

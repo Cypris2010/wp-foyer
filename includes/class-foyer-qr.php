@@ -1,5 +1,13 @@
 <?php
 
+// PHP 8.4 compatibility: Serializable was removed. Provide a tiny shim if missing.
+if ( ! interface_exists('Serializable') ) {
+    interface Serializable {
+        public function serialize(): string;
+        public function unserialize(string $data): void;
+    }
+}
+
 /**
  * Minimal wrapper around a vendored QR generator to produce SVG.
  *
@@ -10,6 +18,12 @@
  * @since 1.9.0
  */
 class Foyer_QR {
+
+    protected static function debug($msg){
+        if ( defined('WP_DEBUG') && WP_DEBUG ) {
+            error_log('[Foyer_QR] ' . (is_string($msg) ? $msg : print_r($msg, true)));
+        }
+    }
 
     /**
      * Ensure vendor is loaded.
@@ -43,18 +57,61 @@ class Foyer_QR {
         }
 
         $base = FOYER_PLUGIN_PATH . 'includes/lib/chillerlan-phpqrcode';
+
+        // Force-include critical files FIRST to satisfy class inheritance (no Composer autoload here)
         if ( is_dir( $base ) ) {
-            try {
-                $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($base));
-                foreach ( $it as $file ) {
-                    if ( $file->isFile() && substr($file->getFilename(), -4) === '.php' ) {
-                        require_once $file->getPathname();
-                    }
+            $force = array(
+                // options first
+                $base . '/QROptionsTrait.php',
+                $base . '/QRCodeReaderOptionsTrait.php',
+                $base . '/QROptions.php',
+                // matrix constants needed by QROutputInterface
+                $base . '/Data/QRMatrix.php',
+                // output base interfaces/abstracts before markup
+                $base . '/Output/QROutputInterface.php',
+                $base . '/Output/QROutputAbstract.php',
+                $base . '/Output/RGBArrayModuleValueTrait.php',
+                $base . '/Output/CssColorModuleValueTrait.php',
+                $base . '/Output/QRMarkup.php',
+                $base . '/Output/QRMarkupSVG.php',
+                // main facade
+                $base . '/QRCode.php',
+            );
+            foreach ( $force as $f ) {
+                if ( file_exists( $f ) ) {
+                    require_once $f;
                 }
-            } catch ( \Throwable $e ) {}
+            }
+
+            // Register a lightweight PSR-4 autoloader for the remaining classes
+            $settings_base = FOYER_PLUGIN_PATH . 'includes/lib/chillerlan-settings';
+            spl_autoload_register(function($class) use ($base, $settings_base){
+                if (strpos($class, 'chillerlan\\QRCode\\') === 0){
+                    $rel  = substr($class, strlen('chillerlan\\QRCode\\'));
+                    $path = $base . '/' . str_replace('\\','/',$rel) . '.php';
+                    if (file_exists($path)) { require_once $path; }
+                }
+                elseif (strpos($class, 'chillerlan\\Settings\\') === 0){
+                    $rel  = substr($class, strlen('chillerlan\\Settings\\'));
+                    $path = $settings_base . '/' . str_replace('\\','/',$rel) . '.php';
+                    if (file_exists($path)) { require_once $path; }
+                }
+            });
+
+            // Do not include the rest of the library files to avoid parse-order issues.
         }
 
         $loaded = class_exists('chillerlan\\QRCode\\QRCode');
+        self::debug('chillerlan loaded: ' . ($loaded ? 'yes' : 'no'));
+
+        // Last resort: if chillerlan didn't load for any reason, enable phpqrcode on PHP 8+ as well
+        if ( ! $loaded ) {
+            $phpqrcode = FOYER_PLUGIN_PATH . 'includes/lib/phpqrcode.php';
+            if ( file_exists( $phpqrcode ) ) {
+                include_once $phpqrcode; // defines class QRcode
+                self::debug('phpqrcode fallback loaded');
+            }
+        }
     }
 
     /**
@@ -76,16 +133,19 @@ class Foyer_QR {
         $border = max( 0, (int) $border );
 
         // chillerlan/php-qrcode (PHP 8+)
-        if ( class_exists('chillerlan\\QRCode\\QRCode') && class_exists('chillerlan\\QRCode\\QROptions') ) {
+        $has_qrclass = class_exists('chillerlan\\QRCode\\QRCode');
+        $has_opts    = class_exists('chillerlan\\QRCode\\QROptions');
+        $has_svgout  = class_exists('chillerlan\\QRCode\\Output\\QRMarkupSVG');
+        self::debug('classes: QRCode=' . ($has_qrclass?'yes':'no') . ', QROptions=' . ($has_opts?'yes':'no') . ', QRMarkupSVG=' . ($has_svgout?'yes':'no'));
+        if ( $has_qrclass && $has_opts ) {
             try {
-                $map = array('L'=>0,'M'=>1,'Q'=>2,'H'=>3);
-                $eccLevel = isset($map[$ecc]) ? $map[$ecc] : 1;
-
                 $opts = new \chillerlan\QRCode\QROptions([
                     // Use the SVG markup output interface
                     'outputInterface' => \chillerlan\QRCode\Output\QRMarkupSVG::class,
-                    // Error correction level
-                    'eccLevel'        => $eccLevel,
+                    // Return raw SVG markup (not a base64 data URI)
+                    'outputBase64'    => false,
+                    // Error correction level as letter; internal setter maps to bit value
+                    'eccLevel'        => $ecc,
                     // Quiet zone handling: only add when border > 0
                     'addQuietzone'    => ($border > 0),
                     'quietzoneSize'   => max(0,(int)$border),
@@ -96,9 +156,19 @@ class Foyer_QR {
                     'bgColor'         => null,
                 ]);
 
+                self::debug('rendering via chillerlan, ecc=' . $ecc . ', border=' . $border);
                 $svg = (new \chillerlan\QRCode\QRCode($opts))->render($text);
                 return preg_replace('/\s+/', ' ', $svg);
-            } catch ( \Throwable $e ) { }
+            } catch ( \Throwable $e ) { self::debug('chillerlan error: ' . $e->getMessage()); }
+        }
+
+        // If chillerlan path failed and phpqrcode is not yet loaded, try to include it now
+        if ( ! class_exists('QRcode') ) {
+            $phpqrcode = FOYER_PLUGIN_PATH . 'includes/lib/phpqrcode.php';
+            if ( file_exists( $phpqrcode ) ) {
+                include_once $phpqrcode;
+                self::debug('phpqrcode fallback loaded (post-chillerlan)');
+            }
         }
 
         // phpqrcode (PHP 5+) fallback: emit SVG via output buffering
@@ -111,10 +181,12 @@ class Foyer_QR {
                 // Transparent background: pass 0 as back_color so no background <rect> is rendered
                 QRcode::svg($text, false, $lvl, 4, max(0,(int)$border), false, 0x00000000, 0x000000);
                 $svg = ob_get_clean();
+                self::debug('rendering via phpqrcode');
                 return is_string($svg) ? preg_replace('/\s+/', ' ', $svg) : '';
-            } catch ( \Throwable $e ) { }
+            } catch ( \Throwable $e ) { self::debug('phpqrcode error: ' . $e->getMessage()); }
         }
 
+        self::debug('QR generation failed, returning empty string');
         return '';
     }
 }

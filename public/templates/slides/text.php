@@ -50,10 +50,15 @@ if ( empty( $slide_text_qr_svg ) && ! empty( $slide_text_qr ) ) {
 			</div>
 		</div>
         <?php if ( ! empty( $slide_text_qr_svg ) ) { ?>
-            <div class="foyer-slide-qr" aria-hidden="true">
+            <div class="foyer-slide-qr" aria-hidden="true" style="background-color: rgba(255,255,255,0.8);">
                 <?php
-                    // Prefer inline SVG for maximum compatibility and crisp rendering
-                    echo $slide_text_qr_svg; // safe: generated server-side by QR library
+                    // Prefer inline SVG for maximum compatibility and crisp rendering.
+                    // Backward compatibility: if a base64 data URI is stored, fall back to <img src>.
+                    if ( is_string( $slide_text_qr_svg ) && 0 === strpos( $slide_text_qr_svg, 'data:' ) ) {
+                        echo '<img src="' . esc_attr( $slide_text_qr_svg ) . '" alt="" />';
+                    } else {
+                        echo $slide_text_qr_svg; // safe: generated server-side by QR library
+                    }
                 ?>
             </div>
         <?php } ?>
