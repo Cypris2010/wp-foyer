@@ -37,7 +37,9 @@ class Foyer_Setup {
 				'has_archive' => false,
 				'show_in_menu' => 'foyer',
 				'show_in_admin_bar' => true,
-	  			'supports' => array( 'title' ),
+	  			// Include 'editor' so the Text (Blocks) format can use Gutenberg for content.
+	  			// We will conditionally disable the editor for other slide formats in the admin.
+	  			'supports' => array( 'title', 'editor' ),
 	  			'taxonomies' => array(),
 	  			'rewrite' => array( 'slug' => 'foyer' ),
 			)
@@ -79,7 +81,11 @@ class Foyer_Setup {
 				'has_archive' => false,
 				'show_in_menu' => 'foyer',
 				'show_in_admin_bar' => true,
-	  			'supports' => array( 'title' ),
+	  			// Enable content editor for the Text (Blocks) format (Gutenberg).
+	  			// Editor will be conditionally disabled for other formats in admin.
+	  			'supports' => array( 'title', 'editor' ),
+				// Required for the block editor to function on this CPT
+				'show_in_rest' => true,
 	  			'taxonomies' => array(),
 	  			'rewrite' => false,
 			)

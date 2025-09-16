@@ -26,6 +26,11 @@ class Foyer_Admin {
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_styles' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_scripts' ) );
 		add_action( 'admin_menu', array( __CLASS__, 'admin_menu' ) );
+        // Enable block editor only for Text (Blocks) slide format
+        add_filter( 'use_block_editor_for_post', array( __CLASS__, 'use_block_editor_for_post' ), 10, 2 );
+        // Conditionally remove editor support on classic screens for other formats
+        add_action( 'load-post.php', array( __CLASS__, 'maybe_toggle_editor_support' ) );
+        add_action( 'load-post-new.php', array( __CLASS__, 'maybe_toggle_editor_support' ) );
 		// Scheduler page submenu and save handler
 		add_action( 'admin_menu', array( 'Foyer_Admin_Scheduler', 'admin_menu' ) );
 		add_action( 'admin_post_foyer_save_scheduler', array( 'Foyer_Admin_Scheduler', 'handle_post' ) );
@@ -136,8 +141,8 @@ class Foyer_Admin {
 		wp_enqueue_style( Foyer::get_plugin_name(), plugin_dir_url( __FILE__ ) . 'css/foyer-admin.css', array(), Foyer::get_version(), 'all' );
 	}
 
-	/**
-	 * Loads the required dependencies for the admin-facing side of the plugin.
+		/**
+		 * Loads the required dependencies for the admin-facing side of the plugin.
 	 *
 	 * @since	1.3.2
 	 * @since	1.4.0	Included admin/class-foyer-admin-slide-background-image.php.
@@ -174,8 +179,49 @@ class Foyer_Admin {
 		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-production.php';
 		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-recent-posts.php';
 		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-text.php';
+		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-text-blocks.php';
         require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-upcoming-productions.php';
 		// Scheduler admin page
 		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-scheduler.php';
+	}
+
+	/**
+	 * Allow block editor only for Foyer slides with format 'text-blocks'.
+	 * Falls back to the classic screen (meta boxes) for all other slides.
+	 *
+	 * @param bool    $use_block_editor Default decision by WP.
+	 * @param WP_Post $post             The post being edited.
+	 * @return bool
+	 */
+	static function use_block_editor_for_post( $use_block_editor, $post ) {
+		if ( empty( $post ) || Foyer_Slide::post_type_name !== $post->post_type ) {
+			return $use_block_editor;
+		}
+		$format = get_post_meta( $post->ID, 'slide_format', true );
+		return ( 'text-blocks' === $format );
+	}
+
+	/**
+	 * On admin load, remove the content editor support for Slides that are not 'text-blocks'.
+	 * Prevents showing the (classic) content editor when editing non-block formats.
+	 */
+	static function maybe_toggle_editor_support() {
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+		if ( empty( $screen ) || 'post' !== $screen->base ) {
+			return;
+		}
+		$post_id = isset( $_GET['post'] ) ? intval( $_GET['post'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$post_type = isset( $_GET['post_type'] ) ? sanitize_text_field( $_GET['post_type'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( empty( $post_type ) && $post_id ) {
+			$post = get_post( $post_id );
+			$post_type = $post ? $post->post_type : '';
+		}
+		if ( Foyer_Slide::post_type_name !== $post_type ) {
+			return;
+		}
+		$format = $post_id ? get_post_meta( $post_id, 'slide_format', true ) : '';
+		if ( 'text-blocks' !== $format ) {
+			remove_post_type_support( Foyer_Slide::post_type_name, 'editor' );
+		}
 	}
 }
