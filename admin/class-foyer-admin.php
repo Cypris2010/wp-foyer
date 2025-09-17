@@ -128,6 +128,92 @@ class Foyer_Admin {
 		// Ensure datetimepicker does not normalize on blur, which can cause 1899 fallback dates
 		$inline = "jQuery(function($){ try { if ($.fn && $.fn.foyer_datetimepicker && $.fn.foyer_datetimepicker.defaults) { $.fn.foyer_datetimepicker.defaults.validateOnBlur = false; } } catch(e){} });";
 		wp_add_inline_script( Foyer::get_plugin_name() . '-admin', $inline, 'after' );
+
+		$preview_refresh_inline = <<<'JS'
+( function( wp, $ ) {
+	if ( ! wp || ! wp.data || ! wp.data.subscribe || ! wp.data.select ) {
+		return;
+	}
+
+	$( function() {
+		var $previewBox = $( '#foyer-slide-preview-box' );
+		if ( ! $previewBox.length ) {
+			return;
+		}
+
+		var ensureBaseSrc = function( $iframe ) {
+			if ( $iframe.data( 'foyerBaseSrc' ) ) {
+				return;
+			}
+			$iframe.data( 'foyerBaseSrc', $iframe.attr( 'src' ) || '' );
+		};
+
+		var refreshPreviews = function() {
+			var $iframes = $previewBox.find( '.foyer_slides_editor_slides_slide_iframe_container iframe' );
+			if ( ! $iframes.length ) {
+				return;
+			}
+
+			$iframes.each( function() {
+				var $iframe = $( this );
+				ensureBaseSrc( $iframe );
+				var base = $iframe.data( 'foyerBaseSrc' );
+				if ( ! base ) {
+					return;
+				}
+
+				try {
+					var url = new URL( base, window.location.origin );
+					url.searchParams.set( 'foyerPreviewRefresh', Date.now().toString() );
+					$iframe.attr( 'src', url.toString() );
+				} catch ( error ) {
+					var cleaned = base.replace(/([?&])foyerPreviewRefresh=\d+/g, '$1').replace(/[?&]$/, '');
+					var separator = cleaned.indexOf( '?' ) === -1 ? '?' : '&';
+					$iframe.attr( 'src', cleaned + separator + 'foyerPreviewRefresh=' + Date.now() );
+				}
+			} );
+		};
+
+		$previewBox
+			.find( '.foyer_slides_editor_slides_slide_iframe_container iframe' )
+			.each( function() {
+				ensureBaseSrc( $( this ) );
+			} );
+
+		var lastIsSaving = null;
+
+		wp.data.subscribe( function() {
+			var editor = wp.data.select( 'core/editor' );
+			if ( ! editor || typeof editor.isSavingPost !== 'function' ) {
+				return;
+			}
+
+			var isSaving = editor.isSavingPost();
+			if ( null === lastIsSaving ) {
+				lastIsSaving = isSaving;
+				return;
+			}
+
+			var isAutosaving = typeof editor.isAutosavingPost === 'function' ? editor.isAutosavingPost() : false;
+			var didError = false;
+
+			if ( typeof editor.didPostSaveRequestFail === 'function' ) {
+				didError = editor.didPostSaveRequestFail();
+			} else if ( typeof editor.didPostSaveFail === 'function' ) {
+				didError = editor.didPostSaveFail();
+			}
+
+			if ( lastIsSaving && ! isSaving && ! isAutosaving && ! didError ) {
+				setTimeout( refreshPreviews, 150 );
+			}
+
+			lastIsSaving = isSaving;
+		} );
+	} );
+} )( window.wp, window.jQuery );
+JS;
+
+		wp_add_inline_script( Foyer::get_plugin_name() . '-admin', $preview_refresh_inline, 'after' );
 	}
 
 	/**
