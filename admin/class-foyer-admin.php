@@ -38,6 +38,7 @@ class Foyer_Admin {
 		add_action( 'add_meta_boxes', array( 'Foyer_Admin_Display', 'add_channel_editor_meta_box' ) );
 			// Only use the new multi-entry scheduler list UI
 			add_action( 'add_meta_boxes', array( 'Foyer_Admin_Display', 'add_channel_scheduler_list_meta_box' ) );
+		add_action( 'add_meta_boxes', array( 'Foyer_Admin_Display', 'add_display_settings_meta_box' ), 40 );
 		// Default sort Displays list by title ASC
 		add_action( 'pre_get_posts', array( 'Foyer_Admin_Display', 'set_default_admin_order' ) );
 		add_action( 'save_post', array( 'Foyer_Admin_Display', 'save_display' ) );
