@@ -305,16 +305,17 @@ class Foyer_Admin_Channel {
                         $slides = Foyer_Slides::get_posts( $query_args );
                         $slides = apply_filters( 'foyer/admin/channel/add_slide_posts', $slides );
                     ?>
-                    <table class="widefat fixed striped" id="foyer_available_slides_table">
+                    <div class="foyer-available-slides-table-wrapper">
+                        <table class="widefat fixed striped foyer-available-slides-table" id="foyer_available_slides_table">
                         <thead>
                             <tr>
-                                <th style="width:80px;">&nbsp;</th>
-                                <th style="width:200px;"><?php echo esc_html__( 'Preview', 'foyer' ); ?></th>
-                                <th data-sort="title" class="foyer-sort-col"><span class="sort-label"><?php echo esc_html_x( 'Title', 'post title', 'foyer' ); ?></span> <span class="sort-ind"></span></th>
-                                <th data-sort="author" class="foyer-sort-col" style="width:140px;"><span class="sort-label"><?php echo esc_html__( 'Author', 'foyer' ); ?></span> <span class="sort-ind"></span></th>
-                                <th data-sort="date" class="foyer-sort-col" style="width:160px;"><span class="sort-label"><?php echo esc_html__( 'Date', 'foyer' ); ?></span> <span class="sort-ind"></span></th>
-                                <th data-sort="format" class="foyer-sort-col" style="width:160px;"><span class="sort-label"><?php echo esc_html__( 'Format', 'foyer' ); ?></span> <span class="sort-ind"></span></th>
-                                <th data-sort="background" class="foyer-sort-col" style="width:200px;"><span class="sort-label"><?php echo esc_html__( 'Background', 'foyer' ); ?></span> <span class="sort-ind"></span></th>
+                                <th class="foyer-available-slides-table__col-preview"><?php echo esc_html__( 'Preview', 'foyer' ); ?></th>
+                                <th data-sort="title" class="foyer-sort-col foyer-available-slides-table__col-title"><span class="sort-label"><?php echo esc_html_x( 'Title', 'post title', 'foyer' ); ?></span> <span class="sort-ind"></span></th>
+                                <th data-sort="author" class="foyer-sort-col foyer-available-slides-table__col-author"><span class="sort-label"><?php echo esc_html__( 'Author', 'foyer' ); ?></span> <span class="sort-ind"></span></th>
+                                <th data-sort="date" class="foyer-sort-col foyer-available-slides-table__col-date"><span class="sort-label"><?php echo esc_html__( 'Date', 'foyer' ); ?></span> <span class="sort-ind"></span></th>
+                                <th data-sort="format" class="foyer-sort-col foyer-available-slides-table__col-format"><span class="sort-label"><?php echo esc_html__( 'Format', 'foyer' ); ?></span> <span class="sort-ind"></span></th>
+                                <th data-sort="background" class="foyer-sort-col foyer-available-slides-table__col-background"><span class="sort-label"><?php echo esc_html__( 'Background', 'foyer' ); ?></span> <span class="sort-ind"></span></th>
+                                <th class="foyer-available-slides-table__col-action">&nbsp;</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -332,26 +333,37 @@ class Foyer_Admin_Channel {
                                 $date_str = get_the_date( get_option( 'date_format' ), $slide ) . ' ' . get_the_time( get_option( 'time_format' ), $slide );
                             ?>
                             <tr data-slide-id="<?php echo intval( $slide->ID ); ?>" data-in-channel="<?php echo $is_in_channel ? '1' : '0'; ?>" data-title="<?php echo esc_attr( get_the_title( $slide->ID ) ); ?>" data-author="<?php echo esc_attr( $author_name ); ?>" data-date-ts="<?php echo esc_attr( get_post_time( 'U', true, $slide ) ); ?>" data-format="<?php echo esc_attr( isset( $format['title'] ) ? $format['title'] : '' ); ?>" data-background="<?php echo esc_attr( isset( $background['title'] ) ? $background['title'] : '' ); ?>">
-                                <td>
+                                <td class="foyer-available-slides-table__col-preview">
+                                    <?php
+                                        $preview_args = array(
+                                            'ratio'        => $selector_ratio,
+                                            'wrap'         => false,
+                                            'show_overlay' => false,
+                                        );
+                                        if ( '16x9' === $selector_ratio ) {
+                                            $preview_args['width'] = 220;
+                                        }
+                                        echo self::get_slide_preview_html( $slide->ID, $preview_args );
+                                    ?>
+                                </td>
+                                <td class="foyer-available-slides-table__col-title"><?php echo esc_html( get_the_title( $slide->ID ) ); ?></td>
+                                <td class="foyer-available-slides-table__col-author"><?php echo esc_html( $author_name ); ?></td>
+                                <td class="foyer-available-slides-table__col-date"><?php echo esc_html( $date_str ); ?></td>
+                                <td class="foyer-available-slides-table__col-format"><?php echo esc_html( isset( $format['title'] ) ? $format['title'] : '' ); ?></td>
+                                <td class="foyer-available-slides-table__col-background"><?php echo esc_html( isset( $background['title'] ) ? $background['title'] : '' ); ?></td>
+                                <td class="foyer-available-slides-table__col-action">
                                     <button type="button" class="button button-primary foyer_add_slide_btn" data-slide-id="<?php echo intval( $slide->ID ); ?>" <?php echo $is_in_channel ? 'disabled' : ''; ?>><?php echo $is_in_channel ? esc_html__( 'Added', 'foyer' ) : esc_html__( 'Add', 'foyer' ); ?></button>
                                 </td>
-                                <td>
-                                    <?php echo self::get_slide_preview_html( $slide->ID, array( 'ratio' => $selector_ratio, 'wrap' => false, 'show_overlay' => false ) ); ?>
-                                </td>
-                                <td><?php echo esc_html( get_the_title( $slide->ID ) ); ?></td>
-                                <td><?php echo esc_html( $author_name ); ?></td>
-                                <td><?php echo esc_html( $date_str ); ?></td>
-                                <td><?php echo esc_html( isset( $format['title'] ) ? $format['title'] : '' ); ?></td>
-                                <td><?php echo esc_html( isset( $background['title'] ) ? $background['title'] : '' ); ?></td>
                             </tr>
                             <?php endforeach; ?>
                         <?php endif; ?>
                         </tbody>
                     </table>
-                    <div id="foyer_slides_table_pager" style="display:flex; gap:8px; align-items:center; justify-content:flex-end; margin-top:8px;">
-                        <button type="button" class="button" id="foyer_slides_table_prev">&laquo; <?php echo esc_html__( 'Prev', 'foyer' ); ?></button>
-                        <span id="foyer_slides_table_page_info"></span>
-                        <button type="button" class="button" id="foyer_slides_table_next"><?php echo esc_html__( 'Next', 'foyer' ); ?> &raquo;</button>
+                        <div id="foyer_slides_table_pager" class="foyer-available-slides-table__pager">
+                            <button type="button" class="button" id="foyer_slides_table_prev">&laquo; <?php echo esc_html__( 'Prev', 'foyer' ); ?></button>
+                            <span id="foyer_slides_table_page_info"></span>
+                            <button type="button" class="button" id="foyer_slides_table_next"><?php echo esc_html__( 'Next', 'foyer' ); ?> &raquo;</button>
+                        </div>
                     </div>
                     <script type="text/javascript">
                     (function($){
