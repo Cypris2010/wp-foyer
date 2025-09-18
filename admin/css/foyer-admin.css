@@ -80,6 +80,128 @@ body.post-php.post-type-foyer_channel #edit-slug-box {
 .foyer_slides_editor_add {
   border-top: 1px solid #eee;
 }
+.foyer-available-slides-table-wrapper {
+  overflow-x: auto;
+  margin-top: 12px;
+}
+.foyer-available-slides-table {
+  width: 100%;
+  min-width: 960px;
+  table-layout: auto;
+}
+.foyer-available-slides-table th,
+.foyer-available-slides-table td {
+  vertical-align: middle;
+}
+.foyer-available-slides-table th.foyer-available-slides-table__col-action,
+.foyer-available-slides-table td.foyer-available-slides-table__col-action {
+  width: 1%;
+  min-width: 48px;
+  white-space: nowrap;
+  text-align: right;
+}
+.foyer-available-slides-table td.foyer-available-slides-table__col-action {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-pack: end;
+      -ms-flex-pack: end;
+          justify-content: flex-end;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+}
+.foyer-available-slides-table th.foyer-available-slides-table__col-action {
+  padding-right: 12px;
+}
+.foyer-available-slides-table th.foyer-available-slides-table__col-preview,
+.foyer-available-slides-table td.foyer-available-slides-table__col-preview {
+  width: 240px;
+  min-width: 220px;
+  text-align: center;
+}
+.foyer-available-slides-table__col-action .foyer_add_slide_btn {
+  min-width: 0;
+  padding: 0 8px;
+}
+.foyer-available-slides-table td.foyer-available-slides-table__col-preview .foyer_slides_editor_slides_slide_iframe_container {
+  margin: 0 auto;
+}
+.foyer-available-slides-table th.foyer-available-slides-table__col-title,
+.foyer-available-slides-table td.foyer-available-slides-table__col-title {
+  min-width: 240px;
+  white-space: normal;
+  word-break: break-word;
+}
+.foyer-available-slides-table th.foyer-available-slides-table__col-author,
+.foyer-available-slides-table td.foyer-available-slides-table__col-author {
+  width: 160px;
+  min-width: 140px;
+}
+.foyer-available-slides-table th.foyer-available-slides-table__col-date,
+.foyer-available-slides-table td.foyer-available-slides-table__col-date {
+  width: 180px;
+  min-width: 160px;
+  white-space: nowrap;
+}
+.foyer-available-slides-table th.foyer-available-slides-table__col-format,
+.foyer-available-slides-table td.foyer-available-slides-table__col-format,
+.foyer-available-slides-table th.foyer-available-slides-table__col-background,
+.foyer-available-slides-table td.foyer-available-slides-table__col-background {
+  width: 180px;
+  min-width: 160px;
+}
+.foyer-available-slides-table__pager {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  -webkit-box-pack: end;
+      -ms-flex-pack: end;
+          justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+@media (max-width: 1200px) {
+  .foyer-available-slides-table {
+    min-width: 840px;
+  }
+  .foyer-available-slides-table th.foyer-available-slides-table__col-preview,
+  .foyer-available-slides-table td.foyer-available-slides-table__col-preview {
+    min-width: 220px;
+  }
+}
+@media (max-width: 1024px) {
+  .foyer-available-slides-table {
+    min-width: 720px;
+  }
+  .foyer-available-slides-table th.foyer-available-slides-table__col-format,
+  .foyer-available-slides-table td.foyer-available-slides-table__col-format,
+  .foyer-available-slides-table th.foyer-available-slides-table__col-background,
+  .foyer-available-slides-table td.foyer-available-slides-table__col-background {
+    display: none;
+  }
+  .foyer-available-slides-table th.foyer-available-slides-table__col-title,
+  .foyer-available-slides-table td.foyer-available-slides-table__col-title {
+    min-width: 260px;
+  }
+}
+@media (max-width: 782px) {
+  .foyer-available-slides-table-wrapper {
+    margin-top: 16px;
+  }
+  .foyer-available-slides-table th.foyer-available-slides-table__col-author,
+  .foyer-available-slides-table td.foyer-available-slides-table__col-author,
+  .foyer-available-slides-table th.foyer-available-slides-table__col-date,
+  .foyer-available-slides-table td.foyer-available-slides-table__col-date {
+    display: none;
+  }
+  .foyer-available-slides-table {
+    min-width: 560px;
+  }
+}
 body.post-php.post-type-foyer_slide #edit-slug-box {
   display: none;
 }
