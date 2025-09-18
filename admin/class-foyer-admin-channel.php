@@ -495,6 +495,8 @@ class Foyer_Admin_Channel {
                                     // Replace slides list with refreshed HTML
                                     var $list = $('.foyer_slides_editor_slides');
                                     if($list.length){ $list.replaceWith(html); }
+                                    var activeRatio = $('input[name="foyer_preview_ratio"]:checked').val() || null;
+                                    $(document).trigger('foyer:slides-preview-refresh', [activeRatio]);
                                     // Mark row as in-channel and disable button
                                     var $row = $table.find('tr[data-slide-id="'+slideId+'"]');
                                     $row.attr('data-in-channel','1');
@@ -837,30 +839,84 @@ class Foyer_Admin_Channel {
                         // Preview ratio toggle: update UI and persist to DB
                         function applyRatio(val){
                             var $metaBox = $('.foyer_meta_box.foyer_slides_editor');
+                            if (!$metaBox.length) {
+                                return;
+                            }
                             var $list = $metaBox.find('.foyer_slides_editor_slides');
+                            if (!$list.length) {
+                                return;
+                            }
+
                             var isWide = (val === '16x9');
                             $list.toggleClass('ratio-16-9', isWide);
-                            // Also set explicit sizes to ensure immediate visual update
-                            var contW = isWide ? 192 : 108;
-                            var contH = isWide ? 108 : 192;
+
                             var frameW = isWide ? 1920 : 1080;
                             var frameH = isWide ? 1080 : 1920;
-                            $list.find('.foyer_slides_editor_slides_slide .foyer_slides_editor_slides_slide_iframe_container')
-                                 .css({ width: contW + 'px', height: contH + 'px' });
-                            $list.find('.foyer_slides_editor_slides_slide .foyer_slides_editor_slides_slide_iframe_container iframe')
-                                 .css({ width: frameW + 'px', height: frameH + 'px' });
-                            $list.find('.foyer-slide-window-badge').css('max-width', contW + 'px');
+                            var defaultScale = 0.1;
+                            var defaultWidth = frameW * defaultScale;
 
-                            // No selector preview adjustments
+                            var metaWidth = $metaBox.innerWidth();
+                            if (!metaWidth || metaWidth <= 0) {
+                                metaWidth = $metaBox.closest('.postbox').innerWidth();
+                            }
+
+                            var horizontalPadding = 0;
+                            var padLeft = parseFloat($list.css('padding-left'));
+                            var padRight = parseFloat($list.css('padding-right'));
+                            if (!isNaN(padLeft)) {
+                                horizontalPadding += padLeft;
+                            }
+                            if (!isNaN(padRight)) {
+                                horizontalPadding += padRight;
+                            }
+
+                            var $sampleSlide = $list.children('.foyer_slides_editor_slides_slide').first();
+                            var marginLeft = 0;
+                            var marginRight = 0;
+                            if ($sampleSlide.length) {
+                                var tmpLeft = parseFloat($sampleSlide.css('margin-left'));
+                                var tmpRight = parseFloat($sampleSlide.css('margin-right'));
+                                if (!isNaN(tmpLeft)) {
+                                    marginLeft = tmpLeft;
+                                }
+                                if (!isNaN(tmpRight)) {
+                                    marginRight = tmpRight;
+                                }
+                            }
+
+                            var availableWidth = metaWidth - horizontalPadding - marginLeft - marginRight;
+                            availableWidth = Math.max(80, availableWidth);
+                            var targetWidth = Math.min(defaultWidth, availableWidth);
+                            var scale = targetWidth / frameW;
+                            if (!scale || scale <= 0) {
+                                scale = defaultScale;
+                                targetWidth = defaultWidth;
+                            }
+                            var targetHeight = Math.round(frameH * scale);
+
+                            $list.find('.foyer_slides_editor_slides_slide .foyer_slides_editor_slides_slide_iframe_container')
+                                 .css({ width: Math.round(targetWidth) + 'px', height: targetHeight + 'px' });
+                            $list.find('.foyer_slides_editor_slides_slide .foyer_slides_editor_slides_slide_iframe_container iframe')
+                                 .css({
+                                     width: frameW + 'px',
+                                     height: frameH + 'px',
+                                     transform: 'scale(' + scale + ')',
+                                     'transform-origin': 'top left',
+                                     left: '0px',
+                                     top: '0px'
+                                 });
+                            $list.find('.foyer-slide-window-badge').css('max-width', Math.round(targetWidth) + 'px');
                         }
 
                         // Initialize once from current selection
                         var initVal = $('input[name="foyer_preview_ratio"]:checked').val() || '9x16';
-                        applyRatio(initVal);
+                        var currentRatioVal = initVal;
+                        applyRatio(currentRatioVal);
 
                         $(document).on('change', 'input[name="foyer_preview_ratio"]', function(){
                             var val = $(this).val();
-                            applyRatio(val);
+                            currentRatioVal = val;
+                            applyRatio(currentRatioVal);
                             var $metaBox = $('.foyer_meta_box.foyer_slides_editor');
                             var channelId = $metaBox.data('channel-id');
                             if(!channelId) return;
@@ -871,6 +927,30 @@ class Foyer_Admin_Channel {
                                 nonce: (window.foyer_slides_editor_security ? foyer_slides_editor_security.nonce : '')
                             });
                         });
+
+                        var resizeTimer = null;
+                        $(window).on('resize.foyerSlidesEditor', function(){
+                            if (resizeTimer) {
+                                clearTimeout(resizeTimer);
+                            }
+                            resizeTimer = setTimeout(function(){
+                                applyRatio(currentRatioVal);
+                            }, 120);
+                        });
+
+                        $(document).on('foyer:slides-preview-refresh', function(event, requestedRatio){
+                            if (requestedRatio) {
+                                currentRatioVal = requestedRatio;
+                            }
+                            applyRatio(currentRatioVal);
+                        });
+
+                        window.foyerSlidesEditorRefreshPreviews = function(nextRatio){
+                            if (nextRatio) {
+                                currentRatioVal = nextRatio;
+                            }
+                            applyRatio(currentRatioVal);
+                        };
 
                         // Init datetimepickers for per-slide windows (lazy on first open)
                         function initPickers($scope){
