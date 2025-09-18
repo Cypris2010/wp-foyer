@@ -145,7 +145,7 @@ body.single-foyer_slide:not(.custom-background-image):after {
   position: absolute;
   top: 0;
   left: 0;
-  height: 2px;
+  height: 8px;
   width: 100%;
   pointer-events: none;
   overflow: hidden;
