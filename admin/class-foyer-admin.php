@@ -48,9 +48,10 @@ class Foyer_Admin {
 		add_action( 'admin_enqueue_scripts', array( 'Foyer_Admin_Channel', 'localize_scripts' ) );
 		// Order favorites first in Channels list via SQL clause filter
 		add_filter( 'posts_clauses', array( 'Foyer_Admin_Channel', 'order_favorites_first_clause' ), 10, 2 );
+		add_action( 'add_meta_boxes', array( 'Foyer_Admin_Channel', 'prioritize_publish_meta_box' ), 15 );
 		add_action( 'add_meta_boxes', array( 'Foyer_Admin_Channel', 'add_slides_editor_meta_box' ), 20 );
-		add_action( 'add_meta_boxes', array( 'Foyer_Admin_Channel', 'add_slides_settings_meta_box' ), 40 );
-        // New: Channel settings (sidebar) meta box
+		add_action( 'add_meta_boxes', array( 'Foyer_Admin_Channel', 'add_slide_preview_meta_box' ), 25 );
+		// Channel settings (sidebar) meta box
 		add_action( 'add_meta_boxes', array( 'Foyer_Admin_Channel', 'add_channel_settings_meta_box' ), 30 );
 		add_action( 'save_post', array( 'Foyer_Admin_Channel', 'save_channel' ) );
 			add_action( 'wp_ajax_foyer_slides_editor_add_slide', array( 'Foyer_Admin_Channel', 'add_slide_over_ajax' ) );

@@ -102,6 +102,32 @@ class Foyer_Admin_Channel {
 	}
 
 	/**
+	 * Ensures the core Publish meta box stays at the top of the sidebar stack.
+	 *
+	 * @since 1.8.x
+	 */
+	static function prioritize_publish_meta_box() {
+		remove_meta_box( 'submitdiv', Foyer_Channel::post_type_name, 'side' );
+		add_meta_box( 'submitdiv', __( 'Publish' ), 'post_submit_meta_box', Foyer_Channel::post_type_name, 'side', 'high' );
+	}
+
+	/**
+	 * Adds the slide preview settings meta box to the channel admin page.
+	 *
+	 * @since 1.8.x
+	 */
+	static function add_slide_preview_meta_box() {
+		add_meta_box(
+			'foyer_slide_preview',
+			__( 'Slide preview', 'foyer' ),
+			array( __CLASS__, 'slide_preview_meta_box' ),
+			Foyer_Channel::post_type_name,
+			'side',
+			'high'
+		);
+	}
+
+	/**
 	 * Adds the settings meta box to the channel admin page.
 	 *
 	 * @since	1.0.0
@@ -135,6 +161,72 @@ class Foyer_Admin_Channel {
 	}
 
 	/**
+	 * Determines the current visibility status of a slide window.
+	 *
+	 * @since 1.8.x
+	 *
+	 * @param int|null $start_ts_utc Optional UTC start timestamp.
+	 * @param int|null $end_ts_utc   Optional UTC end timestamp.
+	 * @param int|null $now_utc      Optional current UTC timestamp for comparisons.
+	 *
+	 * @return string One of 'active', 'upcoming', or 'expired'.
+	 */
+	protected static function determine_slide_window_status( $start_ts_utc, $end_ts_utc, $now_utc = null ) {
+		if ( null === $now_utc ) {
+			$now_utc = current_time( 'timestamp', true );
+		}
+
+		$start_ts_utc = ( is_numeric( $start_ts_utc ) && intval( $start_ts_utc ) > 0 ) ? intval( $start_ts_utc ) : null;
+		$end_ts_utc   = ( is_numeric( $end_ts_utc ) && intval( $end_ts_utc ) > 0 ) ? intval( $end_ts_utc ) : null;
+
+		if ( $start_ts_utc && $start_ts_utc > $now_utc ) {
+			return 'upcoming';
+		}
+		if ( $end_ts_utc && $end_ts_utc < $now_utc ) {
+			return 'expired';
+		}
+
+		return 'active';
+	}
+
+	/**
+	 * Outputs the content of the slide preview meta box.
+	 *
+	 * @since 1.8.x
+	 *
+	 * @param WP_Post $post Current channel post.
+	 */
+	static function slide_preview_meta_box( $post ) {
+
+		// Nonce for consistency with other channel meta boxes.
+		wp_nonce_field( Foyer_Channel::post_type_name, Foyer_Channel::post_type_name . '_nonce' );
+
+		$saved_ratio = get_post_meta( $post->ID, 'foyer_channel_preview_ratio', true );
+		if ( empty( $saved_ratio ) ) {
+			$saved_ratio = '9x16';
+		}
+
+		?>
+		<div class="foyer_slide_preview_box">
+			<p style="margin:0 0 6px; color:#72777c;">
+				<?php echo esc_html__( 'Preview ratio', 'foyer' ); ?>
+			</p>
+			<label style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+				<input type="radio" name="foyer_preview_ratio" value="9x16" <?php echo ( '9x16' === $saved_ratio ) ? 'checked="checked"' : ''; ?> />
+				<span>9:16</span>
+			</label>
+			<label style="display:flex; align-items:center; gap:6px;">
+				<input type="radio" name="foyer_preview_ratio" value="16x9" <?php echo ( '16x9' === $saved_ratio ) ? 'checked="checked"' : ''; ?> />
+				<span>16:9</span>
+			</label>
+			<p style="margin:10px 0 0; color:#72777c; font-size:12px;">
+				<?php echo esc_html__( 'Controls how slide previews are scaled inside the editor.', 'foyer' ); ?>
+			</p>
+		</div>
+		<?php
+	}
+
+	/**
 	 * Outputs the content of the channel settings (sidebar) meta box.
 	 *
 	 * @since 1.8.1
@@ -146,28 +238,27 @@ class Foyer_Admin_Channel {
 		// Nonce
 		wp_nonce_field( Foyer_Channel::post_type_name, Foyer_Channel::post_type_name . '_nonce' );
 
-		$saved_ratio = get_post_meta( $post->ID, 'foyer_channel_preview_ratio', true );
-		if ( empty( $saved_ratio ) ) { $saved_ratio = '9x16'; }
+	        ?>
+	        <div class="foyer_channel_settings_box">
+	            <p style="margin:0 0 6px; color:#72777c;"><?php echo esc_html__( 'Favorite', 'foyer' ); ?></p>
+	            <label style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
+	                <input type="checkbox" id="foyer_channel_is_favorite" name="foyer_channel_is_favorite" value="1" <?php echo get_post_meta( $post->ID, 'foyer_channel_is_favorite', true ) ? 'checked="checked"' : ''; ?> />
+	                <span><?php echo esc_html__( 'Mark this channel as favorite', 'foyer' ); ?></span>
+	            </label>
 
-        ?>
-        <div class="foyer_channel_settings_box">
-            <p style="margin:0 0 6px; color:#72777c;"><?php echo esc_html__( 'Preview ratio', 'foyer' ); ?></p>
-            <label style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
-                <input type="radio" name="foyer_preview_ratio" value="9x16" <?php echo ( $saved_ratio === '9x16' ? 'checked="checked"' : '' ); ?> /> 9:16
-            </label>
-            <label style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
-                <input type="radio" name="foyer_preview_ratio" value="16x9" <?php echo ( $saved_ratio === '16x9' ? 'checked="checked"' : '' ); ?> /> 16:9
-            </label>
-
-            <hr style="margin:10px 0;" />
-            <p style="margin:0 0 6px; color:#72777c;"><?php echo esc_html__( 'Favorite', 'foyer' ); ?></p>
-            <label style="display:flex; align-items:center; gap:6px;">
-                <input type="checkbox" id="foyer_channel_is_favorite" name="foyer_channel_is_favorite" value="1" <?php echo get_post_meta( $post->ID, 'foyer_channel_is_favorite', true ) ? 'checked="checked"' : ''; ?> />
-                <span><?php echo esc_html__( 'Mark this channel as favorite', 'foyer' ); ?></span>
-            </label>
+	            <hr style="margin:12px 0;" />
+	            <p style="margin:0 0 6px; color:#72777c; font-weight:600;"><?php echo esc_html__( 'Slideshow settings', 'foyer' ); ?></p>
+	            <table class="foyer_meta_box_form form-table foyer_channel_settings_slides_form" style="margin:0;">
+                <tbody>
+                    <?php
+                        echo self::get_set_duration_html( $post );
+                        echo self::get_set_transition_html( $post );
+                    ?>
+                </tbody>
+            </table>
         </div>
         <?php
-	}
+		}
 
 	/**
 	 * Outputs the Slides Count column.
@@ -722,9 +813,10 @@ class Foyer_Admin_Channel {
 							<?php echo esc_html__( 'No slides in this channel yet.', 'foyer' ); ?>
 						</p><?php
 					}
-					else {
+						else {
 
-						$i = 0;
+							$now_utc = current_time( 'timestamp', true );
+							$i = 0;
 						foreach( $slides as $slide ) {
 
 							$slide_url = get_permalink( $slide->ID );
@@ -732,78 +824,88 @@ class Foyer_Admin_Channel {
 							$slide_format_data = Foyer_Slides::get_slide_format_by_slug( $slide->get_format() );
 							$slide_background_data = Foyer_Slides::get_slide_background_by_slug( $slide->get_background() );
 
-							?>
-								<div class="foyer_slides_editor_slides_slide<?php
-									if ( $slide->is_stack() ) { echo ' foyer-slide-is-stack'; }
-								?>"
-									data-slide-id="<?php echo intval( $slide->ID ); ?>"
-									data-slide-key="<?php echo $i; ?>"
-								>
-									<?php
-										// Reuse generic preview builder; fall back to overlay-only when previews are disabled
-										if ( $display_slide_previews ) {
-											echo self::get_slide_preview_html( $slide->ID, array(
+								?>
+									<div class="foyer_slides_editor_slides_slide<?php
+										if ( $slide->is_stack() ) { echo ' foyer-slide-is-stack'; }
+									?>"
+										data-slide-id="<?php echo intval( $slide->ID ); ?>"
+										data-slide-key="<?php echo $i; ?>"
+									>
+										<div class="foyer_slides_editor_slides_slide_caption">
+										<?php echo esc_html_x( 'Slide', 'slide cpt', 'foyer' ) . ' ' . ( $i + 1 ); ?>
+                                    <button type="button" class="button-link foyer-slide-window-toggle" data-slide-id="<?php echo intval( $slide->ID ); ?>" title="<?php echo esc_attr__( 'Edit visibility time window', 'foyer' ); ?>" style="margin-left:8px;">
+                                        <span class="dashicons dashicons-clock" aria-hidden="true"></span>
+                                        <span class="screen-reader-text"><?php echo esc_html__( 'Edit visibility time window', 'foyer' ); ?></span>
+                                    </button>
+										<a href="#" class="foyer_slides_editor_slides_slide_remove" aria-label="<?php echo esc_attr__( 'Remove slide from channel', 'foyer' ); ?>" title="<?php echo esc_attr__( 'Remove slide from channel', 'foyer' ); ?>" style="margin-left:8px;">
+											<span class="dashicons dashicons-trash" aria-hidden="true"></span>
+											<span class="screen-reader-text"><?php echo esc_html__( 'Remove slide', 'foyer' ); ?></span>
+										</a>
+										</div>
+										<?php
+											// Reuse generic preview builder; fall back to overlay-only when previews are disabled
+											if ( $display_slide_previews ) {
+												echo self::get_slide_preview_html( $slide->ID, array(
 												'ratio'        => $saved_ratio,
 												'wrap'         => false,
 												'show_overlay' => true,
 											) );
 										} else {
-											?>
-											<div class="foyer_slides_editor_slides_slide_iframe_container">
-												<div class="foyer_slides_editor_slides_slide_iframe_container_overlay">
-													<h4><?php echo esc_html( get_the_title( $slide->ID ) ); ?></h4>
-													<dl>
-														<dt><?php _e( 'Format', 'foyer'); ?></dt>
-														<dd><?php echo esc_html( $slide_format_data['title'] ); ?></dd>
-													</dl>
-													<dl>
-														<dt><?php _e( 'Background', 'foyer'); ?></dt>
-														<dd><?php echo esc_html( $slide_background_data['title'] ); ?></dd>
-													</dl>
-												</div>
-											</div>
-											<?php
-										}
+								?>
+									<div class="foyer_slides_editor_slides_slide_iframe_container">
+										<div class="foyer_slides_editor_slides_slide_iframe_container_overlay">
+											<h4><?php echo esc_html( get_the_title( $slide->ID ) ); ?></h4>
+											<dl>
+												<dt><?php _e( 'Format', 'foyer'); ?></dt>
+												<dd><?php echo esc_html( $slide_format_data['title'] ); ?></dd>
+											</dl>
+											<dl>
+												<dt><?php _e( 'Background', 'foyer'); ?></dt>
+												<dd><?php echo esc_html( $slide_background_data['title'] ); ?></dd>
+											</dl>
+										</div>
+									</div>
+										<?php
+									}
 									?>
-                                <div class="foyer_slides_editor_slides_slide_caption">
-                                    <?php echo esc_html_x( 'Slide', 'slide cpt', 'foyer' ) . ' ' . ( $i + 1 ); ?>
-                                    (<a href="#" class="foyer_slides_editor_slides_slide_remove">x</a>)
-                                    <?php
-                                        // Compact summary badge if a window is set (fits under 108px preview)
-                                        $summary_text = '';
-                                        if ( isset( $slide_windows[ $slide->ID ] ) && ( ! empty( $slide_windows[ $slide->ID ]['start'] ) || ! empty( $slide_windows[ $slide->ID ]['end'] ) ) ) {
-                                            $s = isset( $slide_windows[ $slide->ID ]['start'] ) ? intval( $slide_windows[ $slide->ID ]['start'] ) : 0;
-                                            $e = isset( $slide_windows[ $slide->ID ]['end'] ) ? intval( $slide_windows[ $slide->ID ]['end'] ) : 0;
-                                            $fmt_day_time = 'd.m. H:i';
-                                            $fmt_time = 'H:i';
-                                            $sv = $s ? date_i18n( $fmt_day_time, $s + get_option( 'gmt_offset' ) * HOUR_IN_SECONDS, true ) : '';
-                                            $ev = $e ? date_i18n( $fmt_day_time, $e + get_option( 'gmt_offset' ) * HOUR_IN_SECONDS, true ) : '';
-                                            if ( $sv && $ev ) {
-                                                // If same day, compress to d.m. H:i–H:i
-                                                if ( date_i18n( 'Ymd', $s, true ) === date_i18n( 'Ymd', $e, true ) ) {
-                                                    $ev_time = date_i18n( $fmt_time, $e + get_option( 'gmt_offset' ) * HOUR_IN_SECONDS, true );
-                                                    $summary_text = $sv . '–' . $ev_time;
-                                                } else {
-                                                    $summary_text = $sv . '–' . $ev;
-                                                }
-                                            } elseif ( $sv ) {
-                                                $summary_text = '≥ ' . $sv;
-                                            } elseif ( $ev ) {
-                                                $summary_text = '≤ ' . $ev;
-                                            }
-                                        }
-                                        if ( ! empty( $summary_text ) ) {
-                                            ?>
-                                            <span class="foyer-slide-window-badge" style="display:block; max-width:108px; margin:6px auto 0; color:#333; background:#eef3ff; border:1px solid #c9d8ff; padding:2px 4px; border-radius:3px; font-size:11px; line-height:1.2; white-space:normal; word-break:break-word;">
-                                                <?php echo esc_html( $summary_text ); ?>
-                                            </span>
-                                            <?php
-                                        }
-                                    ?>
-                                    <button type="button" class="button-link foyer-slide-window-toggle" data-slide-id="<?php echo intval( $slide->ID ); ?>" style="margin-left:8px;">
-                                        <?php echo esc_html__( 'Zeit bearbeiten', 'foyer' ); ?>
-                                    </button>
-                                </div>
+									<?php
+										$start_utc = null;
+										$end_utc   = null;
+										if ( isset( $slide_windows[ $slide->ID ]['start'] ) && ! empty( $slide_windows[ $slide->ID ]['start'] ) ) {
+											$start_utc = intval( $slide_windows[ $slide->ID ]['start'] );
+										}
+										if ( isset( $slide_windows[ $slide->ID ]['end'] ) && ! empty( $slide_windows[ $slide->ID ]['end'] ) ) {
+											$end_utc = intval( $slide_windows[ $slide->ID ]['end'] );
+										}
+
+										// Compact summary badge text based on configured window.
+										$summary_text = '';
+										if ( $start_utc || $end_utc ) {
+											$fmt_day_time    = 'd.m. H:i';
+											$fmt_time        = 'H:i';
+											$offset_seconds  = get_option( 'gmt_offset' ) * HOUR_IN_SECONDS;
+											if ( $start_utc && $end_utc ) {
+												$sv = date_i18n( $fmt_day_time, $start_utc + $offset_seconds, true );
+												if ( date_i18n( 'Ymd', $start_utc, true ) === date_i18n( 'Ymd', $end_utc, true ) ) {
+													$ev_time = date_i18n( $fmt_time, $end_utc + $offset_seconds, true );
+													$summary_text = $sv . '–' . $ev_time;
+												} else {
+													$ev = date_i18n( $fmt_day_time, $end_utc + $offset_seconds, true );
+													$summary_text = $sv . '–' . $ev;
+												}
+											} elseif ( $start_utc ) {
+												$summary_text = '≥ ' . date_i18n( $fmt_day_time, $start_utc + $offset_seconds, true );
+											} elseif ( $end_utc ) {
+												$summary_text = '≤ ' . date_i18n( $fmt_day_time, $end_utc + $offset_seconds, true );
+											}
+										}
+
+										$summary_status = self::determine_slide_window_status( $start_utc, $end_utc, $now_utc );
+										$summary_display = ( '' === $summary_text ) ? '∞' : $summary_text;
+									?>
+									<div class="foyer-slide-window-summary status-<?php echo esc_attr( $summary_status ); ?>">
+										<span class="foyer-slide-window-badge"><?php echo esc_html( $summary_display ); ?></span>
+									</div>
                                 <?php
                                     $scheduler_defaults = Foyer_Admin_Display::get_channel_scheduler_defaults();
                                     $w = isset( $slide_windows[ $slide->ID ] ) ? $slide_windows[ $slide->ID ] : array();
@@ -817,13 +919,23 @@ class Foyer_Admin_Channel {
                                     }
                                 ?>
                                 <div class="foyer_slides_editor_slides_slide_schedule" style="padding:8px 12px 12px; background:#f8f8f8; border:1px solid #e2e2e2; margin-top:6px; display:none;">
-                                    <label style="display:inline-block; min-width:90px;" for="foyer_slide_window_start_<?php echo intval( $slide->ID ); ?>"><?php echo esc_html__( 'Visible from', 'foyer' ); ?></label>
-                                    <input type="text" class="foyer-slide-window-start" id="foyer_slide_window_start_<?php echo intval( $slide->ID ); ?>" value="<?php echo esc_attr( $start_val ); ?>" style="max-width:180px;" />
-                                    <span style="display:inline-block; min-width:70px; margin-left:12px;"><?php echo esc_html__( 'Until', 'foyer' ); ?></span>
-                                    <input type="text" class="foyer-slide-window-end" id="foyer_slide_window_end_<?php echo intval( $slide->ID ); ?>" value="<?php echo esc_attr( $end_val ); ?>" style="max-width:180px;" />
-                                    <button type="button" class="button foyer-slide-window-save" data-slide-id="<?php echo intval( $slide->ID ); ?>" style="margin-left:8px;">
-                                        <?php echo esc_html__( 'Save', 'foyer' ); ?>
-                                    </button>
+                                    <h4 class="foyer-slide-window-heading"><?php echo esc_html__( 'Visibility time window', 'foyer' ); ?></h4>
+                                    <div class="foyer-slide-window-field">
+                                        <label class="foyer-slide-window-label" for="foyer_slide_window_start_<?php echo intval( $slide->ID ); ?>"><?php echo esc_html__( 'Visible from', 'foyer' ); ?></label>
+                                        <input type="text" class="foyer-slide-window-start foyer-slide-window-input" id="foyer_slide_window_start_<?php echo intval( $slide->ID ); ?>" value="<?php echo esc_attr( $start_val ); ?>" />
+                                    </div>
+                                    <div class="foyer-slide-window-field">
+                                        <label class="foyer-slide-window-label" for="foyer_slide_window_end_<?php echo intval( $slide->ID ); ?>"><?php echo esc_html__( 'Until', 'foyer' ); ?></label>
+                                        <input type="text" class="foyer-slide-window-end foyer-slide-window-input" id="foyer_slide_window_end_<?php echo intval( $slide->ID ); ?>" value="<?php echo esc_attr( $end_val ); ?>" />
+                                    </div>
+                                    <div class="foyer-slide-window-actions">
+                                        <button type="button" class="button-secondary foyer-slide-window-delete" data-slide-id="<?php echo intval( $slide->ID ); ?>">
+                                            <?php echo esc_html__( 'Clear', 'foyer' ); ?>
+                                        </button>
+                                        <button type="button" class="button foyer-slide-window-save" data-slide-id="<?php echo intval( $slide->ID ); ?>">
+                                            <?php echo esc_html__( 'Save', 'foyer' ); ?>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 							<?php
@@ -836,6 +948,43 @@ class Foyer_Admin_Channel {
                 <script type="text/javascript">
                 (function($){
                     $(function(){
+                        function updateSlideWindowSummary($slideBlock, summaryText, status){
+                            var $summaryWrap = $slideBlock.find('.foyer-slide-window-summary');
+                            var $preview = $slideBlock.find('.foyer_slides_editor_slides_slide_iframe_container').last();
+
+                            function ensureSummaryWrap(){
+                                if (!$summaryWrap.length) {
+                                    $summaryWrap = $('<div/>', { 'class': 'foyer-slide-window-summary status-active' });
+                                    if ($preview.length) {
+                                        $summaryWrap.insertAfter($preview);
+                                    } else {
+                                        $summaryWrap.prependTo($slideBlock);
+                                    }
+                                }
+                                return $summaryWrap;
+                            }
+
+                            function applyStatus($target, state){
+                                if (!$target || !$target.length) {
+                                    return;
+                                }
+                                var allowed = ['active', 'upcoming', 'expired'];
+                                var normalized = (typeof state === 'string') ? state.toLowerCase() : '';
+                                if ($.inArray(normalized, allowed) === -1) {
+                                    normalized = 'active';
+                                }
+                                var classes = $.map(allowed, function(item){ return 'status-' + item; }).join(' ');
+                                $target.removeClass(classes).addClass('status-' + normalized);
+                            }
+
+                            var $wrap = ensureSummaryWrap();
+                            applyStatus($wrap, status);
+
+                            var displayText = (summaryText && summaryText.length) ? summaryText : '∞';
+                            $wrap.empty();
+                            $('<span/>', { 'class': 'foyer-slide-window-badge', text: displayText }).appendTo($wrap);
+                        }
+
                         // Preview ratio toggle: update UI and persist to DB
                         function applyRatio(val){
                             var $metaBox = $('.foyer_meta_box.foyer_slides_editor');
@@ -968,6 +1117,11 @@ class Foyer_Admin_Channel {
                             });
                         }
 
+                        // Prevent outside click from immediately closing when interacting inside
+                        $(document).on('click', '.foyer_slides_editor_slides_slide_schedule', function(e){
+                            e.stopPropagation();
+                        });
+
                         // Toggle schedule panel
                         $(document).on('click', '.foyer-slide-window-toggle', function(e){
                             e.preventDefault();
@@ -982,6 +1136,18 @@ class Foyer_Admin_Channel {
                             return false;
                         });
 
+                        // Close any open schedule when clicking outside
+                        $(document).on('click.foyerSlidesScheduleDismiss', function(e){
+                            var $target = $(e.target);
+                            if ($target.closest('.foyer_slides_editor_slides_slide_schedule').length || $target.closest('.foyer-slide-window-toggle').length) {
+                                return;
+                            }
+                            var $openPanels = $('.foyer_slides_editor_slides_slide_schedule:visible');
+                            if ($openPanels.length) {
+                                $openPanels.stop(true, true).slideUp(120);
+                            }
+                        });
+
                         // Save per-slide window
                             $(document).on('click', '.foyer-slide-window-save', function(e){
                                 e.preventDefault();
@@ -990,6 +1156,7 @@ class Foyer_Admin_Channel {
                                 var channelId = $wrap.data('channel-id');
                                 var slideId = parseInt($btn.data('slide-id'), 10);
                                 var $slideBlock = $btn.closest('.foyer_slides_editor_slides_slide');
+                                var $panel = $slideBlock.find('.foyer_slides_editor_slides_slide_schedule');
                                 var start = $slideBlock.find('.foyer-slide-window-start').val();
                                 var end = $slideBlock.find('.foyer-slide-window-end').val();
                                 if(!channelId || !slideId) return;
@@ -1004,34 +1171,82 @@ class Foyer_Admin_Channel {
                                 }).done(function(resp){
                                 $btn.addClass('button-primary');
                                 setTimeout(function(){ $btn.removeClass('button-primary'); }, 600);
-                                // Update summary badge in caption
-                                var $caption = $slideBlock.find('.foyer_slides_editor_slides_slide_caption');
-                                var $badge = $caption.find('.foyer-slide-window-badge');
                                 var txt = '';
-                                if (start && end) txt = start + '  ' + end; // placeholder, will adjust below
-                                else if (start) txt = ' ' + start; // ≥ symbol
-                                else if (end) txt = ' ' + end; // ≤ symbol
-                                // Use clean symbols: ≥ and ≤ and en dash
-                                if (start && end) txt = start + ' – ' + end;
-                                else if (start) txt = '≥ ' + start;
-                                else if (end) txt = '≤ ' + end;
-                                // Prefer server-provided compact summary if available
-                                if (resp && resp.success && resp.data && typeof resp.data.summary !== 'undefined') {
-                                    txt = resp.data.summary || '';
+
+                                if (start && end) {
+                                    txt = start + ' – ' + end;
+                                } else if (start) {
+                                    txt = '≥ ' + start;
+                                } else if (end) {
+                                    txt = '≤ ' + end;
                                 }
-                                if (!txt) {
-                                    $badge.remove();
-                                } else if ($badge.length) {
-                                    $badge.text(txt);
-                                } else {
-                                    $('<span/>', { 'class': 'foyer-slide-window-badge', text: txt })
-                                      .attr('style','display:block; max-width:108px; margin:6px auto 0; color:#333; background:#eef3ff; border:1px solid #c9d8ff; padding:2px 4px; border-radius:3px; font-size:11px; line-height:1.2; white-space:normal; word-break:break-word;')
-                                      .appendTo($caption);
+
+                                var status = 'active';
+                                var displaySummary = txt;
+                                var displayStatus = status;
+
+                                if (resp && resp.success && resp.data) {
+                                    if (typeof resp.data.summary !== 'undefined') {
+                                        displaySummary = resp.data.summary || '';
+                                    }
+                                    if (typeof resp.data.status !== 'undefined' && resp.data.status) {
+                                        displayStatus = resp.data.status;
+                                    }
+                                }
+
+                                updateSlideWindowSummary($slideBlock, displaySummary, displayStatus);
+
+                                if (resp && resp.success) {
+                                    $panel.stop(true, true).slideUp(120);
                                 }
                                 }).always(function(){
                                     $btn.prop('disabled', false);
                                 });
                             });
+
+                        $(document).on('click', '.foyer-slide-window-delete', function(e){
+                            e.preventDefault();
+                            var $btn = $(this);
+                            var $wrap = $btn.closest('.foyer_slides_editor');
+                            var channelId = $wrap.data('channel-id');
+                            var slideId = parseInt($btn.data('slide-id'), 10);
+                            var $slideBlock = $btn.closest('.foyer_slides_editor_slides_slide');
+                            var $panel = $slideBlock.find('.foyer_slides_editor_slides_slide_schedule');
+                            if(!channelId || !slideId) return;
+
+                            $slideBlock.find('.foyer-slide-window-start').val('');
+                            $slideBlock.find('.foyer-slide-window-end').val('');
+
+                            $btn.prop('disabled', true);
+                            $.post(ajaxurl, {
+                                action: 'foyer_channel_set_slide_window',
+                                channel_id: channelId,
+                                slide_id: slideId,
+                                start: '',
+                                end: '',
+                                nonce: (window.foyer_slides_editor_security ? foyer_slides_editor_security.nonce : '')
+                            }).done(function(resp){
+                                var displaySummary = '';
+                                var displayStatus = 'active';
+
+                                if (resp && resp.success && resp.data) {
+                                    if (typeof resp.data.summary !== 'undefined') {
+                                        displaySummary = resp.data.summary || '';
+                                    }
+                                    if (typeof resp.data.status !== 'undefined' && resp.data.status) {
+                                        displayStatus = resp.data.status;
+                                    }
+                                }
+
+                                updateSlideWindowSummary($slideBlock, displaySummary, displayStatus);
+
+                                if (resp && resp.success) {
+                                    $panel.stop(true, true).slideUp(120);
+                                }
+                            }).always(function(){
+                                $btn.prop('disabled', false);
+                            });
+                        });
                     });
                 })(jQuery);
                 </script>
@@ -1331,7 +1546,13 @@ JS;
             $summary = '≤ ' . date_i18n( $fmt_day_time, $end_ts_utc + get_option( 'gmt_offset' ) * HOUR_IN_SECONDS, true );
         }
 
-        wp_send_json_success( array( 'ok' => true, 'summary' => $summary ) );
+        $status = self::determine_slide_window_status( $start_ts_utc, $end_ts_utc );
+
+        if ( '' === $summary ) {
+            $summary = '∞';
+        }
+
+        wp_send_json_success( array( 'ok' => true, 'summary' => $summary, 'status' => $status ) );
     }
 
 	/**
@@ -1432,7 +1653,7 @@ JS;
 		?>
 			<div class="foyer_meta_box foyer_slides_editor" data-channel-id="<?php echo intval( $post->ID ); ?>">
 
-				<?php /* Preview ratio radios moved to sidebar */ ?>
+			<?php /* Preview ratio radios live in the Slide preview meta box */ ?>
 
 				<?php
 					echo self::get_slides_list_html( $post );
@@ -1462,7 +1683,7 @@ JS;
 		ob_start();
 
 		?>
-			<table class="foyer_meta_box_form form-table foyer_slides_settings_form">
+			<table class="foyer_meta_box_form form-table foyer_channel_settings_slides_form">
 				<tbody>
 					<?php
 
