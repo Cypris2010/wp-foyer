@@ -585,16 +585,23 @@ class Foyer_Admin_Channel {
                                 .done(function(html){
                                     // Replace slides list with refreshed HTML
                                     var $list = $('.foyer_slides_editor_slides');
-                                    if($list.length){ $list.replaceWith(html); }
-                                    var activeRatio = $('input[name="foyer_preview_ratio"]:checked').val() || null;
-                                    $(document).trigger('foyer:slides-preview-refresh', [activeRatio]);
-                                    // Mark row as in-channel and disable button
-                                    var $row = $table.find('tr[data-slide-id="'+slideId+'"]');
-                                    $row.attr('data-in-channel','1');
-                                    $row.find('.foyer_add_slide_btn').prop('disabled', true).text('<?php echo esc_js( __( 'Added', 'foyer' ) ); ?>');
-                                    refresh();
+                                    if($list.length && html){
+                                        $list.replaceWith(html);
+                                        if (window.foyerInitSlidesEditor) {
+                                            window.foyerInitSlidesEditor();
+                                        }
+                                        var activeRatio = $('input[name="foyer_preview_ratio"]:checked').val() || null;
+                                        $(document).trigger('foyer:slides-preview-refresh', [activeRatio]);
+                                        // Mark row as in-channel and disable button
+                                        var $row = $table.find('tr[data-slide-id="'+slideId+'"]');
+                                        $row.attr('data-in-channel','1');
+                                        $row.find('.foyer_add_slide_btn').prop('disabled', true).text('<?php echo esc_js( __( 'Added', 'foyer' ) ); ?>');
+                                        refresh();
+                                    } else {
+                                        $btn.prop('disabled', false);
+                                    }
                                 })
-                                .always(function(){
+                                .fail(function(){
                                     $btn.prop('disabled', false);
                                 });
                             });
