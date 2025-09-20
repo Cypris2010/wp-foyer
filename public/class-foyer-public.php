@@ -159,7 +159,7 @@ class Foyer_Public {
 	function resetProgress( $slide ) {
 		var $bar = $slide.children( '.foyer-slide-progress' ).children( '.foyer-slide-progress-bar' );
 		if ( $bar.length ) {
-			$bar.css( { transition: 'none', transform: 'scaleX(1)' } );
+			$bar.css( { transition: 'none', transform: 'scaleX(0)' } );
 		}
 	}
 
@@ -195,10 +195,10 @@ class Foyer_Public {
 			return;
 		}
 
-		$bar.css( { transition: 'none', transform: 'scaleX(1)' } );
+		$bar.css( { transition: 'none', transform: 'scaleX(0)' } );
 		queueFrame( function() {
 			queueFrame( function() {
-				$bar.css( { transition: 'transform ' + duration + 's linear', transform: 'scaleX(0)' } );
+				$bar.css( { transition: 'transform ' + duration + 's linear', transform: 'scaleX(1)' } );
 			} );
 		} );
 	}
