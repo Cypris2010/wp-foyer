@@ -17,6 +17,7 @@
  * Plugin URI:        https://mennoluitjes.nl
  * Description:       Create slideshows and show them off on your networked displays.
  * Version:           1.9.0
+
  * Author:            Menno Luitjes
  * Author URI:        https://mennoluitjes.nl
  * License:           GPL-3.0+
@@ -64,6 +65,7 @@ require plugin_dir_path( __FILE__ ) . 'includes/class-foyer.php';
  * @since	1.3.2	Defined some named constants to be used throughout the plugin.
  */
 function run_foyer() {
+
 
 	define( 'FOYER_PLUGIN_VERSION', '1.9.0' ); // do not access directly
 	define( 'FOYER_PLUGIN_NAME', 'foyer' ); // do not access directly
