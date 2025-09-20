@@ -147,6 +147,63 @@ Settings for W3 Total Cache: Add `/foyer/*` on a new line under Performance > Pa
 
 == Changelog ==
 
+= 1.9 =
+Release Date: Unreleased
+
+Enhancements:
+
+* QR codes on Text slides are now rendered server-side as crisp inline SVG with caching and configurable error correction levels (1.9.0).
+* Bundled lightweight QR libraries so QR generation works on modern PHP versions while still falling back to phpqrcode when needed (1.9.0).
+* Confirmed full compatibility with PHP 8.4 and WordPress 6.8.2 so you can safely run Foyer on current hosting stacks (1.9.0).
+
+Bug fixes:
+
+* Added fallbacks for the removed Serializable interface in PHP 8.4 and ensured QR code generation keeps working on legacy PHP installs (1.9.0).
+
+Hey developers!:
+
+* Introduced the `Foyer_QR::svg()` helper plus PSR-4 autoload shims for chillerlan/php-qrcode, making custom QR integrations easier without Composer (1.9.0).
+
+= 1.8 =
+Release Date: Unreleased
+
+Enhancements:
+
+* Channels can now be marked as favorites, feature a star column in the list table and default to showing favorites first (1.8.0).
+* Channel editors gained preview ratio controls and richer slide preview cards that can be toggled between 9:16 and 16:9 (1.8.1).
+* Slide availability windows now surface visual status badges in the editor so you immediately see which slides are active, upcoming or expired (1.8.0).
+* The Scheduler admin screen adds conflict detection, reusable templates and timezone-aware parsing before applying updates to one or many displays (1.8.0).
+* Displays can show an opt-in progress timer whose bar height and styling were refreshed to remain visible from a distance (1.8.0).
+* The Displays list table now defaults to sorting alphabetically, matching how operators expect to find their screens (1.8.1).
+
+Bug fixes:
+
+* Schedule saves now validate overlapping entries and normalise dates using the site timezone to prevent displays from switching at the wrong moment (1.8.0).
+* Channel slide lists remain sortable and Add buttons stay disabled after an AJAX insert to avoid duplicate queueing (1.8.1).
+
+Hey developers!:
+
+* Added helper methods such as `Foyer_Channels::get_favorites()` plus a reusable `Foyer_Admin_Channel::get_slide_preview_html()` renderer for custom dashboards (1.8.0, 1.8.1).
+* New AJAX endpoints (`foyer_channel_toggle_favorite`, `foyer_channel_set_slide_window`, `foyer_validate_schedule`) allow extensions to integrate more deeply with scheduling and channel curation (1.8.0).
+
+= 1.7.6 =
+Release Date: Unreleased
+
+Enhancements:
+
+* Redesigned the per-display schedule editor into a sortable table with status highlighting, bulk actions and inline add/remove controls (1.7.6).
+* Added AJAX-powered per-slide show/hide windows so channels can plan slides for specific date ranges and have the front-end hide out-of-window slides automatically (1.7.6).
+* Slide and channel selectors gained instant search, column sorting, pagination controls and better previews to speed up curation (1.7.6).
+
+Bug fixes:
+
+* Added pre-save validation and helpful admin notices when schedule rows overlap instead of silently overwriting them (1.7.6).
+* Fixed regressions with WordPress media integration, datetime picker behaviour and removed the unfinished Instagram format to prevent admin fatals (1.7.6).
+
+Hey developers!:
+
+* Introduced the Scheduler submenu and `foyer_channel_slide_windows` meta helpers, laying the groundwork for custom scheduling tooling (1.7.6).
+
 = 1.7 =
 Release Date: November 15, 2018
 
@@ -379,4 +436,3 @@ Added a PDF slide format. Creates a slide for each page in an uploaded PDF.
 
 = 1.0.1 =
 Improved code security: Sanitized and validated all user input, and escaped and sanitized the output of the plugin.
-
