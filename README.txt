@@ -155,10 +155,14 @@ Enhancements:
 * QR codes on Text slides are now rendered server-side as crisp inline SVG with caching and configurable error correction levels (1.9.0).
 * Bundled lightweight QR libraries so QR generation works on modern PHP versions while still falling back to phpqrcode when needed (1.9.0).
 * Confirmed full compatibility with PHP 8.4 and WordPress 6.8.2 so you can safely run Foyer on current hosting stacks (1.9.0).
+* Added a dedicated **RSS feed** slide format that stacks feed entries, auto-generates QR codes for each post, supports configurable caching and lets operators disable the feed title per slide (1.9.1).
+* RSS feed slides now feature a gentle background zoom animation and matching light text tiles/QR panels to align with the Text slide aesthetics (1.9.1).
 
 Bug fixes:
 
 * Added fallbacks for the removed Serializable interface in PHP 8.4 and ensured QR code generation keeps working on legacy PHP installs (1.9.0).
+* Unified slide content spacing so paragraphs no longer introduce a top margin within text blocks across all slide formats (1.9.1).
+* Ensure the very first RSS entry animates the background zoom immediately and no longer snaps back at slide handover (1.9.1).
 
 Hey developers!:
 

@@ -235,6 +235,38 @@ class Foyer_Slide_Formats {
 	}
 
 	/**
+	 * Adds the RSS Feed slide format.
+	 *
+	 * @since	1.9.1
+	 *
+	 * @param 	array	$slide_formats	The current slide formats.
+	 * @return	array					The slide formats with the RSS Feed slide format added.
+	 */
+	static function add_rss_feed_slide_format( $slide_formats ) {
+
+		$slide_format_backgrounds = array( 'default' );
+
+		/**
+		 * Filter available slide backgrounds for this slide format.
+		 *
+		 * @since	1.9.1
+		 * @param	array	$slide_format_backgrounds	The currently available slide backgrounds for this slide format.
+		 */
+		$slide_format_backgrounds = apply_filters( 'foyer/slides/backgrounds/format=rss-feed', $slide_format_backgrounds );
+
+		$slide_formats['rss-feed'] = array(
+			'title' => _x( 'RSS feed', 'slide-format', 'foyer' ),
+			'description' => __( 'Displays the latest entries from an RSS feed.', 'foyer' ),
+			'meta_box' => array( 'Foyer_Admin_Slide_Format_RSS', 'slide_meta_box' ),
+			'save_post' => array( 'Foyer_Admin_Slide_Format_RSS', 'save_slide' ),
+			'slide_backgrounds' => $slide_format_backgrounds,
+			'stack' => true,
+		);
+
+		return $slide_formats;
+	}
+
+	/**
 	 * Adds the Text slide format.
 	 *
 	 * @since	1.5.0
