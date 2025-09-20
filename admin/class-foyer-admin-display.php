@@ -75,9 +75,9 @@ class Foyer_Admin_Display {
 	 * @since	1.?.?
 	 */
 	static function add_display_settings_meta_box() {
-		add_meta_box(
-			'foyer_display_settings',
-			esc_html__( 'Display Einstellungen', 'foyer' ),
+			add_meta_box(
+				'foyer_display_settings',
+				esc_html__( 'Display settings', 'foyer' ),
 			array( __CLASS__, 'display_settings_meta_box' ),
 			Foyer_Display::post_type_name,
 			'side',
