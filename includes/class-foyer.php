@@ -149,6 +149,9 @@ class Foyer {
 		/* Slide formats. */
 		require_once FOYER_PLUGIN_PATH . 'includes/class-foyer-slide-formats.php';
 
+		/* QR helper (for server-side SVG generation). */
+		require_once FOYER_PLUGIN_PATH . 'includes/class-foyer-qr.php';
+
 		/* Theater for WordPress helper functions. */
 		require_once FOYER_PLUGIN_PATH . 'includes/class-foyer-theater.php';
 

@@ -69,6 +69,68 @@ class Foyer_Admin_Display {
         );
     }
 
+	/**
+	 * Adds the display settings meta box to the display edit screen.
+	 *
+	 * @since	1.?.?
+	 */
+	static function add_display_settings_meta_box() {
+		add_meta_box(
+			'foyer_display_settings',
+			esc_html__( 'Display Einstellungen', 'foyer' ),
+			array( __CLASS__, 'display_settings_meta_box' ),
+			Foyer_Display::post_type_name,
+			'side',
+			'default'
+		);
+	}
+
+	/**
+	 * Renders the display settings meta box.
+	 *
+	 * @since	1.?.?
+	 *
+	 * @param	WP_Post $post
+	 */
+	static function display_settings_meta_box( $post ) {
+
+		$value = get_post_meta( $post->ID, 'foyer_display_show_timer', true );
+		$value = ( 'no' === $value ) ? 'no' : 'yes';
+		?>
+		<p>
+			<input type="hidden" name="foyer_display_show_timer_present" value="1" />
+			<label for="foyer_display_show_timer">
+				<input type="checkbox" id="foyer_display_show_timer" name="foyer_display_show_timer" value="yes" <?php checked( $value, 'yes' ); ?> />
+				<?php echo esc_html__( 'Show display timer', 'foyer' ); ?>
+			</label>
+		</p>
+		<?php
+	}
+
+    /**
+     * Sets default sorting for the Displays list table to title (ASC).
+     *
+     * Only applies when no explicit orderby is requested by the user.
+     *
+     * @since 1.7.x
+     *
+     * @param WP_Query $query
+     * @return void
+     */
+    static function set_default_admin_order( $query ) {
+        if ( ! is_admin() ) { return; }
+        if ( ! $query->is_main_query() ) { return; }
+
+        // Only affect the Displays list table query, and only when no explicit ordering is set.
+        $post_type = $query->get( 'post_type' );
+        $orderby   = $query->get( 'orderby' );
+
+        if ( $post_type === Foyer_Display::post_type_name && empty( $orderby ) ) {
+            $query->set( 'orderby', 'title' );
+            $query->set( 'order', 'ASC' );
+        }
+    }
+
     /**
      * Outputs the multi-entry scheduler.
      *
@@ -1043,6 +1105,16 @@ class Foyer_Admin_Display {
 		 * Save schedule for temporary channels.
 		 */
 		self::save_schedule( $post_id );
+
+		if ( isset( $_POST['foyer_display_show_timer_present'] ) ) {
+			$show_timer_value = isset( $_POST['foyer_display_show_timer'] ) ? sanitize_text_field( wp_unslash( $_POST['foyer_display_show_timer'] ) ) : '';
+			if ( 'yes' === $show_timer_value ) {
+				delete_post_meta( $display_id, 'foyer_display_show_timer' );
+			}
+			else {
+				update_post_meta( $display_id, 'foyer_display_show_timer', 'no' );
+			}
+		}
 
 	}
 

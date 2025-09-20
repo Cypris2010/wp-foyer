@@ -3,8 +3,9 @@
   "themes": [],
   "config": {
     "WP_DEBUG": true,
+    "WP_DEBUG_DISPLAY": true,
     "SCRIPT_DEBUG": true
   },
-  "phpVersion": "7.4",
+  "phpVersion": "8.4",
   "port": 8888
 }

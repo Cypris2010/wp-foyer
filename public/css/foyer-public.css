@@ -92,6 +92,13 @@ body.single-foyer_slide.admin-bar {
   color: #0073aa;
   border-color: #0073aa;
 }
+
+/* Ensure QR container has consistent inner spacing */
+.foyer-slide-qr {
+  padding: 2vmin;
+  margin: 4vmin;
+  background-color: rgba(255, 255, 255, 0.8);
+}
 body.single-foyer_display,
 body.single-foyer_channel,
 body.single-foyer_slide {
@@ -131,7 +138,26 @@ body.single-foyer_slide:not(.custom-background-image):after {
   height: 100%;
 }
 .foyer-slide {
+  position: relative;
   overflow: hidden;
+}
+.foyer-slide-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 8px;
+  width: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 5;
+}
+.foyer-slide-progress-bar {
+  width: 100%;
+  height: 100%;
+  background-color: #2a4977;
+  transform-origin: left center;
+  transform: scaleX(1);
+  transition: none;
 }
 .foyer-transition-fade .foyer-slides {
   position: relative;
@@ -443,6 +469,16 @@ html {
   display: flex;
   width: 100%;
   height: 100%;
+  position: relative;
+}
+.foyer-slide.foyer-slide-text .inner .foyer-slide-text-qr-row {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: end;
+      -ms-flex-align: end;
+          align-items: flex-end;
+  width: 100%;
 }
 .foyer-slide.foyer-slide-text .inner .foyer-slide-fields {
   -webkit-box-flex: 0;
@@ -488,9 +524,17 @@ html {
         -ms-flex-direction: row;
             flex-direction: row;
   }
+  .foyer-slide.foyer-slide-text .foyer-slide-qr { position: absolute; right: 0; bottom: 0; padding: 2vmin; display:flex; align-items:flex-end; }
+  .foyer-slide.foyer-slide-text .foyer-slide-qr img,
+  .foyer-slide.foyer-slide-text .foyer-slide-qr svg { display:block; height: 30vh; width: 30vh; }
   .foyer-slide.foyer-slide-text .inner .foyer-slide-fields {
     width: 66.66666667%;
   }
+}
+
+/* Ensure QR container has a white translucent background (high specificity) */
+.foyer-slide.foyer-slide-text .foyer-slide-qr {
+  background-color: rgba(255, 255, 255, 0.8) !important;
 }
 @media (max-aspect-ratio: 1/1) {
   .foyer-slide.foyer-slide-text .inner {
@@ -502,6 +546,17 @@ html {
         -ms-flex-pack: end;
             justify-content: flex-end;
   }
+  .foyer-slide.foyer-slide-text .inner .foyer-slide-text-qr-row {
+    -webkit-box-orient: vertical;
+    -webkit-box-direction: normal;
+        -ms-flex-direction: column;
+            flex-direction: column;
+    -webkit-box-align: center;
+        -ms-flex-align: center;
+            align-items: center;
+  }
+  /* portrait: keep QR anchored bottom-right as well */
+  .foyer-slide.foyer-slide-text .foyer-slide-qr { position: absolute; right: 0; bottom: 0; padding: 2vmin; }
 }
 .foyer-slide.foyer-slide-upcoming-productions .foyer-slide-fields {
   position: absolute;

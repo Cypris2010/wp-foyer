@@ -91,6 +91,10 @@ class Foyer_Display {
 			$this->delete_reset_request();
 		}
 
+		if ( ! $this->is_progress_enabled() ) {
+			$classes[] = 'foyer-display-progress-disabled';
+		}
+
 		if ( empty( $classes ) ) {
 			return;
 		}
@@ -215,5 +219,17 @@ class Foyer_Display {
 	 */
 	private function is_reset_requested() {
 		return (bool) get_post_meta( $this->ID, 'foyer_reset_display', true );
+	}
+
+	/**
+	 * Determines whether the progress timer is enabled for this display.
+	 *
+	 * @since	1.?.?
+	 *
+	 * @return bool
+	 */
+	public function is_progress_enabled() {
+		$value = get_post_meta( $this->ID, 'foyer_display_show_timer', true );
+		return ( 'no' !== $value );
 	}
 }
