@@ -983,3 +983,97 @@ msgstr ""
 #: public/templates/slides/rss-feed.php:204
 msgid "No entries found in the feed."
 msgstr ""
+
+#: includes/class-foyer-slide-formats.php:290
+msgctxt "slide-format"
+msgid "Calendar"
+msgstr ""
+
+#: includes/class-foyer-slide-formats.php:291
+msgid "Displays upcoming events from one or more iCalendar feeds."
+msgstr ""
+
+#: includes/class-foyer-ics.php:27
+msgid "No calendar URL provided."
+msgstr ""
+
+#: admin/class-foyer-admin-slide-format-calendar.php:102
+msgid "Slide title"
+msgstr ""
+
+#: admin/class-foyer-admin-slide-format-calendar.php:105
+msgid "Optional heading shown above the calendar."
+msgstr ""
+
+#: admin/class-foyer-admin-slide-format-calendar.php:110
+msgid "Show events for the next"
+msgstr ""
+
+#: admin/class-foyer-admin-slide-format-calendar.php:113
+msgid "days"
+msgstr ""
+
+#: admin/class-foyer-admin-slide-format-calendar.php:118
+msgid "Cache duration"
+msgstr ""
+
+#: admin/class-foyer-admin-slide-format-calendar.php:121
+msgid "minutes"
+msgstr ""
+
+#: admin/class-foyer-admin-slide-format-calendar.php:122
+msgid "How long fetched calendar data is kept before refreshing."
+msgstr ""
+
+#: admin/class-foyer-admin-slide-format-calendar.php:127
+msgid "Calendars"
+msgstr ""
+
+#: admin/class-foyer-admin-slide-format-calendar.php:135 admin/class-foyer-admin-slide-format-calendar.php:166
+msgid "ICS URL"
+msgstr ""
+
+#: admin/class-foyer-admin-slide-format-calendar.php:136 admin/class-foyer-admin-slide-format-calendar.php:167
+msgid "https://example.com/calendar.ics"
+msgstr ""
+
+#: admin/class-foyer-admin-slide-format-calendar.php:141 admin/class-foyer-admin-slide-format-calendar.php:172
+msgid "Tag label"
+msgstr ""
+
+#: admin/class-foyer-admin-slide-format-calendar.php:142 admin/class-foyer-admin-slide-format-calendar.php:173
+msgid "e.g. Team A"
+msgstr ""
+
+#: admin/class-foyer-admin-slide-format-calendar.php:145 admin/class-foyer-admin-slide-format-calendar.php:176
+msgid "Tag color"
+msgstr ""
+
+#: admin/class-foyer-admin-slide-format-calendar.php:149 admin/class-foyer-admin-slide-format-calendar.php:180
+msgid "Remove calendar"
+msgstr ""
+
+#: admin/class-foyer-admin-slide-format-calendar.php:156
+msgid "Add calendar"
+msgstr ""
+
+#: admin/class-foyer-admin-slide-format-calendar.php:157
+msgid "Each calendar can have its own label and color. Events that appear in multiple calendars are merged and display all associated labels."
+msgstr ""
+
+#: public/templates/slides/calendar.php:84
+#, php-format
+msgid "Calendar \"%1$s\" could not be loaded: %2$s"
+msgstr ""
+
+#: public/templates/slides/calendar.php:105
+msgid "(Untitled event)"
+msgstr ""
+
+#: public/templates/slides/calendar.php:184
+msgid "No upcoming events within the selected range."
+msgstr ""
+
+#: public/templates/slides/calendar.php:206
+msgid "All day"
+msgstr ""
