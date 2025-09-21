@@ -7,8 +7,8 @@
 		return duration;
 	}
 
-	function resetZoom($slide){
-		$slide.find('.foyer-slide-rss-background figure img').css({
+	function resetImage($img){
+		$img.css({
 			transition: '',
 			transform: 'scale(1)'
 		});
@@ -25,22 +25,21 @@
 		}
 	}
 
-	function startZoom($slide){
-		var $img = $slide.find('.foyer-slide-rss-background figure img').first();
+	function startBackgroundZoom($background, duration){
+		var $img = $background.find('figure img').first();
 		if (!$img.length) {
 			return;
 		}
 
 		if ($img[0] && !$img[0].complete) {
 			$img.one('load', function(){
-				startZoom($slide);
+				startBackgroundZoom($background, duration);
 			});
 			return;
 		}
 
-		resetZoom($slide);
+		resetImage($img);
 
-		var duration = getSlideDuration($slide);
 		queueFrame(function(){
 			$img.css({
 				transition: 'transform ' + duration + 's ease-in-out',
@@ -49,17 +48,37 @@
 		});
 	}
 
+	function resetSlideZoom($slide){
+		$slide.find('.foyer-slide-background-zoom figure img').each(function(){
+			resetImage($(this));
+		});
+	}
+
+	function startSlideZoom($slide){
+		var $backgrounds = $slide.find('.foyer-slide-background-zoom');
+		if (!$backgrounds.length) {
+			return;
+		}
+
+		var duration = getSlideDuration($slide);
+		$backgrounds.each(function(){
+			startBackgroundZoom($(this), duration);
+		});
+	}
+
 	$(document)
-		.on('slide:becoming-next', '.foyer-slide.foyer-slide-rss-feed', function(){
-			resetZoom($(this));
+		.on('slide:becoming-next', '.foyer-slide', function(){
+			resetSlideZoom($(this));
 		})
-		.on('slide:becoming-active', '.foyer-slide.foyer-slide-rss-feed', function(){
-			startZoom($(this));
+		.on('slide:becoming-active', '.foyer-slide', function(){
+			startSlideZoom($(this));
 		});
 
 	$(function(){
-		$('.foyer-slide.foyer-slide-rss-feed.active').each(function(){
-			startZoom($(this));
+		var $activeSlides = $('.foyer-slide.active');
+		var $targetSlides = $activeSlides.length ? $activeSlides : $('.foyer-slide');
+		$targetSlides.each(function(){
+			startSlideZoom($(this));
 		});
 	});
 })(jQuery);

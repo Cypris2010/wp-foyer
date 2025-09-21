@@ -28,8 +28,11 @@ class Foyer_Admin {
 		add_action( 'admin_menu', array( __CLASS__, 'admin_menu' ) );
 		// Scheduler page submenu and save handler
 		add_action( 'admin_menu', array( 'Foyer_Admin_Scheduler', 'admin_menu' ) );
+		add_action( 'admin_menu', array( 'Foyer_Admin_Settings', 'add_menu' ), 11 );
 		add_action( 'admin_post_foyer_save_scheduler', array( 'Foyer_Admin_Scheduler', 'handle_post' ) );
 		add_action( 'admin_post_foyer_apply_scheduler_template', array( 'Foyer_Admin_Scheduler', 'handle_apply_template' ) );
+		add_action( 'admin_init', array( 'Foyer_Admin_Settings', 'register_settings' ) );
+		add_action( 'admin_init', array( 'Foyer_Admin_Settings', 'maybe_redirect_legacy_slug' ), 1 );
 
 		/* Foyer_Admin_Display */
 		add_action( 'admin_enqueue_scripts', array( 'Foyer_Admin_Display', 'localize_scripts' ) );
@@ -155,10 +158,11 @@ class Foyer_Admin {
 		/**
 		 * Admin area functionality for display, channel and slide.
 		 */
-		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-display.php';
-		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-channel.php';
-		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide.php';
-		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-preview.php';
+	require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-display.php';
+	require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-channel.php';
+	require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide.php';
+	require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-preview.php';
+	require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-settings.php';
 
 		/**
 		 * Admin area functionality for specific slide backgrounds.
@@ -180,6 +184,7 @@ class Foyer_Admin {
 		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-text.php';
         require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-upcoming-productions.php';
 		// Scheduler admin page
-		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-scheduler.php';
+	require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-scheduler.php';
+
 	}
 }

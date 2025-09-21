@@ -644,7 +644,7 @@ html {
   width: 22vmin;
   height: 22vmin;
 }
-.foyer-slide.foyer-slide-rss-feed .foyer-slide-rss-background figure img {
+.foyer-slide .foyer-slide-background-zoom figure img {
   transform: scale(1);
   transform-origin: 50% 50%;
   will-change: transform;

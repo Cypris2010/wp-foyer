@@ -213,6 +213,20 @@ if ( empty( $items ) ) {
 foreach ( $items as $item ) {
 	$background_image = isset( $item['image'] ) ? $item['image'] : '';
 	$qr_svg = isset( $item['qr_svg'] ) ? $item['qr_svg'] : '';
+	$zoom_preference = get_post_meta( $slide->ID, 'slide_bg_image_zoom', true );
+	if ( ! in_array( $zoom_preference, array( 'enabled', 'disabled' ), true ) ) {
+		$zoom_preference = 'inherit';
+	}
+	$zoom_enabled = false;
+	if ( 'enabled' === $zoom_preference ) {
+		$zoom_enabled = true;
+	} elseif ( 'inherit' === $zoom_preference ) {
+		$zoom_enabled = (bool) get_option( 'foyer_enable_background_zoom', 0 );
+	}
+	$background_classes = array( 'foyer-slide-background', 'foyer-slide-background-image', 'foyer-slide-rss-background' );
+	if ( $zoom_enabled ) {
+		$background_classes[] = 'foyer-slide-background-zoom';
+	}
 	?><div<?php $slide->classes(); ?><?php $slide->data_attr(); ?>>
 		<div class="inner">
 			<div class="foyer-slide-rss">
@@ -238,7 +252,7 @@ foreach ( $items as $item ) {
 			</div>
 		</div>
 		<?php if ( ! empty( $background_image ) ) { ?>
-			<div class="foyer-slide-background foyer-slide-background-image foyer-slide-rss-background">
+			<div class="<?php echo esc_attr( implode( ' ', $background_classes ) ); ?>">
 				<figure>
 					<img src="<?php echo esc_url( $background_image ); ?>" alt="" />
 				</figure>
