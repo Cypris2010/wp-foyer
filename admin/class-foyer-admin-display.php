@@ -291,8 +291,9 @@ class Foyer_Admin_Display {
             <button type="button" class="button" id="foyer_sched_selector_next"><?php echo esc_html__( 'Next', 'foyer' ); ?> &raquo;</button>
         </div>
         <script>
-        (function($){
-            $(function(){
+                (function($){
+                    $(function(){
+                        var validationError = '<?php echo esc_js( __( 'Validation failed', 'foyer' ) ); ?>';
                 function initPickers($scope){
                     if (!window.foyer_channel_scheduler_defaults) return;
                     $scope.find('input.foyer-datetime').each(function(){
@@ -470,11 +471,11 @@ class Foyer_Admin_Display {
                             $row.find('.foyer-sched-save').hide();
                             $row.find('.foyer-sched-edit').show();
                         } else {
-                            var msg = (resp && resp.data && resp.data.message) ? resp.data.message : 'Validation failed';
+                            var msg = (resp && resp.data && resp.data.message) ? resp.data.message : validationError;
                             alert(msg);
                         }
                     }).fail(function(){
-                        alert('Validation failed');
+                        alert(validationError);
                     });
                 });
                 $(document).on('click','.foyer-sched-remove', function(){

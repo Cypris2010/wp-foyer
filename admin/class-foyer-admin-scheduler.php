@@ -296,6 +296,7 @@ class Foyer_Admin_Scheduler {
         <script>
         (function($){
             $(function(){
+                var validationError = <?php echo json_encode( __( 'Validation failed', 'foyer' ) ); ?>;
                 function initPickers($scope){
                     if (!window.foyer_channel_scheduler_defaults) return;
                     $scope.find('input.foyer-datetime').each(function(){
@@ -391,8 +392,8 @@ class Foyer_Admin_Scheduler {
                             $row.find('.foyer-sched-start-text').text(s||'—'); $row.find('.foyer-sched-end-text').text(e||'—');
                             $row.find('.foyer-sched-start-input, .foyer-sched-end-input').hide(); $row.find('.foyer-sched-start-text, .foyer-sched-end-text').show();
                             $row.find('.foyer-sched-save').hide(); $row.find('.foyer-sched-edit').show();
-                        } else { var msg=(resp && resp.data && resp.data.message)?resp.data.message:'Validation failed'; alert(msg); }
-                    }).fail(function(){ alert('Validation failed'); });
+                        } else { var msg=(resp && resp.data && resp.data.message)?resp.data.message:validationError; alert(msg); }
+                    }).fail(function(){ alert(validationError); });
                 });
                 $('#foyer_template_form').on('click', '.foyer-sched-remove', function(){ var $tb=$('#foyer_template_list tbody'); $(this).closest('tr').remove(); ensureListNotEmpty(); });
 
@@ -592,10 +593,10 @@ class Foyer_Admin_Scheduler {
                                     $row.find('.foyer-sched-save').hide();
                                     $row.find('.foyer-sched-edit').show();
                                 } else {
-                                    var msg=(resp && resp.data && resp.data.message)?resp.data.message:'Validation failed';
+                                    var msg=(resp && resp.data && resp.data.message)?resp.data.message:validationError;
                                     alert(msg);
                                 }
-                            }).fail(function(){ alert('Validation failed'); });
+                            }).fail(function(){ alert(validationError); });
                     });
                     $(document).on('click', '.foyer-sched-remove', function(){
                         var $tb = $(this).closest('table').find('tbody');

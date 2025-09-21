@@ -297,7 +297,7 @@ class Foyer_Admin_Channel {
         $post_id = intval( $_POST['post_id'] ?? 0 );
         $set     = sanitize_text_field( $_POST['set'] ?? '' );
         if ( empty( $post_id ) || ! current_user_can( 'edit_post', $post_id ) ) {
-            wp_send_json_error( array( 'message' => 'forbidden' ), 403 );
+            wp_send_json_error( array( 'message' => __( 'You are not allowed to do this.', 'foyer' ) ), 403 );
         }
         if ( $set === '1' ) {
             update_post_meta( $post_id, 'foyer_channel_is_favorite', '1' );
@@ -1465,10 +1465,10 @@ JS;
         $channel_id = isset( $_POST['channel_id'] ) ? intval( $_POST['channel_id'] ) : 0;
         $ratio = isset( $_POST['ratio'] ) ? sanitize_text_field( wp_unslash( $_POST['ratio'] ) ) : '';
         if ( empty( $channel_id ) || ! in_array( $ratio, array( '9x16', '16x9' ), true ) ) {
-            wp_send_json_error( array( 'message' => 'bad_request' ), 400 );
+            wp_send_json_error( array( 'message' => __( 'Invalid request.', 'foyer' ) ), 400 );
         }
         if ( ! current_user_can( 'edit_post', $channel_id ) ) {
-            wp_send_json_error( array( 'message' => 'forbidden' ), 403 );
+            wp_send_json_error( array( 'message' => __( 'You are not allowed to do this.', 'foyer' ) ), 403 );
         }
         update_post_meta( $channel_id, 'foyer_channel_preview_ratio', $ratio );
         wp_send_json_success( array( 'ok' => true, 'ratio' => $ratio ) );
@@ -1492,7 +1492,7 @@ JS;
         $end_in     = isset( $_POST['end'] ) ? wp_unslash( $_POST['end'] ) : '';
 
         if ( empty( $channel_id ) || empty( $slide_id ) ) {
-            wp_send_json_error( array( 'message' => 'Missing ids' ), 400 );
+            wp_send_json_error( array( 'message' => __( 'Required parameters are missing.', 'foyer' ) ), 400 );
         }
 
         // Parse using site timezone, convert to UTC
@@ -1523,7 +1523,7 @@ JS;
 
         // Validate order if both set
         if ( ! is_null( $start_ts_utc ) && ! is_null( $end_ts_utc ) && $end_ts_utc < $start_ts_utc ) {
-            wp_send_json_error( array( 'message' => 'End before start' ), 400 );
+            wp_send_json_error( array( 'message' => __( 'The end time must be after the start time.', 'foyer' ) ), 400 );
         }
 
         $windows = get_post_meta( $channel_id, 'foyer_channel_slide_windows', true );
