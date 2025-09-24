@@ -26,6 +26,11 @@ class Foyer_Admin_Settings {
 	const OPTION_BACKGROUND_ZOOM = 'foyer_enable_background_zoom';
 
 	/**
+	 * Option name for the numeric datetime format used in admin datepickers.
+	 */
+	const OPTION_PICKER_FORMAT = 'foyer_picker_datetime_format';
+
+	/**
 	 * Settings API option group identifier.
 	 */
 	const OPTION_GROUP = 'foyer_settings';
@@ -64,6 +69,16 @@ class Foyer_Admin_Settings {
 			)
 		);
 
+		register_setting(
+			self::OPTION_GROUP,
+			self::OPTION_PICKER_FORMAT,
+			array(
+				'type' => 'string',
+				'sanitize_callback' => array( __CLASS__, 'sanitize_picker_format' ),
+				'default' => 'Y-m-d H:i',
+			)
+		);
+
 		add_settings_section(
 			'foyer_settings_general',
 			__( 'General', 'foyer' ),
@@ -78,6 +93,14 @@ class Foyer_Admin_Settings {
 			self::SETTINGS_PAGE,
 			'foyer_settings_general'
 		);
+
+		add_settings_field(
+			self::OPTION_PICKER_FORMAT,
+			__( 'Admin datetime picker format', 'foyer' ),
+			array( __CLASS__, 'render_picker_format_field' ),
+			self::SETTINGS_PAGE,
+			'foyer_settings_general'
+		);
 	}
 
 	/**
@@ -89,6 +112,37 @@ class Foyer_Admin_Settings {
 	 */
 	public static function sanitize_checkbox( $value ) {
 		return empty( $value ) ? 0 : 1;
+	}
+
+	/**
+	 * Sanitizes the picker format option.
+	 *
+	 * Ensures a non-empty PHP datetime format string, defaulting to Y-m-d H:i.
+	 *
+	 * @param mixed $value Raw value.
+	 * @return string
+	 */
+	public static function sanitize_picker_format( $value ) {
+		$value = is_string( $value ) ? trim( $value ) : '';
+		if ( '' === $value ) {
+			$value = 'Y-m-d H:i';
+		}
+		return $value;
+	}
+
+	/**
+	 * Renders the picker format text field.
+	 *
+	 * @return void
+	 */
+	public static function render_picker_format_field() {
+		$format = get_option( self::OPTION_PICKER_FORMAT, 'Y-m-d H:i' );
+		?>
+		<input type="text" name="<?php echo esc_attr( self::OPTION_PICKER_FORMAT ); ?>" value="<?php echo esc_attr( $format ); ?>" class="regular-text" />
+		<p class="description">
+			<?php esc_html_e( 'Used for admin date/time pickers. Keep this numeric (e.g. Y-m-d H:i) so values can be parsed reliably.', 'foyer' ); ?>
+		</p>
+		<?php
 	}
 
 	/**

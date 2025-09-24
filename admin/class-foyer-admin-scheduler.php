@@ -50,7 +50,7 @@ class Foyer_Admin_Scheduler {
 
         // Use same defaults/format as Display admin
         $def = Foyer_Admin_Display::get_channel_scheduler_defaults();
-        $fmt = $def['datetime_format'];
+        $fmt = isset( $def['picker_format'] ) ? $def['picker_format'] : 'Y-m-d H:i';
         $tz  = wp_timezone();
 
         // Build candidate schedules
@@ -62,9 +62,8 @@ class Foyer_Admin_Scheduler {
 
             if ( empty( $cid ) || empty( $start_str ) || empty( $end_str ) ) { continue; }
 
-            $start = null; $end = null;
-            try { $dt = date_create_from_format( $fmt, $start_str, $tz ); if ( $dt instanceof DateTime ) { $dt->setTimezone( new DateTimeZone( 'UTC' ) ); $start = $dt->getTimestamp(); } } catch ( Exception $e ) {}
-            try { $dt = date_create_from_format( $fmt, $end_str, $tz ); if ( $dt instanceof DateTime ) { $dt->setTimezone( new DateTimeZone( 'UTC' ) ); $end = $dt->getTimestamp(); } } catch ( Exception $e ) {}
+            $start = Foyer_Admin_Display::parse_schedule_input( $start_str, $fmt, $tz );
+            $end   = Foyer_Admin_Display::parse_schedule_input( $end_str, $fmt, $tz );
             if ( is_null( $start ) || is_null( $end ) ) { continue; }
             if ( $end <= $start ) { $end = $start + ( isset( $def['duration'] ) ? intval( $def['duration'] ) : 3600 ); }
 
@@ -116,7 +115,7 @@ class Foyer_Admin_Scheduler {
         $eds = isset( $_POST['foyer_channel_scheduler_list_end'] ) ? (array) $_POST['foyer_channel_scheduler_list_end'] : array();
 
         $def = Foyer_Admin_Display::get_channel_scheduler_defaults();
-        $fmt = $def['datetime_format'];
+        $fmt = isset( $def['picker_format'] ) ? $def['picker_format'] : 'Y-m-d H:i';
         $tz  = wp_timezone();
 
         // Parse schedule rows once
@@ -127,9 +126,8 @@ class Foyer_Admin_Scheduler {
             $start_str = sanitize_text_field( $sts[ $i ] ?? '' );
             $end_str   = sanitize_text_field( $eds[ $i ] ?? '' );
             if ( empty( $cid ) || empty( $start_str ) || empty( $end_str ) ) { continue; }
-            $start = null; $end = null;
-            try { $dt = date_create_from_format( $fmt, $start_str, $tz ); if ( $dt instanceof DateTime ) { $dt->setTimezone( new DateTimeZone( 'UTC' ) ); $start = $dt->getTimestamp(); } } catch ( Exception $e ) {}
-            try { $dt = date_create_from_format( $fmt, $end_str, $tz ); if ( $dt instanceof DateTime ) { $dt->setTimezone( new DateTimeZone( 'UTC' ) ); $end = $dt->getTimestamp(); } } catch ( Exception $e ) {}
+            $start = Foyer_Admin_Display::parse_schedule_input( $start_str, $fmt, $tz );
+            $end   = Foyer_Admin_Display::parse_schedule_input( $end_str, $fmt, $tz );
             if ( is_null( $start ) || is_null( $end ) ) { continue; }
             if ( $end <= $start ) { $end = $start + ( isset( $def['duration'] ) ? intval( $def['duration'] ) : 3600 ); }
             $entries[] = array( 'channel' => $cid, 'start' => $start, 'end' => $end );
@@ -297,12 +295,35 @@ class Foyer_Admin_Scheduler {
         (function($){
             $(function(){
                 var validationError = <?php echo json_encode( __( 'Validation failed', 'foyer' ) ); ?>;
+                var missingValueError = <?php echo json_encode( __( 'Please enter both start and end times.', 'foyer' ) ); ?>;
+                var statusClasses = ['foyer-sched-active', 'foyer-sched-future', 'foyer-sched-past'];
+
+                function cleanDisplayValue(str){
+                    if (!str) { return ''; }
+                    var trimmed = $.trim(String(str));
+                    if (!trimmed || trimmed === '—') { return ''; }
+                    return trimmed;
+                }
+
+                function setDisplay($span, value){
+                    var placeholder = $span.data('placeholder') || '—';
+                    var display = cleanDisplayValue(value);
+                    $span.text(display ? display : placeholder);
+                    $span.attr('data-display', display);
+                }
+
+                function updateStatusClass($row, status){
+                    $row.removeClass(statusClasses.join(' '));
+                    if (status) { $row.addClass(status); }
+                }
+
                 function initPickers($scope){
                     if (!window.foyer_channel_scheduler_defaults) return;
+                    var pickerFormat = foyer_channel_scheduler_defaults.picker_format || foyer_channel_scheduler_defaults.datetime_format;
                     $scope.find('input.foyer-datetime').each(function(){
                         var $i=$(this); if ($i.data('dtp-init')) return;
                         $i.foyer_datetimepicker({
-                            format: foyer_channel_scheduler_defaults.datetime_format,
+                            format: pickerFormat,
                             dayOfWeekStart: foyer_channel_scheduler_defaults.start_of_week,
                             step: 15,
                             validateOnBlur: false
@@ -361,10 +382,10 @@ class Foyer_Admin_Scheduler {
                         +'<tr>'
                         +'<td><input type="hidden" name="foyer_channel_scheduler_list_channel[]" value="'+id+'" />'
                         +'<span class="foyer-sched-channel-title"></span></td>'
-                        +'<td><span class="foyer-sched-start-text">&mdash;</span>'
+                        +'<td><span class="foyer-sched-start-text" data-placeholder="&mdash;" data-display="">&mdash;</span>'
                         +'<input type="hidden" class="foyer-sched-start-hidden" name="foyer_channel_scheduler_list_start[]" value="" />'
                         +'<input type="text" class="foyer-datetime foyer-sched-start-input" value="" style="display:none;" /></td>'
-                        +'<td><span class="foyer-sched-end-text">&mdash;</span>'
+                        +'<td><span class="foyer-sched-end-text" data-placeholder="&mdash;" data-display="">&mdash;</span>'
                         +'<input type="hidden" class="foyer-sched-end-hidden" name="foyer_channel_scheduler_list_end[]" value="" />'
                         +'<input type="text" class="foyer-datetime foyer-sched-end-input" value="" style="display:none;" /></td>'
                         +'<td>'
@@ -381,19 +402,71 @@ class Foyer_Admin_Scheduler {
                 $selTable.on('click', '.add-to-template', function(){ var id=$(this).data('id'); var title=$(this).data('title'); addRowToTemplate(id,title); });
 
                 // Edit/save/remove within template list (scoped)
-                $('#foyer_template_form').on('click', '.foyer-sched-edit', function(){ var $row=$(this).closest('tr'); $row.find('.foyer-sched-start-text, .foyer-sched-end-text').hide(); $row.find('.foyer-sched-start-input, .foyer-sched-end-input').show(); $(this).hide(); $row.find('.foyer-sched-save').show(); initPickers($row); });
+                $('#foyer_template_form').on('click', '.foyer-sched-edit', function(){
+                    var $row=$(this).closest('tr');
+                    var startDisplay = $row.find('.foyer-sched-start-text').attr('data-display') || '';
+                    var endDisplay   = $row.find('.foyer-sched-end-text').attr('data-display') || '';
+                    $row.find('.foyer-sched-start-input').val(startDisplay);
+                    $row.find('.foyer-sched-end-input').val(endDisplay);
+                    $row.find('.foyer-sched-start-text, .foyer-sched-end-text').hide();
+                    $row.find('.foyer-sched-start-input, .foyer-sched-end-input').show();
+                    $(this).hide();
+                    $row.find('.foyer-sched-save').show();
+                    initPickers($row);
+                });
                 $('#foyer_template_form').on('click', '.foyer-sched-save', function(){
-                    var $row=$(this).closest('tr'); var s=$row.find('.foyer-sched-start-input').val(); var e=$row.find('.foyer-sched-end-input').val();
-                    // Build candidate entries including the pending row values
-                    var entries=[]; $('#foyer_template_list tbody tr').each(function(){ var $r=$(this); var cs=$r.find('input[name=\'foyer_channel_scheduler_list_channel[]\']').val(); var ss=($r.is($row))?s:$r.find('.foyer-sched-start-hidden').val(); var ee=($r.is($row))?e:$r.find('.foyer-sched-end-hidden').val(); if(cs && ss && ee){ entries.push({channel:cs,start:ss,end:ee}); } });
-                    $.post(ajaxurl, { action:'foyer_validate_schedule', nonce:(window.foyer_display_ajax?foyer_display_ajax.nonce:''), payload: JSON.stringify({ entries: entries }) }).done(function(resp){
-                        if(resp && resp.success){
-                            $row.find('.foyer-sched-start-hidden').val(s); $row.find('.foyer-sched-end-hidden').val(e);
-                            $row.find('.foyer-sched-start-text').text(s||'—'); $row.find('.foyer-sched-end-text').text(e||'—');
-                            $row.find('.foyer-sched-start-input, .foyer-sched-end-input').hide(); $row.find('.foyer-sched-start-text, .foyer-sched-end-text').show();
-                            $row.find('.foyer-sched-save').hide(); $row.find('.foyer-sched-edit').show();
-                        } else { var msg=(resp && resp.data && resp.data.message)?resp.data.message:validationError; alert(msg); }
-                    }).fail(function(){ alert(validationError); });
+                    var $row=$(this).closest('tr');
+                    var startVal=$row.find('.foyer-sched-start-input').val();
+                    var endVal=$row.find('.foyer-sched-end-input').val();
+                    if (!cleanDisplayValue(startVal) || !cleanDisplayValue(endVal)) {
+                        alert(missingValueError);
+                        return;
+                    }
+                    var entries=[];
+                    var rowRefs=[];
+                    $('#foyer_template_list tbody tr').each(function(){
+                        var $r=$(this);
+                        var channelId=$r.find('input[name=\'foyer_channel_scheduler_list_channel[]\']').val();
+                        var startDisplay = ($r.is($row)) ? startVal : ($r.find('.foyer-sched-start-text').attr('data-display') || $r.find('.foyer-sched-start-text').text());
+                        var endDisplay   = ($r.is($row)) ? endVal   : ($r.find('.foyer-sched-end-text').attr('data-display') || $r.find('.foyer-sched-end-text').text());
+                        var sClean = cleanDisplayValue(startDisplay);
+                        var eClean = cleanDisplayValue(endDisplay);
+                        if (channelId && sClean && eClean) {
+                            entries.push({channel:channelId, start:sClean, end:eClean});
+                            rowRefs.push($r);
+                        }
+                    });
+                    if (!entries.length) {
+                        alert(missingValueError);
+                        return;
+                    }
+
+                    $.post(ajaxurl, { action:'foyer_validate_schedule', nonce:(window.foyer_display_ajax?foyer_display_ajax.nonce:''), payload: JSON.stringify({ entries: entries }) })
+                        .done(function(resp){
+                            if(resp && resp.success){
+                                var normalized = (resp.data && resp.data.normalized) ? resp.data.normalized : [];
+                                $.each(normalized, function(idx, item){
+                                    var $target = rowRefs[idx];
+                                    if (!$target || !item) { return; }
+                                    var startDisplay = item.start_display || '';
+                                    var endDisplay   = item.end_display || '';
+                                    setDisplay($target.find('.foyer-sched-start-text'), startDisplay);
+                                    setDisplay($target.find('.foyer-sched-end-text'), endDisplay);
+                                    $target.find('.foyer-sched-start-hidden').val(item.start_iso || '');
+                                    $target.find('.foyer-sched-end-hidden').val(item.end_iso || '');
+                                    $target.find('.foyer-sched-start-input').val(startDisplay);
+                                    $target.find('.foyer-sched-end-input').val(endDisplay);
+                                    updateStatusClass($target, item.status_class || '');
+                                });
+                                $row.find('.foyer-sched-start-input, .foyer-sched-end-input').hide();
+                                $row.find('.foyer-sched-start-text, .foyer-sched-end-text').show();
+                                $row.find('.foyer-sched-save').hide();
+                                $row.find('.foyer-sched-edit').show();
+                            } else {
+                                var msg=(resp && resp.data && resp.data.message)?resp.data.message:validationError;
+                                alert(msg);
+                            }
+                        }).fail(function(){ alert(validationError); });
                 });
                 $('#foyer_template_form').on('click', '.foyer-sched-remove', function(){ var $tb=$('#foyer_template_list tbody'); $(this).closest('tr').remove(); ensureListNotEmpty(); });
 
@@ -401,10 +474,19 @@ class Foyer_Admin_Scheduler {
                 $('#foyer_select_all_displays').on('change', function(){ var checked=this.checked; $('.foyer-apply-target').prop('checked', checked); });
 
                 // On submit, collect selected displays into hidden inputs
+                var saveBeforeApplyMsg = <?php echo json_encode( __( 'Please save all schedule rows before applying the template.', 'foyer' ) ); ?>;
+
                 $('#foyer_apply_template_btn').on('click', function(e){
-                    // Sync any visible date inputs back to hidden fields
-                    $('#foyer_template_list tbody tr').each(function(){ var $row=$(this); var s=$row.find('.foyer-sched-start-input'); if(s.is(':visible')){ $row.find('.foyer-sched-start-hidden').val(s.val()); } var eI=$row.find('.foyer-sched-end-input'); if(eI.is(':visible')){ $row.find('.foyer-sched-end-hidden').val(eI.val()); } });
-                    // Add selected displays
+                    var pending = false;
+                    $('#foyer_template_list tbody tr').each(function(){
+                        if ($(this).find('.foyer-sched-save').is(':visible')) { pending = true; return false; }
+                    });
+                    if (pending) {
+                        e.preventDefault();
+                        alert(saveBeforeApplyMsg);
+                        return false;
+                    }
+
                     $('#foyer_template_form input[name="display_ids[]"]').remove();
                     $('.foyer-apply-target:checked').each(function(){ var id=$(this).val(); $('<input>').attr({type:'hidden', name:'display_ids[]', value:String(id)}).appendTo('#foyer_template_form'); });
                 });
@@ -490,24 +572,17 @@ class Foyer_Admin_Scheduler {
             if ( empty( $schedules ) ) {
                 echo '<tr class="foyer-sched-empty"><td colspan="4">' . esc_html__( 'No scheduled channels.', 'foyer' ) . '</td></tr>';
             } else {
-                $fmt = Foyer_Admin_Display::get_channel_scheduler_defaults()['datetime_format'];
-                $gmt_offset = floatval( get_option( 'gmt_offset' ) );
-                $now_utc = current_time( 'timestamp', true );
+                $fmt = Foyer_Admin_Display::get_channel_scheduler_defaults()['picker_format'];
                 foreach ( $schedules as $sch ) {
                     $cid = ! empty( $sch['channel'] ) ? intval( $sch['channel'] ) : 0;
                     $title = $cid ? get_the_title( $cid ) : '';
-                    $start_val = ! empty( $sch['start'] ) ? date_i18n( $fmt, intval( $sch['start'] ) + $gmt_offset * HOUR_IN_SECONDS, true ) : '';
-                    $end_val   = ! empty( $sch['end'] ) ? date_i18n( $fmt, intval( $sch['end'] ) + $gmt_offset * HOUR_IN_SECONDS, true ) : '';
                     $start_utc = isset( $sch['start'] ) ? intval( $sch['start'] ) : null;
                     $end_utc   = isset( $sch['end'] ) ? intval( $sch['end'] ) : null;
-                    $status_class = '';
-                    if ( ! is_null( $end_utc ) && $end_utc < $now_utc ) {
-                        $status_class = 'foyer-sched-past';
-                    } elseif ( ! is_null( $start_utc ) && $start_utc <= $now_utc && ( is_null( $end_utc ) || $end_utc >= $now_utc ) ) {
-                        $status_class = 'foyer-sched-active';
-                    } elseif ( ! is_null( $start_utc ) && $start_utc > $now_utc ) {
-                        $status_class = 'foyer-sched-future';
-                    }
+                    $start_val = $start_utc ? Foyer_Admin_Display::format_schedule_display( $start_utc, $fmt ) : '';
+                    $end_val   = $end_utc ? Foyer_Admin_Display::format_schedule_display( $end_utc, $fmt ) : '';
+                    $start_iso = $start_utc ? Foyer_Admin_Display::format_schedule_iso( $start_utc ) : '';
+                    $end_iso   = $end_utc ? Foyer_Admin_Display::format_schedule_iso( $end_utc ) : '';
+                    $status_class = Foyer_Admin_Display::determine_schedule_status_class( $start_utc, $end_utc );
 
                     echo '<tr class="' . esc_attr( $status_class ) . '">';
                     echo '<td>';
@@ -519,13 +594,13 @@ class Foyer_Admin_Scheduler {
                     echo '</div>';
                     echo '</td>';
                     echo '<td>';
-                    echo '<span class="foyer-sched-start-text">' . ( $start_val ? esc_html( $start_val ) : '&mdash;' ) . '</span>';
-                    echo '<input type="hidden" class="foyer-sched-start-hidden" name="foyer_channel_scheduler_list_start[]" value="' . esc_attr( $start_val ) . '" />';
+                    echo '<span class="foyer-sched-start-text" data-placeholder="&mdash;" data-display="' . esc_attr( $start_val ) . '">' . ( $start_val ? esc_html( $start_val ) : '&mdash;' ) . '</span>';
+                    echo '<input type="hidden" class="foyer-sched-start-hidden" name="foyer_channel_scheduler_list_start[]" value="' . esc_attr( $start_iso ) . '" />';
                     echo '<input type="text" class="foyer-datetime foyer-sched-start-input" value="' . esc_attr( $start_val ) . '" style="display:none;" />';
                     echo '</td>';
                     echo '<td>';
-                    echo '<span class="foyer-sched-end-text">' . ( $end_val ? esc_html( $end_val ) : '&mdash;' ) . '</span>';
-                    echo '<input type="hidden" class="foyer-sched-end-hidden" name="foyer_channel_scheduler_list_end[]" value="' . esc_attr( $end_val ) . '" />';
+                    echo '<span class="foyer-sched-end-text" data-placeholder="&mdash;" data-display="' . esc_attr( $end_val ) . '">' . ( $end_val ? esc_html( $end_val ) : '&mdash;' ) . '</span>';
+                    echo '<input type="hidden" class="foyer-sched-end-hidden" name="foyer_channel_scheduler_list_end[]" value="' . esc_attr( $end_iso ) . '" />';
                     echo '<input type="text" class="foyer-datetime foyer-sched-end-input" value="' . esc_attr( $end_val ) . '" style="display:none;" />';
                     echo '</td>';
                     echo '<td>';
@@ -545,6 +620,30 @@ class Foyer_Admin_Scheduler {
             <script>
             (function($){
                 $(function(){
+                    var validationError = <?php echo json_encode( __( 'Validation failed', 'foyer' ) ); ?>;
+                    var missingValueError = <?php echo json_encode( __( 'Please enter both start and end times.', 'foyer' ) ); ?>;
+                    var saveBeforeSubmitMsg = <?php echo json_encode( __( 'Please save all schedule rows before saving.', 'foyer' ) ); ?>;
+                    var statusClasses = ['foyer-sched-active', 'foyer-sched-future', 'foyer-sched-past'];
+
+                    function cleanDisplayValue(str){
+                        if (!str) { return ''; }
+                        var trimmed = $.trim(String(str));
+                        if (!trimmed || trimmed === '—') { return ''; }
+                        return trimmed;
+                    }
+
+                    function setDisplay($span, value){
+                        var placeholder = $span.data('placeholder') || '—';
+                        var display = cleanDisplayValue(value);
+                        $span.text(display ? display : placeholder);
+                        $span.attr('data-display', display);
+                    }
+
+                    function updateStatusClass($row, status){
+                        $row.removeClass(statusClasses.join(' '));
+                        if (status) { $row.addClass(status); }
+                    }
+
                     function initPickers($scope){
                         if (!window.foyer_channel_scheduler_defaults) return;
                         $scope.find('input.foyer-datetime').each(function(){
@@ -559,8 +658,12 @@ class Foyer_Admin_Scheduler {
                         });
                     }
                     $('.foyer-scheduler-form').each(function(){ initPickers($(this)); });
-                    $(document).on('click', '.foyer-sched-edit', function(){
+                    $(document).on('click', '.foyer-scheduler-form .foyer-sched-edit', function(){
                         var $row = $(this).closest('tr');
+                        var startDisplay = $row.find('.foyer-sched-start-text').attr('data-display') || '';
+                        var endDisplay   = $row.find('.foyer-sched-end-text').attr('data-display') || '';
+                        $row.find('.foyer-sched-start-input').val(startDisplay);
+                        $row.find('.foyer-sched-end-input').val(endDisplay);
                         $row.find('.foyer-sched-start-text, .foyer-sched-end-text').hide();
                         $row.find('.foyer-sched-start-input, .foyer-sched-end-input').show();
                         $row.find('.foyer-sched-edit').hide();
@@ -573,21 +676,49 @@ class Foyer_Admin_Scheduler {
                         var $table = $(this).closest('table');
                         var startVal = $row.find('.foyer-sched-start-input').val();
                         var endVal   = $row.find('.foyer-sched-end-input').val();
+
+                        if (!cleanDisplayValue(startVal) || !cleanDisplayValue(endVal)) {
+                            alert(missingValueError);
+                            return;
+                        }
+
                         var entries = [];
+                        var rowRefs = [];
                         $table.find('tbody tr').each(function(){
                             var $r=$(this);
-                            var s = ($r.is($row)) ? startVal : $r.find('.foyer-sched-start-hidden').val();
-                            var e = ($r.is($row)) ? endVal   : $r.find('.foyer-sched-end-hidden').val();
-                            var c = $r.find('input[name=\'foyer_channel_scheduler_list_channel[]\']').val();
-                            if (c && s && e) { entries.push({channel:c, start:s, end:e}); }
+                            var channelId = $r.find('input[name=\'foyer_channel_scheduler_list_channel[]\']').val();
+                            var startDisplay = ($r.is($row)) ? startVal : ($r.find('.foyer-sched-start-text').attr('data-display') || $r.find('.foyer-sched-start-text').text());
+                            var endDisplay   = ($r.is($row)) ? endVal   : ($r.find('.foyer-sched-end-text').attr('data-display') || $r.find('.foyer-sched-end-text').text());
+                            var sClean = cleanDisplayValue(startDisplay);
+                            var eClean = cleanDisplayValue(endDisplay);
+                            if (channelId && sClean && eClean) {
+                                entries.push({channel:channelId, start:sClean, end:eClean});
+                                rowRefs.push($r);
+                            }
                         });
+
+                        if (!entries.length) {
+                            alert(missingValueError);
+                            return;
+                        }
+
                         $.post(ajaxurl, { action:'foyer_validate_schedule', nonce:(window.foyer_display_ajax?foyer_display_ajax.nonce:''), payload: JSON.stringify({ entries: entries }) })
                             .done(function(resp){
                                 if (resp && resp.success) {
-                                    $row.find('.foyer-sched-start-hidden').val(startVal);
-                                    $row.find('.foyer-sched-end-hidden').val(endVal);
-                                    $row.find('.foyer-sched-start-text').text(startVal || '—');
-                                    $row.find('.foyer-sched-end-text').text(endVal || '—');
+                                    var normalized = (resp.data && resp.data.normalized) ? resp.data.normalized : [];
+                                    $.each(normalized, function(idx, item){
+                                        var $target = rowRefs[idx];
+                                        if (!$target || !item) { return; }
+                                        var startDisplay = item.start_display || '';
+                                        var endDisplay   = item.end_display || '';
+                                        setDisplay($target.find('.foyer-sched-start-text'), startDisplay);
+                                        setDisplay($target.find('.foyer-sched-end-text'), endDisplay);
+                                        $target.find('.foyer-sched-start-hidden').val(item.start_iso || '');
+                                        $target.find('.foyer-sched-end-hidden').val(item.end_iso || '');
+                                        $target.find('.foyer-sched-start-input').val(startDisplay);
+                                        $target.find('.foyer-sched-end-input').val(endDisplay);
+                                        updateStatusClass($target, item.status_class || '');
+                                    });
                                     $row.find('.foyer-sched-start-input, .foyer-sched-end-input').hide();
                                     $row.find('.foyer-sched-start-text, .foyer-sched-end-text').show();
                                     $row.find('.foyer-sched-save').hide();
@@ -605,15 +736,16 @@ class Foyer_Admin_Scheduler {
                             $tb.append('<tr class="foyer-sched-empty"><td colspan="4"><?php echo esc_js( __( 'No scheduled channels.', 'foyer' ) ); ?></td></tr>');
                         }
                     });
-                    // Sync all visible inputs to hidden fields on submit
-                    $('.foyer-scheduler-form').on('submit', function(){
+                    $('.foyer-scheduler-form').on('submit', function(e){
+                        var pending = false;
                         $(this).find('tbody tr').each(function(){
-                            var $row=$(this);
-                            var startVal=$row.find('.foyer-sched-start-input').is(':visible') ? $row.find('.foyer-sched-start-input').val() : $row.find('.foyer-sched-start-hidden').val();
-                            var endVal=$row.find('.foyer-sched-end-input').is(':visible') ? $row.find('.foyer-sched-end-input').val() : $row.find('.foyer-sched-end-hidden').val();
-                            $row.find('.foyer-sched-start-hidden').val(startVal);
-                            $row.find('.foyer-sched-end-hidden').val(endVal);
+                            if ($(this).find('.foyer-sched-save').is(':visible')) { pending = true; return false; }
                         });
+                        if (pending) {
+                            e.preventDefault();
+                            alert(saveBeforeSubmitMsg);
+                            return false;
+                        }
                     });
                 });
             })(jQuery);

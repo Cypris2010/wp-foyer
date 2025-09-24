@@ -147,6 +147,16 @@ Settings for W3 Total Cache: Add `/foyer/*` on a new line under Performance > Pa
 
 == Changelog ==
 
+= 1.9.2 =
+Release Date: Unreleased
+
+Bug fixes:
+
+* Added an explicit **Admin datetime picker format** setting (defaults to `Y-m-d H:i`) so site owners can keep a purely numeric backend format while still using localized display strings elsewhere.
+* All admin pickers (display scheduler, template scheduler, channel slide windows) now render and parse using the picker format, eliminating the “1899” fallback for localized month names.
+* Existing schedules are normalized on load: previous strings are converted to UTC timestamps so you keep full compatibility while benefiting from the new format.
+* JavaScript diagnostics now log mismatched values vs. picker format, helping administrators spot misconfigured settings quickly.
+
 = 1.9 =
 Release Date: Unreleased
 

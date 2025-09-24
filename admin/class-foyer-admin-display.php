@@ -177,20 +177,17 @@ class Foyer_Admin_Display {
                         if ( $sa === $sb ) { return 0; }
                         return ( $sa < $sb ) ? -1 : 1;
                     } );
+                    $channel_scheduler_defaults = self::get_channel_scheduler_defaults();
+                    $picker_format = ! empty( $channel_scheduler_defaults['picker_format'] ) ? $channel_scheduler_defaults['picker_format'] : $channel_scheduler_defaults['datetime_format'];
+
                     foreach ( $schedules as $sch ) {
-                    $start_val = ! empty( $sch['start'] ) ? date_i18n( self::get_channel_scheduler_defaults()['datetime_format'], intval( $sch['start'] ) + get_option( 'gmt_offset' ) * HOUR_IN_SECONDS, true ) : '';
-                    $end_val   = ! empty( $sch['end'] ) ? date_i18n( self::get_channel_scheduler_defaults()['datetime_format'], intval( $sch['end'] ) + get_option( 'gmt_offset' ) * HOUR_IN_SECONDS, true ) : '';
-                    $now_utc   = current_time( 'timestamp', true );
                     $start_utc = isset( $sch['start'] ) ? intval( $sch['start'] ) : null;
                     $end_utc   = isset( $sch['end'] ) ? intval( $sch['end'] ) : null;
-                    $status_class = '';
-                    if ( ! is_null( $end_utc ) && $end_utc < $now_utc ) {
-                        $status_class = 'foyer-sched-past';
-                    } elseif ( ! is_null( $start_utc ) && $start_utc <= $now_utc && ( is_null( $end_utc ) || $end_utc >= $now_utc ) ) {
-                        $status_class = 'foyer-sched-active';
-                    } elseif ( ! is_null( $start_utc ) && $start_utc > $now_utc ) {
-                        $status_class = 'foyer-sched-future';
-                    }
+                    $start_val = $start_utc ? self::format_schedule_display( $start_utc, $picker_format ) : '';
+                    $end_val   = $end_utc ? self::format_schedule_display( $end_utc, $picker_format ) : '';
+                    $start_iso = $start_utc ? self::format_schedule_iso( $start_utc ) : '';
+                    $end_iso   = $end_utc ? self::format_schedule_iso( $end_utc ) : '';
+                    $status_class = self::determine_schedule_status_class( $start_utc, $end_utc );
                     ?>
                     <tr class="<?php echo esc_attr( $status_class ); ?>">
                         <td>
@@ -199,13 +196,13 @@ class Foyer_Admin_Display {
                             <span class="foyer-sched-channel-title"><?php echo esc_html( $ctitle ); ?></span>
                         </td>
                         <td>
-                            <span class="foyer-sched-start-text"><?php echo $start_val ? esc_html( $start_val ) : '&mdash;'; ?></span>
-                            <input type="hidden" class="foyer-sched-start-hidden" name="foyer_channel_scheduler_list_start[]" value="<?php echo esc_attr( $start_val ); ?>" />
+                            <span class="foyer-sched-start-text" data-placeholder="&mdash;" data-display="<?php echo esc_attr( $start_val ); ?>"><?php echo $start_val ? esc_html( $start_val ) : '&mdash;'; ?></span>
+                            <input type="hidden" class="foyer-sched-start-hidden" name="foyer_channel_scheduler_list_start[]" value="<?php echo esc_attr( $start_iso ); ?>" />
                             <input type="text" class="foyer-datetime foyer-sched-start-input" value="<?php echo esc_attr( $start_val ); ?>" style="display:none;" />
                         </td>
                         <td>
-                            <span class="foyer-sched-end-text"><?php echo $end_val ? esc_html( $end_val ) : '&mdash;'; ?></span>
-                            <input type="hidden" class="foyer-sched-end-hidden" name="foyer_channel_scheduler_list_end[]" value="<?php echo esc_attr( $end_val ); ?>" />
+                            <span class="foyer-sched-end-text" data-placeholder="&mdash;" data-display="<?php echo esc_attr( $end_val ); ?>"><?php echo $end_val ? esc_html( $end_val ) : '&mdash;'; ?></span>
+                            <input type="hidden" class="foyer-sched-end-hidden" name="foyer_channel_scheduler_list_end[]" value="<?php echo esc_attr( $end_iso ); ?>" />
                             <input type="text" class="foyer-datetime foyer-sched-end-input" value="<?php echo esc_attr( $end_val ); ?>" style="display:none;" />
                         </td>
                         <td>
@@ -294,12 +291,16 @@ class Foyer_Admin_Display {
                 (function($){
                     $(function(){
                         var validationError = '<?php echo esc_js( __( 'Validation failed', 'foyer' ) ); ?>';
+                        var missingValueError = '<?php echo esc_js( __( 'Please enter both start and end times.', 'foyer' ) ); ?>';
+                        var statusClasses = ['foyer-sched-active', 'foyer-sched-future', 'foyer-sched-past'];
+
                 function initPickers($scope){
                     if (!window.foyer_channel_scheduler_defaults) return;
+                    var pickerFormat = foyer_channel_scheduler_defaults.picker_format || foyer_channel_scheduler_defaults.datetime_format;
                     $scope.find('input.foyer-datetime').each(function(){
                         var $i=$(this); if ($i.data('dtp-init')) return;
                         $i.foyer_datetimepicker({
-                            format: foyer_channel_scheduler_defaults.datetime_format,
+                            format: pickerFormat,
                             dayOfWeekStart: foyer_channel_scheduler_defaults.start_of_week,
                             step: 15,
                             validateOnBlur: false
@@ -407,12 +408,12 @@ class Foyer_Admin_Display {
                         +'<td><input type="hidden" name="foyer_channel_scheduler_list_channel[]" value="'+id+'" />'
                         +'<span class="foyer-sched-channel-title"></span></td>\n'
                         +'<td>'
-                        +'<span class="foyer-sched-start-text">&mdash;</span>'
+                        +'<span class="foyer-sched-start-text" data-placeholder="&mdash;" data-display="">&mdash;</span>'
                         +'<input type="hidden" class="foyer-sched-start-hidden" name="foyer_channel_scheduler_list_start[]" value="" />'
                         +'<input type="text" class="foyer-datetime foyer-sched-start-input" value="" style="display:none;" />'
                         +'</td>\n'
                         +'<td>'
-                        +'<span class="foyer-sched-end-text">&mdash;</span>'
+                        +'<span class="foyer-sched-end-text" data-placeholder="&mdash;" data-display="">&mdash;</span>'
                         +'<input type="hidden" class="foyer-sched-end-hidden" name="foyer_channel_scheduler_list_end[]" value="" />'
                         +'<input type="text" class="foyer-datetime foyer-sched-end-input" value="" style="display:none;" />'
                         +'</td>\n'
@@ -439,19 +440,49 @@ class Foyer_Admin_Display {
                     $row.find('.foyer-sched-save').show();
                     initPickers($row);
                 });
+                function cleanDisplayValue(str){
+                    if (!str) { return ''; }
+                    var trimmed = $.trim(String(str));
+                    if (!trimmed || trimmed === '—') { return ''; }
+                    return trimmed;
+                }
+
+                function setDisplay($span, value){
+                    var placeholder = $span.data('placeholder') || '—';
+                    var display = cleanDisplayValue(value);
+                    $span.text(display ? display : placeholder);
+                    $span.attr('data-display', display);
+                }
+
+                function updateStatusClass($row, status){
+                    $row.removeClass(statusClasses.join(' '));
+                    if (status) { $row.addClass(status); }
+                }
+
                 $(document).on('click', '.foyer-sched-save', function(){
                     var $row = $(this).closest('tr');
                     var startVal = $row.find('.foyer-sched-start-input').val();
                     var endVal   = $row.find('.foyer-sched-end-input').val();
 
+                    if (!cleanDisplayValue(startVal) || !cleanDisplayValue(endVal)) {
+                        alert(missingValueError);
+                        return;
+                    }
+
                     // Build full set with current row pending values
                     var entries = [];
+                    var rowRefs = [];
                     $('#foyer_sched_list tbody tr').each(function(){
                         var $r=$(this);
-                        var s = ($r.is($row)) ? startVal : $r.find('.foyer-sched-start-hidden').val();
-                        var e = ($r.is($row)) ? endVal   : $r.find('.foyer-sched-end-hidden').val();
+                        var s = ($r.is($row)) ? startVal : $r.find('.foyer-sched-start-text').attr('data-display') || $r.find('.foyer-sched-start-text').text();
+                        var e = ($r.is($row)) ? endVal   : $r.find('.foyer-sched-end-text').attr('data-display') || $r.find('.foyer-sched-end-text').text();
                         var c = $r.find('input[name=\'foyer_channel_scheduler_list_channel[]\']').val();
-                        if (c && s && e) { entries.push({channel:c, start:s, end:e}); }
+                        var sClean = cleanDisplayValue(s);
+                        var eClean = cleanDisplayValue(e);
+                        if (c && sClean && eClean) {
+                            entries.push({channel:c, start:sClean, end:eClean});
+                            rowRefs.push($r);
+                        }
                     });
 
                     // AJAX validate overlap server-side (reuses WP format + timezone)
@@ -461,11 +492,21 @@ class Foyer_Admin_Display {
                         payload: JSON.stringify({ entries: entries })
                     }).done(function(resp){
                         if (resp && resp.success) {
-                            // Commit values into hidden + UI and exit edit mode
-                            $row.find('.foyer-sched-start-hidden').val(startVal);
-                            $row.find('.foyer-sched-end-hidden').val(endVal);
-                            $row.find('.foyer-sched-start-text').text(startVal || '—');
-                            $row.find('.foyer-sched-end-text').text(endVal || '—');
+                            var normalized = (resp.data && resp.data.normalized) ? resp.data.normalized : [];
+                            $.each(normalized, function(idx, item){
+                                var $target = rowRefs[idx];
+                                if (!$target || !item) { return; }
+                                var startDisplay = item.start_display || '';
+                                var endDisplay   = item.end_display || '';
+                                setDisplay($target.find('.foyer-sched-start-text'), startDisplay);
+                                setDisplay($target.find('.foyer-sched-end-text'), endDisplay);
+                                $target.find('.foyer-sched-start-hidden').val(item.start_iso || '');
+                                $target.find('.foyer-sched-end-hidden').val(item.end_iso || '');
+                                $target.find('.foyer-sched-start-input').val(startDisplay);
+                                $target.find('.foyer-sched-end-input').val(endDisplay);
+                                updateStatusClass($target, item.status_class || '');
+                            });
+                            // Exit edit mode for the current row
                             $row.find('.foyer-sched-start-input, .foyer-sched-end-input').hide();
                             $row.find('.foyer-sched-start-text, .foyer-sched-end-text').show();
                             $row.find('.foyer-sched-save').hide();
@@ -608,8 +649,13 @@ class Foyer_Admin_Display {
         $site_datetime_format = trim( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) );
         if ( empty( $site_datetime_format ) ) { $site_datetime_format = 'Y-m-d H:i'; }
 
+        $picker_format = get_option( Foyer_Admin_Settings::OPTION_PICKER_FORMAT, 'Y-m-d H:i' );
+        $picker_format = is_string( $picker_format ) ? trim( $picker_format ) : '';
+        if ( empty( $picker_format ) ) { $picker_format = 'Y-m-d H:i'; }
+
         $defaults = array(
             'datetime_format' => $site_datetime_format,
+            'picker_format'   => $picker_format,
             'duration' => 1 * 60 * 60, // one hour in seconds
             'locale' => $language_parts[0], // locale formatted as 'en' instead of 'en-US'
             'start_of_week' => get_option( 'start_of_week' ),
@@ -1006,7 +1052,15 @@ class Foyer_Admin_Display {
 					</label>
 				</th>
 				<td>
-					<input type="text" id="foyer_channel_editor_scheduled_channel_start" name="foyer_channel_editor_scheduled_channel_start" value="<?php if ( ! empty( $scheduled_channel['start'] ) ) { echo esc_html( date_i18n( $channel_scheduler_defaults['datetime_format'], $scheduled_channel['start'] + get_option( 'gmt_offset' ) * HOUR_IN_SECONDS, true ) ); } ?>" />
+					<?php
+						$start_value = '';
+						if ( ! empty( $scheduled_channel['start'] ) ) {
+							$timestamp   = intval( $scheduled_channel['start'] );
+						$picker_format = ! empty( $channel_scheduler_defaults['picker_format'] ) ? $channel_scheduler_defaults['picker_format'] : $channel_scheduler_defaults['datetime_format'];
+						$start_value = self::format_schedule_display( $timestamp, $picker_format );
+					}
+					?>
+					<input type="text" id="foyer_channel_editor_scheduled_channel_start" name="foyer_channel_editor_scheduled_channel_start" value="<?php echo esc_attr( $start_value ); ?>" />
 				</td>
 			</tr>
 			<tr>
@@ -1016,7 +1070,15 @@ class Foyer_Admin_Display {
 					</label>
 				</th>
 				<td>
-					<input type="text" id="foyer_channel_editor_scheduled_channel_end" name="foyer_channel_editor_scheduled_channel_end" value="<?php if ( ! empty( $scheduled_channel['end'] ) ) { echo esc_html( date_i18n( $channel_scheduler_defaults['datetime_format'], $scheduled_channel['end'] + get_option( 'gmt_offset' ) * HOUR_IN_SECONDS, true ) ); } ?>" />
+					<?php
+						$end_value = '';
+						if ( ! empty( $scheduled_channel['end'] ) ) {
+							$timestamp = intval( $scheduled_channel['end'] );
+						$picker_format = ! empty( $channel_scheduler_defaults['picker_format'] ) ? $channel_scheduler_defaults['picker_format'] : $channel_scheduler_defaults['datetime_format'];
+						$end_value = self::format_schedule_display( $timestamp, $picker_format );
+						}
+					?>
+					<input type="text" id="foyer_channel_editor_scheduled_channel_end" name="foyer_channel_editor_scheduled_channel_end" value="<?php echo esc_attr( $end_value ); ?>" />
 				</td>
 			</tr>
 		<?php
@@ -1143,7 +1205,7 @@ class Foyer_Admin_Display {
             $sts = isset($_POST['foyer_channel_scheduler_list_start']) ? $_POST['foyer_channel_scheduler_list_start'] : array();
             $eds = isset($_POST['foyer_channel_scheduler_list_end']) ? $_POST['foyer_channel_scheduler_list_end'] : array();
             $cnt = max( count($chs), count($sts), count($eds) );
-            $fmt = self::get_channel_scheduler_defaults()['datetime_format'];
+            $fmt = self::get_channel_scheduler_defaults()['picker_format'];
             $tz  = wp_timezone();
             for ( $i=0; $i < $cnt; $i++ ) {
                 $cid = intval( $chs[$i] ?? 0 );
@@ -1152,14 +1214,8 @@ class Foyer_Admin_Display {
                 if ( empty( $cid ) || empty( $start_str ) || empty( $end_str ) ) { continue; }
                 // Parse using site timezone and configured format, then convert to UTC
                 $start = null; $end = null;
-                try {
-                    $dt = date_create_from_format( $fmt, $start_str, $tz );
-                    if ( $dt instanceof DateTime ) { $dt->setTimezone( new DateTimeZone('UTC') ); $start = $dt->getTimestamp(); }
-                } catch ( Exception $e ) {}
-                try {
-                    $dt = date_create_from_format( $fmt, $end_str, $tz );
-                    if ( $dt instanceof DateTime ) { $dt->setTimezone( new DateTimeZone('UTC') ); $end = $dt->getTimestamp(); }
-                } catch ( Exception $e ) {}
+                $start = self::parse_schedule_input( $start_str, $fmt, $tz );
+                $end   = self::parse_schedule_input( $end_str, $fmt, $tz );
                 if ( is_null( $start ) || is_null( $end ) ) { continue; }
                 if ( $end <= $start ) {
                     $def = self::get_channel_scheduler_defaults();
@@ -1244,7 +1300,8 @@ class Foyer_Admin_Display {
         if ( empty( $data ) || empty( $data['entries'] ) || ! is_array( $data['entries'] ) ) {
             wp_send_json_error( array( 'message' => __( 'Invalid payload', 'foyer' ) ), 400 );
         }
-        $fmt = self::get_channel_scheduler_defaults()['datetime_format'];
+        $defaults = self::get_channel_scheduler_defaults();
+        $fmt = ! empty( $defaults['picker_format'] ) ? $defaults['picker_format'] : $defaults['datetime_format'];
         $tz  = wp_timezone();
         $cands = array();
         foreach ( $data['entries'] as $e ) {
@@ -1252,23 +1309,115 @@ class Foyer_Admin_Display {
             $s_in = isset( $e['start'] ) ? $e['start'] : '';
             $e_in = isset( $e['end'] ) ? $e['end'] : '';
             if ( empty( $s_in ) || empty( $e_in ) ) { continue; }
-            try { $dt = date_create_from_format( $fmt, $s_in, $tz ); if ( $dt instanceof DateTime ) { $dt->setTimezone( new DateTimeZone('UTC') ); $start = $dt->getTimestamp(); } } catch ( Exception $ex ) {}
-            try { $dt = date_create_from_format( $fmt, $e_in, $tz ); if ( $dt instanceof DateTime ) { $dt->setTimezone( new DateTimeZone('UTC') ); $end = $dt->getTimestamp(); } } catch ( Exception $ex ) {}
+            $start = self::parse_schedule_input( $s_in, $fmt, $tz );
+            $end   = self::parse_schedule_input( $e_in, $fmt, $tz );
             if ( is_null( $start ) || is_null( $end ) ) { continue; }
             if ( $end <= $start ) {
                 $def = self::get_channel_scheduler_defaults();
                 $end = $start + $def['duration'];
             }
-            $cands[] = array( 'start' => $start, 'end' => $end );
+            $cands[] = array(
+                'start' => $start,
+                'end' => $end,
+                'channel' => isset( $e['channel'] ) ? intval( $e['channel'] ) : 0,
+            );
         }
         if ( count( $cands ) > 1 ) {
-            usort( $cands, function( $a, $b ) { return ( $a['start'] <=> $b['start'] ); } );
-            for ( $i = 1; $i < count( $cands ); $i++ ) {
-                if ( intval( $cands[$i-1]['end'] ) > intval( $cands[$i]['start'] ) ) {
+            $sorted = $cands;
+            usort( $sorted, function( $a, $b ) { return ( $a['start'] <=> $b['start'] ); } );
+            for ( $i = 1; $i < count( $sorted ); $i++ ) {
+                if ( intval( $sorted[$i-1]['end'] ) > intval( $sorted[$i]['start'] ) ) {
                     wp_send_json_error( array( 'message' => __( 'Schedule conflict: time windows overlap.', 'foyer' ) ), 200 );
                 }
             }
         }
-        wp_send_json_success( array( 'ok' => true ) );
+        $normalized = array();
+        foreach ( $cands as $cand ) {
+            $normalized[] = array(
+                'channel' => $cand['channel'],
+                'start_iso' => self::format_schedule_iso( $cand['start'] ),
+                'end_iso'   => self::format_schedule_iso( $cand['end'] ),
+                'start_display' => self::format_schedule_display( $cand['start'], $fmt ),
+                'end_display'   => self::format_schedule_display( $cand['end'], $fmt ),
+                'status_class'  => self::determine_schedule_status_class( $cand['start'], $cand['end'] ),
+            );
+        }
+        wp_send_json_success( array( 'ok' => true, 'normalized' => $normalized ) );
+    }
+
+    /**
+     * Format a schedule timestamp as ISO 8601 (UTC) string for transport/storage.
+     */
+    public static function format_schedule_iso( $timestamp ) {
+        if ( empty( $timestamp ) ) { return ''; }
+        return gmdate( 'Y-m-d\TH:i:s\Z', intval( $timestamp ) );
+    }
+
+    /**
+     * Format a schedule timestamp using the site-configured datetime format.
+     */
+    public static function format_schedule_display( $timestamp, $format = null ) {
+        if ( empty( $timestamp ) ) { return ''; }
+        if ( null === $format ) {
+            $format = self::get_channel_scheduler_defaults()['datetime_format'];
+        }
+        $timestamp = intval( $timestamp );
+        if ( function_exists( 'wp_date' ) ) {
+            return wp_date( $format, $timestamp, wp_timezone() );
+        }
+        return date_i18n( $format, $timestamp + get_option( 'gmt_offset' ) * HOUR_IN_SECONDS, true );
+    }
+
+    /**
+     * Parse a schedule value either from ISO8601 or the site datetime format into a UTC timestamp.
+     */
+    public static function parse_schedule_input( $value, $format, DateTimeZone $site_timezone ) {
+        $value = is_string( $value ) ? trim( $value ) : '';
+        if ( '' === $value || '—' === $value ) {
+            return null;
+        }
+
+        // Try ISO 8601 first.
+        try {
+            $dt = new DateTime( $value );
+            return $dt->getTimestamp();
+        } catch ( Exception $e ) {
+            // Fall through to format-based parsing.
+        }
+
+        try {
+            $dt = date_create_from_format( $format, $value, $site_timezone );
+            if ( $dt instanceof DateTime ) {
+                $dt->setTimezone( new DateTimeZone( 'UTC' ) );
+                return $dt->getTimestamp();
+            }
+        } catch ( Exception $e ) {
+            return null;
+        }
+
+        return null;
+    }
+
+    /**
+     * Determine schedule status class relative to current UTC time.
+     */
+    public static function determine_schedule_status_class( $start_utc, $end_utc ) {
+        $now_utc = current_time( 'timestamp', true );
+        $start_utc = is_null( $start_utc ) ? null : intval( $start_utc );
+        $end_utc   = is_null( $end_utc ) ? null : intval( $end_utc );
+
+        if ( ! is_null( $end_utc ) && $end_utc < $now_utc ) {
+            return 'foyer-sched-past';
+        }
+
+        if ( ! is_null( $start_utc ) && $start_utc <= $now_utc && ( is_null( $end_utc ) || $end_utc >= $now_utc ) ) {
+            return 'foyer-sched-active';
+        }
+
+        if ( ! is_null( $start_utc ) && $start_utc > $now_utc ) {
+            return 'foyer-sched-future';
+        }
+
+        return '';
     }
 }
