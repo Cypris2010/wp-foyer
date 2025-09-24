@@ -156,6 +156,7 @@ Bug fixes:
 * All admin pickers (display scheduler, template scheduler, channel slide windows) now render and parse using the picker format, eliminating the “1899” fallback for localized month names.
 * Existing schedules are normalized on load: previous strings are converted to UTC timestamps so you keep full compatibility while benefiting from the new format.
 * JavaScript diagnostics now log mismatched values vs. picker format, helping administrators spot misconfigured settings quickly.
+* RSS feed slides now store their zoom animation preference reliably, so per-slide overrides persist instead of reverting to the global setting.
 
 = 1.9 =
 Release Date: Unreleased

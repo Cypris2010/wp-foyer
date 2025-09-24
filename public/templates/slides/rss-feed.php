@@ -213,7 +213,10 @@ if ( empty( $items ) ) {
 foreach ( $items as $item ) {
 	$background_image = isset( $item['image'] ) ? $item['image'] : '';
 	$qr_svg = isset( $item['qr_svg'] ) ? $item['qr_svg'] : '';
-	$zoom_preference = get_post_meta( $slide->ID, 'slide_bg_image_zoom', true );
+	$zoom_preference = get_post_meta( $slide->ID, 'slide_rss_zoom_preference', true );
+	if ( '' === $zoom_preference ) {
+		$zoom_preference = get_post_meta( $slide->ID, 'slide_bg_image_zoom', true );
+	}
 	if ( ! in_array( $zoom_preference, array( 'enabled', 'disabled' ), true ) ) {
 		$zoom_preference = 'inherit';
 	}

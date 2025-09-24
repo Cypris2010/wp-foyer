@@ -20,6 +20,8 @@ class Foyer_Admin_Slide_Format_RSS {
 	 */
 	static function save_slide( $post_id ) {
 
+		$zoom_meta_key = 'slide_rss_zoom_preference';
+
 		$feed_url = '';
 		if ( isset( $_POST['slide_rss_feed_url'] ) ) {
 			$feed_url = esc_url_raw( trim( wp_unslash( $_POST['slide_rss_feed_url'] ) ) );
@@ -43,10 +45,21 @@ class Foyer_Admin_Slide_Format_RSS {
 
 		$show_feed_title = isset( $_POST['slide_rss_show_feed_title'] ) ? 1 : 0;
 
+		$zoom_preference = isset( $_POST['slide_rss_zoom_preference'] ) ? sanitize_text_field( wp_unslash( $_POST['slide_rss_zoom_preference'] ) ) : '';
+		if ( ! in_array( $zoom_preference, array( 'inherit', 'enabled', 'disabled' ), true ) ) {
+			$zoom_preference = '';
+		}
+
 		update_post_meta( $post_id, 'slide_rss_feed_url', $feed_url );
 		update_post_meta( $post_id, 'slide_rss_limit', $limit );
 		update_post_meta( $post_id, 'slide_rss_cache_minutes', $cache_minutes );
 		update_post_meta( $post_id, 'slide_rss_show_feed_title', $show_feed_title );
+
+		if ( '' === $zoom_preference || 'inherit' === $zoom_preference ) {
+			delete_post_meta( $post_id, $zoom_meta_key );
+		} else {
+			update_post_meta( $post_id, $zoom_meta_key, $zoom_preference );
+		}
 	}
 
 	/**
@@ -73,6 +86,17 @@ class Foyer_Admin_Slide_Format_RSS {
 
 		$show_feed_title = get_post_meta( $post->ID, 'slide_rss_show_feed_title', true );
 		$show_feed_title = ( '' === $show_feed_title ) ? 1 : (int) $show_feed_title;
+
+		$zoom_meta_key = 'slide_rss_zoom_preference';
+		$zoom_preference = get_post_meta( $post->ID, $zoom_meta_key, true );
+		if ( '' === $zoom_preference ) {
+			$zoom_preference = get_post_meta( $post->ID, 'slide_bg_image_zoom', true );
+		}
+		if ( ! in_array( $zoom_preference, array( 'enabled', 'disabled' ), true ) ) {
+			$zoom_preference = 'inherit';
+		}
+
+		$global_zoom_enabled = (bool) get_option( Foyer_Admin_Settings::OPTION_BACKGROUND_ZOOM, 0 );
 
 		?><table class="form-table">
 			<tbody>
@@ -112,6 +136,32 @@ class Foyer_Admin_Slide_Format_RSS {
 							<input type="checkbox" name="slide_rss_show_feed_title" id="slide_rss_show_feed_title" value="1" <?php checked( $show_feed_title, 1 ); ?> />
 							<?php _e( 'Yes, show the website / feed title above entries.', 'foyer' ); ?>
 						</label>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row">
+						<label for="slide_rss_zoom_preference"><?php esc_html_e( 'Zoom animation', 'foyer' ); ?></label>
+					</th>
+					<td>
+						<select id="slide_rss_zoom_preference" name="slide_rss_zoom_preference">
+							<option value="inherit" <?php selected( $zoom_preference, 'inherit', true ); ?>>
+								<?php
+									printf(
+										esc_html__( 'Use global setting (%s)', 'foyer' ),
+										$global_zoom_enabled ? esc_html__( 'enabled', 'foyer' ) : esc_html__( 'disabled', 'foyer' )
+									);
+								?>
+							</option>
+							<option value="enabled" <?php selected( $zoom_preference, 'enabled', true ); ?>>
+								<?php esc_html_e( 'Always zoom feed images', 'foyer' ); ?>
+							</option>
+							<option value="disabled" <?php selected( $zoom_preference, 'disabled', true ); ?>>
+								<?php esc_html_e( 'Never zoom feed images', 'foyer' ); ?>
+							</option>
+						</select>
+						<p class="description">
+							<?php esc_html_e( 'Overrides the global background zoom for this RSS slide.', 'foyer' ); ?>
+						</p>
 					</td>
 				</tr>
 			</tbody>
