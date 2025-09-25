@@ -1377,12 +1377,14 @@ class Foyer_Admin_Display {
             return null;
         }
 
-        // Try ISO 8601 first.
-        try {
-            $dt = new DateTime( $value );
-            return $dt->getTimestamp();
-        } catch ( Exception $e ) {
-            // Fall through to format-based parsing.
+        $looks_like_iso = ( false !== strpos( $value, 'T' ) ) || preg_match( '/(Z|[\+\-]\d{2}:?\d{2})$/', $value );
+        if ( $looks_like_iso ) {
+            try {
+                $dt = new DateTime( $value );
+                return $dt->getTimestamp();
+            } catch ( Exception $e ) {
+                // Fall through to format-based parsing if ISO parsing fails.
+            }
         }
 
         try {

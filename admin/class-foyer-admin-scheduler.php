@@ -146,19 +146,141 @@ class Foyer_Admin_Scheduler {
             }
         }
 
+        if ( empty( $entries ) ) {
+            Foyer_Admin_Display::add_admin_notice( 'warning', __( 'No valid schedule entries to apply.', 'foyer' ) );
+            $url = add_query_arg( array( 'page' => 'foyer_scheduler' ), admin_url( 'admin.php' ) );
+            wp_safe_redirect( $url );
+            exit;
+        }
+
         $applied = 0; $skipped = 0;
         foreach ( $display_ids as $did ) {
             if ( ! current_user_can( 'edit_post', $did ) ) { $skipped++; continue; }
-            delete_post_meta( $did, 'foyer_display_schedule' );
+
+            $existing_entries = get_post_meta( $did, 'foyer_display_schedule', false );
+            if ( ! is_array( $existing_entries ) ) { $existing_entries = array(); }
+
+            $normalized_existing = array();
+            $existing_hash_map   = array();
+
+            foreach ( $existing_entries as $entry ) {
+                $normalized = self::normalize_schedule_entry( $entry );
+                if ( is_null( $normalized ) ) { continue; }
+                $normalized_existing[] = $normalized;
+                $existing_hash_map[ self::hash_schedule_entry( $normalized ) ] = true;
+            }
+
+            $new_to_add   = array();
+            $seen_hashes  = array();
+
             foreach ( $entries as $schedule ) {
+                $normalized_new = self::normalize_schedule_entry( $schedule );
+                if ( is_null( $normalized_new ) ) { continue; }
+
+                $hash = self::hash_schedule_entry( $normalized_new );
+
+                if ( isset( $existing_hash_map[ $hash ] ) || isset( $seen_hashes[ $hash ] ) ) {
+                    continue;
+                }
+
+                $has_conflict = false;
+                foreach ( $normalized_existing as $existing_entry ) {
+                    if ( self::schedules_overlap( $existing_entry, $normalized_new ) ) {
+                        $has_conflict = true;
+                        break;
+                    }
+                }
+
+                if ( $has_conflict ) {
+                    $skipped++;
+                    $title = get_the_title( $did );
+                    if ( empty( $title ) ) {
+                        $title = sprintf( __( 'Display #%d', 'foyer' ), $did );
+                    }
+                    Foyer_Admin_Display::add_admin_notice( 'error', sprintf( __( 'Template not applied to "%s": schedule conflicts with existing plan.', 'foyer' ), $title ) );
+                    continue 2;
+                }
+
+                $new_to_add[] = $normalized_new;
+                $seen_hashes[ $hash ] = true;
+                $existing_hash_map[ $hash ] = true;
+                $normalized_existing[] = $normalized_new;
+            }
+
+            foreach ( $new_to_add as $schedule ) {
                 add_post_meta( $did, 'foyer_display_schedule', $schedule, false );
             }
+
             $applied++;
         }
 
         $url = add_query_arg( array( 'page' => 'foyer_scheduler', 'foyer_template_applied' => $applied, 'foyer_template_skipped' => $skipped ), admin_url( 'admin.php' ) );
         wp_safe_redirect( $url );
         exit;
+    }
+
+    /**
+     * Normalizes a schedule entry to keep comparisons consistent.
+     *
+     * @param array $entry
+     * @return array|null
+     */
+    private static function normalize_schedule_entry( $entry ) {
+        if ( ! is_array( $entry ) ) {
+            return null;
+        }
+
+        return array(
+            'channel' => isset( $entry['channel'] ) ? intval( $entry['channel'] ) : 0,
+            'start'   => isset( $entry['start'] ) && '' !== $entry['start'] ? intval( $entry['start'] ) : null,
+            'end'     => isset( $entry['end'] ) && '' !== $entry['end'] ? intval( $entry['end'] ) : null,
+        );
+    }
+
+    /**
+     * Generates a hash for a schedule entry to detect duplicates.
+     *
+     * @param array $entry
+     * @return string
+     */
+    private static function hash_schedule_entry( $entry ) {
+        $channel = isset( $entry['channel'] ) ? intval( $entry['channel'] ) : 0;
+        $start   = ( isset( $entry['start'] ) && ! is_null( $entry['start'] ) ) ? intval( $entry['start'] ) : 0;
+        $end     = ( isset( $entry['end'] ) && ! is_null( $entry['end'] ) ) ? intval( $entry['end'] ) : 0;
+
+        return $channel . '|' . $start . '|' . $end;
+    }
+
+    /**
+     * Determine whether two schedule entries overlap in time.
+     *
+     * @param array $first
+     * @param array $second
+     * @return bool
+     */
+    private static function schedules_overlap( $first, $second ) {
+        if ( ! isset( $first['start'], $first['end'], $second['start'], $second['end'] ) ) {
+            return false;
+        }
+
+        if ( is_null( $first['start'] ) || is_null( $first['end'] ) || is_null( $second['start'] ) || is_null( $second['end'] ) ) {
+            return false;
+        }
+
+        $start_a = intval( $first['start'] );
+        $end_a   = intval( $first['end'] );
+        $start_b = intval( $second['start'] );
+        $end_b   = intval( $second['end'] );
+
+        if ( $end_a <= $start_b ) {
+            return false;
+        }
+
+        if ( $end_b <= $start_a ) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -305,6 +427,56 @@ class Foyer_Admin_Scheduler {
                     return trimmed;
                 }
 
+                function ensureDateHelpers(){
+                    if (window.foyerSchedulerDateHelpers) { return window.foyerSchedulerDateHelpers; }
+                    if (!window.foyer_channel_scheduler_defaults) { return null; }
+
+                    var defaults = window.foyer_channel_scheduler_defaults;
+                    var localeKey = defaults.locale || 'en';
+                    if ($.foyer_datetimepicker && $.foyer_datetimepicker.setLocale) {
+                        $.foyer_datetimepicker.setLocale(localeKey);
+                    }
+
+                    var pickerFormat = defaults.picker_format || defaults.datetime_format || 'Y-m-d H:i';
+                    var formatterOptions = {};
+                    var baseDefaults = ($.fn.foyer_datetimepicker && $.fn.foyer_datetimepicker.defaults) ? $.fn.foyer_datetimepicker.defaults : null;
+                    var localeData = (baseDefaults && baseDefaults.i18n) ? baseDefaults.i18n[ localeKey ] : null;
+                    if (localeData) {
+                        formatterOptions.dateSettings = {
+                            days: localeData.dayOfWeek || [],
+                            daysShort: localeData.dayOfWeekShort || [],
+                            months: localeData.months || [],
+                            monthsShort: $.map(localeData.months || [], function(name){ return name ? name.substring(0,3) : ''; })
+                        };
+                    }
+
+                    var formatter = (typeof DateFormatter !== 'undefined') ? new DateFormatter(formatterOptions) : null;
+
+                    var parseIsoDate = function(value){
+                        if (!value) { return null; }
+                        var time = Date.parse(value);
+                        return isNaN(time) ? null : new Date(time);
+                    };
+
+                    var parseExisting = function(value){
+                        var trimmed = cleanDisplayValue(value);
+                        if (!trimmed) { return null; }
+                        if (formatter) {
+                            try {
+                                return formatter.parseDate(trimmed, pickerFormat);
+                            } catch (err) {}
+                        }
+                        return parseIsoDate(trimmed);
+                    };
+
+                    window.foyerSchedulerDateHelpers = {
+                        pickerFormat: pickerFormat,
+                        parseExisting: parseExisting
+                    };
+
+                    return window.foyerSchedulerDateHelpers;
+                }
+
                 function setDisplay($span, value){
                     var placeholder = $span.data('placeholder') || '—';
                     var display = cleanDisplayValue(value);
@@ -318,16 +490,22 @@ class Foyer_Admin_Scheduler {
                 }
 
                 function initPickers($scope){
-                    if (!window.foyer_channel_scheduler_defaults) return;
-                    var pickerFormat = foyer_channel_scheduler_defaults.picker_format || foyer_channel_scheduler_defaults.datetime_format;
+                    if (!window.foyer_channel_scheduler_defaults) { return; }
+                    var helpers = ensureDateHelpers();
+                    if (!helpers) { return; }
+                    var pickerFormat = helpers.pickerFormat;
                     $scope.find('input.foyer-datetime').each(function(){
                         var $i=$(this); if ($i.data('dtp-init')) return;
-                        $i.foyer_datetimepicker({
+                        var options = {
                             format: pickerFormat,
                             dayOfWeekStart: foyer_channel_scheduler_defaults.start_of_week,
                             step: 15,
                             validateOnBlur: false
-                        });
+                        };
+                        if (helpers.parseExisting) {
+                            options.parseInputDate = helpers.parseExisting;
+                        }
+                        $i.foyer_datetimepicker(options);
                         $i.data('dtp-init', true);
                     });
                 }
@@ -632,6 +810,56 @@ class Foyer_Admin_Scheduler {
                         return trimmed;
                     }
 
+                    function ensureDateHelpers(){
+                        if (window.foyerSchedulerDateHelpers) { return window.foyerSchedulerDateHelpers; }
+                        if (!window.foyer_channel_scheduler_defaults) { return null; }
+
+                        var defaults = window.foyer_channel_scheduler_defaults;
+                        var localeKey = defaults.locale || 'en';
+                        if ($.foyer_datetimepicker && $.foyer_datetimepicker.setLocale) {
+                            $.foyer_datetimepicker.setLocale(localeKey);
+                        }
+
+                        var pickerFormat = defaults.picker_format || defaults.datetime_format || 'Y-m-d H:i';
+                        var formatterOptions = {};
+                        var baseDefaults = ($.fn.foyer_datetimepicker && $.fn.foyer_datetimepicker.defaults) ? $.fn.foyer_datetimepicker.defaults : null;
+                        var localeData = (baseDefaults && baseDefaults.i18n) ? baseDefaults.i18n[ localeKey ] : null;
+                        if (localeData) {
+                            formatterOptions.dateSettings = {
+                                days: localeData.dayOfWeek || [],
+                                daysShort: localeData.dayOfWeekShort || [],
+                                months: localeData.months || [],
+                                monthsShort: $.map(localeData.months || [], function(name){ return name ? name.substring(0,3) : ''; })
+                            };
+                        }
+
+                        var formatter = (typeof DateFormatter !== 'undefined') ? new DateFormatter(formatterOptions) : null;
+
+                        var parseIsoDate = function(value){
+                            if (!value) { return null; }
+                            var time = Date.parse(value);
+                            return isNaN(time) ? null : new Date(time);
+                        };
+
+                        var parseExisting = function(value){
+                            var trimmed = cleanDisplayValue(value);
+                            if (!trimmed) { return null; }
+                            if (formatter) {
+                                try {
+                                    return formatter.parseDate(trimmed, pickerFormat);
+                                } catch (err) {}
+                            }
+                            return parseIsoDate(trimmed);
+                        };
+
+                        window.foyerSchedulerDateHelpers = {
+                            pickerFormat: pickerFormat,
+                            parseExisting: parseExisting
+                        };
+
+                        return window.foyerSchedulerDateHelpers;
+                    }
+
                     function setDisplay($span, value){
                         var placeholder = $span.data('placeholder') || '—';
                         var display = cleanDisplayValue(value);
@@ -645,15 +873,21 @@ class Foyer_Admin_Scheduler {
                     }
 
                     function initPickers($scope){
-                        if (!window.foyer_channel_scheduler_defaults) return;
+                        if (!window.foyer_channel_scheduler_defaults) { return; }
+                        var helpers = ensureDateHelpers();
+                        if (!helpers) { return; }
                         $scope.find('input.foyer-datetime').each(function(){
                             var $i=$(this); if ($i.data('dtp-init')) return;
-                            $i.foyer_datetimepicker({
-                                format: foyer_channel_scheduler_defaults.datetime_format,
+                            var options = {
+                                format: helpers.pickerFormat,
                                 dayOfWeekStart: foyer_channel_scheduler_defaults.start_of_week,
                                 step: 15,
                                 validateOnBlur: false
-                            });
+                            };
+                            if (helpers.parseExisting) {
+                                options.parseInputDate = helpers.parseExisting;
+                            }
+                            $i.foyer_datetimepicker(options);
                             $i.data('dtp-init', true);
                         });
                     }

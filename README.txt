@@ -157,6 +157,9 @@ Bug fixes:
 * Existing schedules are normalized on load: previous strings are converted to UTC timestamps so you keep full compatibility while benefiting from the new format.
 * JavaScript diagnostics now log mismatched values vs. picker format, helping administrators spot misconfigured settings quickly.
 * RSS feed slides now store their zoom animation preference reliably, so per-slide overrides persist instead of reverting to the global setting.
+* Applying a schedule template now keeps the existing display plan intact, only appending non-conflicting entries and surfacing clashes instead of wiping the display’s full schedule.
+* Scheduler datetime pickers share the same parsing helpers as the display editor, so editing an entry no longer resets the picker to “1899” when localized dates are in use.
+* Saving a planned channel preserves the exact times that were entered by respecting the site timezone, avoiding the previous +2 hour drift.
 
 = 1.9 =
 Release Date: Unreleased
