@@ -1150,8 +1150,8 @@ class Foyer_Admin_Display {
 
 		/* Input validation */
 		/* See: https://codex.wordpress.org/Data_Validation#Input_Validation */
-		$channel = intval( $_POST['foyer_channel_editor_default_channel'] );
-		$display_id = intval( $_POST['foyer_channel_editor_' . Foyer_Display::post_type_name] );
+		$channel = isset( $_POST['foyer_channel_editor_default_channel'] ) ? intval( $_POST['foyer_channel_editor_default_channel'] ) : 0;
+		$display_id = isset( $_POST['foyer_channel_editor_' . Foyer_Display::post_type_name] ) ? intval( $_POST['foyer_channel_editor_' . Foyer_Display::post_type_name] ) : intval( $post_id );
 
 		if ( empty( $display_id ) ) {
 			return $post_id;

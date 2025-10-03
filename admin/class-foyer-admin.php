@@ -28,6 +28,10 @@ class Foyer_Admin {
 		add_action( 'admin_menu', array( __CLASS__, 'admin_menu' ) );
 		// Scheduler page submenu and save handler
 		add_action( 'admin_menu', array( 'Foyer_Admin_Scheduler', 'admin_menu' ) );
+		// Central schedules admin UI
+		add_action( 'add_meta_boxes', array( 'Foyer_Admin_Schedule', 'add_meta_boxes' ) );
+		add_action( 'save_post_foyer_schedule', array( 'Foyer_Admin_Schedule', 'save_schedule' ), 10, 2 );
+		add_action( 'wp_ajax_foyer_schedule_preview', array( 'Foyer_Admin_Schedule', 'ajax_preview' ) );
 		add_action( 'admin_menu', array( 'Foyer_Admin_Settings', 'add_menu' ), 11 );
 		add_action( 'admin_post_foyer_save_scheduler', array( 'Foyer_Admin_Scheduler', 'handle_post' ) );
 		add_action( 'admin_post_foyer_apply_scheduler_template', array( 'Foyer_Admin_Scheduler', 'handle_apply_template' ) );
@@ -108,6 +112,14 @@ class Foyer_Admin {
 			'dashicons-welcome-view-site',
 			31
 		);
+		// Ensure a direct submenu entry to the central Schedules CPT exists
+		add_submenu_page(
+			'foyer',
+			_x( 'Schedules', 'schedule cpt', 'foyer' ),
+			_x( 'Schedules', 'schedule cpt', 'foyer' ),
+			'edit_posts',
+			'edit.php?post_type=foyer_schedule'
+		);
 	}
 
 	/**
@@ -185,6 +197,7 @@ class Foyer_Admin {
         require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-upcoming-productions.php';
 		// Scheduler admin page
 	require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-scheduler.php';
+		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-schedule.php';
 
 	}
 }

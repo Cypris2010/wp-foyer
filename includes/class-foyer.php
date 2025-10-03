@@ -157,7 +157,8 @@ class Foyer {
 
 		/* Theater for WordPress helper functions. */
 		require_once FOYER_PLUGIN_PATH . 'includes/class-foyer-theater.php';
-
+		/* Central schedules API */
+		require_once FOYER_PLUGIN_PATH . 'includes/class-foyer-schedules.php';
 
 		/**
 		 * ------ Admin ------

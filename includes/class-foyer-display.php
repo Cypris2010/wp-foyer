@@ -143,11 +143,11 @@ class Foyer_Display {
 			// Return the first scheduled channel that matches the current time, has a channel set, and channel is published.
 			foreach ( $schedule as $scheduled_channel ) {
 
-				if ( $scheduled_channel['start'] > time() ) {
+				if ( $scheduled_channel['start'] > current_time( 'timestamp', true ) ) {
 					continue;
 				}
 
-				if ( $scheduled_channel['end'] < time() ) {
+				if ( $scheduled_channel['end'] < current_time( 'timestamp', true ) ) {
 					continue;
 				}
 
@@ -203,10 +203,30 @@ class Foyer_Display {
 	 * @return 	array|string	All scheduled channels or an empty string if no channels are scheduled.
 	 */
 	public function get_schedule() {
-		$schedule = array();
+		// Prefer central schedules (foyer_schedule CPT) via Foyer_Schedules, with legacy fallback
+		$window_start = current_time( 'timestamp', true ) - DAY_IN_SECONDS;
+		$window_end   = current_time( 'timestamp', true ) + 365 * DAY_IN_SECONDS;
 
+		$central = array();
+		if ( class_exists( 'Foyer_Schedules' ) ) {
+			$occurrences = Foyer_Schedules::get_for_display( $this->ID, $window_start, $window_end );
+			if ( ! empty( $occurrences ) && is_array( $occurrences ) ) {
+				foreach ( $occurrences as $occ ) {
+					$central[] = array(
+						'channel' => isset( $occ['channel'] ) ? intval( $occ['channel'] ) : 0,
+						'start'   => isset( $occ['start_utc'] ) ? intval( $occ['start_utc'] ) : null,
+						'end'     => isset( $occ['end_utc'] ) ? intval( $occ['end_utc'] ) : null,
+					);
+				}
+			}
+		}
+
+		if ( ! empty( $central ) ) {
+			return $central;
+		}
+
+		// Legacy fallback: per-display stored schedule
 		$schedule = get_post_meta( $this->ID, 'foyer_display_schedule', false );
-
 		return $schedule;
 	}
 

@@ -147,6 +147,38 @@ Settings for W3 Total Cache: Add `/foyer/*` on a new line under Performance > Pa
 
 == Changelog ==
 
+= 2.0.0.alpha =
+Release Date: Unreleased
+
+Major release introducing centralized scheduling with recurrence and exceptions.
+
+Highlights:
+
+- Centralized Schedules (Single Source of Truth)
+  - New CPT “Schedules” under Foyer > Schedules manages channel plans for multiple displays.
+  - Displays no longer store their own schedule entries; legacy per-display entries are migrated automatically.
+
+- Recurrence and Exceptions
+  - RRULE support (subset): FREQ=DAILY/WEEKLY/MONTHLY, INTERVAL, BYDAY, BYMONTHDAY, UNTIL, COUNT.
+  - EXDATE (Ausschlüsse) und RDATE (zusätzliche Einzeltermine) mit lokaler Zeitzonenbehandlung.
+  - Instanz-Overrides vorbereitet (Kanal/Start/Dauer pro Vorkommnis).
+
+- Admin-UI
+  - Neuer Editor für zentrale Schedules (General, Timing, RRULE-Builder, Exceptions, Preview).
+  - RRULE-Builder (komfortable Eingabe statt Freitext): Daily/Weekly/Monthly, INTERVAL, BYDAY/BYMONTHDAY, UNTIL/COUNT.
+  - Preview zeigt die nächsten 10 Vorkommnisse.
+  - Strikte Konfliktvalidierung beim Speichern: verhindert Überschneidungen pro Display und zeigt eine Admin-Notice an.
+
+- Migration
+  - Einmalige automatische Migration von foyer_display_schedule → zentrale foyer_schedule (Single-Occurrence), inkl. Zusammenführen identischer Pläne über mehrere Displays.
+
+- Performance
+  - Transient-Caching für Occurrence-Expansion (pro Schedule+Fenster+Meta-Signatur), reduziert Last in Listenansichten.
+
+- Sonstiges
+  - Foyer > Schedules als direkter Untermenüpunkt.
+  - CPT-Berechtigungen so gemappt, dass Standardrollen mit edit_posts Zugriff haben.
+
 = 1.9.2 =
 Release Date: Unreleased
 

@@ -84,5 +84,29 @@ class Foyer_Setup {
 	  			'rewrite' => false,
 			)
 		);
+		// Register central Schedule post type
+		register_post_type( 'foyer_schedule',
+			array(
+				'labels' => array(
+					'name' => _x( 'Schedules', 'schedule cpt', 'foyer' ),
+					'singular_name' => _x( 'Schedule', 'schedule cpt', 'foyer'),
+					'add_new' =>  _x( 'Add New', 'schedule cpt', 'foyer'),
+					'new_item' => _x( 'New schedule', 'schedule cpt', 'foyer' ),
+					'view_item' => _x( 'View schedule', 'schedule cpt', 'foyer' ),
+					'add_new_item' => _x( 'Add new schedule', 'schedule cpt', 'foyer' ),
+					'edit_item' => _x( 'Edit schedule', 'schedule cpt', 'foyer' ),
+				),
+				'public' => false,
+				'show_ui' => true,
+				'has_archive' => false,
+				'show_in_menu' => 'foyer',
+				'show_in_admin_bar' => false,
+	  			'supports' => array( 'title' ),
+	  			'taxonomies' => array(),
+	  			'rewrite' => false,
+				'map_meta_cap' => true,
+				'capability_type' => 'post',
+			)
+		);
 	}
 }
