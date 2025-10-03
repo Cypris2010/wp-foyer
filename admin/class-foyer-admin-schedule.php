@@ -106,6 +106,19 @@ class Foyer_Admin_Schedule {
                 }
             } catch ( Exception $e ) {}
         }
+        // Compute single-mode local suggestions from stored UTC times
+        $single_start_local = '';
+        $single_end_local = '';
+        try {
+            $tzobj = new DateTimeZone( $tz );
+            if ( $start_utc ) {
+                $single_start_local = ( new DateTimeImmutable( '@' . intval( $start_utc ) ) )->setTimezone( $tzobj )->format( 'Y-m-d H:i:s' );
+            }
+            if ( $end_utc ) {
+                $single_end_local = ( new DateTimeImmutable( '@' . intval( $end_utc ) ) )->setTimezone( $tzobj )->format( 'Y-m-d H:i:s' );
+            }
+        } catch ( Exception $e ) {}
+
         $rrule = get_post_meta( $post->ID, 'foyer_schedule_rrule', true );
         ?>
         <fieldset>
@@ -115,12 +128,19 @@ class Foyer_Admin_Schedule {
         <div id="foyer_sched_mode_single" style="margin-top:8px; <?php echo ( 'single' === $mode ? '' : 'display:none;' ); ?>">
             <table class="form-table">
                 <tr>
-                    <th><label for="foyer_schedule_start_iso"><?php echo esc_html__( 'Start (ISO, UTC)', 'foyer' ); ?></label></th>
-                    <td><input type="text" class="regular-text" id="foyer_schedule_start_iso" name="foyer_schedule_start_iso" value="<?php echo esc_attr( $start_iso ); ?>" placeholder="2025-01-01T09:00:00Z" /></td>
+                    <th><label for="foyer_schedule_tz_single"><?php echo esc_html__( 'Timezone', 'foyer' ); ?></label></th>
+                    <td>
+                        <input type="text" id="foyer_schedule_tz_single" name="foyer_schedule_tz" class="regular-text" value="<?php echo esc_attr( $tz ); ?>" />
+                        <p class="description"><?php echo esc_html__( 'PHP timezone identifier (e.g. Europe/Berlin).', 'foyer' ); ?></p>
+                    </td>
                 </tr>
                 <tr>
-                    <th><label for="foyer_schedule_end_iso"><?php echo esc_html__( 'End (ISO, UTC)', 'foyer' ); ?></label></th>
-                    <td><input type="text" class="regular-text" id="foyer_schedule_end_iso" name="foyer_schedule_end_iso" value="<?php echo esc_attr( $end_iso ); ?>" placeholder="2025-01-01T10:00:00Z" /></td>
+                    <th><label for="foyer_schedule_single_start_local"><?php echo esc_html__( 'Start (local)', 'foyer' ); ?></label></th>
+                    <td><input type="text" class="regular-text" id="foyer_schedule_single_start_local" name="foyer_schedule_single_start_local" value="<?php echo esc_attr( $single_start_local ); ?>" placeholder="2025-01-01 09:00:00" /></td>
+                </tr>
+                <tr>
+                    <th><label for="foyer_schedule_single_end_local"><?php echo esc_html__( 'End (local)', 'foyer' ); ?></label></th>
+                    <td><input type="text" class="regular-text" id="foyer_schedule_single_end_local" name="foyer_schedule_single_end_local" value="<?php echo esc_attr( $single_end_local ); ?>" placeholder="2025-01-01 10:00:00" /></td>
                 </tr>
             </table>
         </div>
@@ -340,8 +360,9 @@ class Foyer_Admin_Schedule {
             else { delete_post_meta( $post_id, 'foyer_schedule_start_utc' ); }
             if ( ! is_null( $meta['end_utc'] ) ) { update_post_meta( $post_id, 'foyer_schedule_end_utc', $meta['end_utc'] ); }
             else { delete_post_meta( $post_id, 'foyer_schedule_end_utc' ); }
+            // Store timezone used for single for consistent local display later
+            update_post_meta( $post_id, 'foyer_schedule_tz', $meta['tz'] );
             // Clear recurrence fields
-            delete_post_meta( $post_id, 'foyer_schedule_tz' );
             delete_post_meta( $post_id, 'foyer_schedule_dtstart_local' );
             delete_post_meta( $post_id, 'foyer_schedule_duration' );
             delete_post_meta( $post_id, 'foyer_schedule_rrule' );
@@ -446,12 +467,41 @@ class Foyer_Admin_Schedule {
         }
 
         if ( 'single' === $out['mode'] ) {
-            $start_iso = isset( $src['foyer_schedule_start_iso'] ) ? trim( $src['foyer_schedule_start_iso'] ) : '';
-            $end_iso   = isset( $src['foyer_schedule_end_iso'] ) ? trim( $src['foyer_schedule_end_iso'] ) : '';
-            $out['start_utc'] = self::parse_iso_utc_to_ts( $start_iso );
-            $out['end_utc']   = self::parse_iso_utc_to_ts( $end_iso );
-            if ( ! is_null( $out['start_utc'] ) && ! is_null( $out['end_utc'] ) && $out['end_utc'] <= $out['start_utc'] ) {
-                $out['end_utc'] = $out['start_utc'] + HOUR_IN_SECONDS;
+            // Prefer local inputs, convert to UTC using provided timezone
+            $out['tz'] = isset( $src['foyer_schedule_tz'] ) ? sanitize_text_field( $src['foyer_schedule_tz'] ) : wp_timezone_string();
+            $start_local_in = isset( $src['foyer_schedule_single_start_local'] ) ? trim( $src['foyer_schedule_single_start_local'] ) : '';
+            $end_local_in   = isset( $src['foyer_schedule_single_end_local'] ) ? trim( $src['foyer_schedule_single_end_local'] ) : '';
+            if ( $start_local_in !== '' ) {
+                try {
+                    $tz = new DateTimeZone( $out['tz'] );
+                    $start_obj = DateTimeImmutable::createFromFormat( 'Y-m-d H:i:s', str_replace('T',' ', $start_local_in ), $tz );
+                    if ( false === $start_obj ) { $start_obj = new DateTimeImmutable( $start_local_in, $tz ); }
+                    $end_obj = null;
+                    if ( $end_local_in !== '' ) {
+                        $end_obj = DateTimeImmutable::createFromFormat( 'Y-m-d H:i:s', str_replace('T',' ', $end_local_in ), $tz );
+                        if ( false === $end_obj ) { $end_obj = new DateTimeImmutable( $end_local_in, $tz ); }
+                    }
+                    if ( $start_obj ) {
+                        $out['start_utc'] = $start_obj->setTimezone( new DateTimeZone('UTC') )->getTimestamp();
+                        if ( $end_obj ) {
+                            $end_ts = $end_obj->setTimezone( new DateTimeZone('UTC') )->getTimestamp();
+                            if ( $end_ts <= $out['start_utc'] ) { $end_ts = $out['start_utc'] + HOUR_IN_SECONDS; }
+                            $out['end_utc'] = $end_ts;
+                        } else {
+                            $out['end_utc'] = $out['start_utc'] + HOUR_IN_SECONDS;
+                        }
+                    }
+                } catch ( Exception $e ) {}
+            }
+            // Fallback: allow ISO UTC fields for backward compatibility
+            if ( is_null( $out['start_utc'] ) || is_null( $out['end_utc'] ) ) {
+                $start_iso = isset( $src['foyer_schedule_start_iso'] ) ? trim( $src['foyer_schedule_start_iso'] ) : '';
+                $end_iso   = isset( $src['foyer_schedule_end_iso'] ) ? trim( $src['foyer_schedule_end_iso'] ) : '';
+                $out['start_utc'] = self::parse_iso_utc_to_ts( $start_iso );
+                $out['end_utc']   = self::parse_iso_utc_to_ts( $end_iso );
+                if ( ! is_null( $out['start_utc'] ) && ! is_null( $out['end_utc'] ) && $out['end_utc'] <= $out['start_utc'] ) {
+                    $out['end_utc'] = $out['start_utc'] + HOUR_IN_SECONDS;
+                }
             }
         } else {
             $out['tz'] = isset( $src['foyer_schedule_tz'] ) ? sanitize_text_field( $src['foyer_schedule_tz'] ) : wp_timezone_string();
