@@ -1091,6 +1091,123 @@ class Foyer_Admin_Display {
 	*/
 
 	/**
+	 * Render a responsive grid with display previews above the default list table on the Displays list screen.
+	 * Keeps the existing table below as requested.
+	 */
+	static function render_displays_grid() {
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+		if ( empty( $screen ) || ('edit-' . Foyer_Display::post_type_name) !== $screen->id ) {
+			return;
+		}
+
+		$args = apply_filters( 'foyer/admin/displays/grid_query_args', array(
+			'post_type'      => Foyer_Display::post_type_name,
+			'posts_per_page' => -1,
+			'post_status'    => array( 'publish', 'draft', 'pending', 'private' ),
+			'orderby'        => 'title',
+			'order'          => 'ASC',
+		) );
+		$displays = get_posts( $args );
+
+		// Basic styles for the grid/cards and preview iframe scaling
+		echo '<style>
+		/* Grid wrapper clears header floats (Screen Options) and uses full row width */
+		.foyer-display-grid-wrap{clear:both;margin:6px 0 18px; padding:0 20px 0 0; width:auto; box-sizing:border-box;}
+		.foyer-display-search-slot{clear:both;margin:6px 0 8px; padding:0 20px 0 0; width:auto; box-sizing:border-box;}
+		/* Responsive grid that fills available width */
+		.foyer-display-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;}
+		.foyer-display-card{background:#fff;border:1px solid #e2e2e2;border-radius:4px;box-shadow:0 1px 2px rgba(0,0,0,.04);overflow:hidden;}
+		.foyer-display-card__preview{padding:10px;background:#f8f9fa}
+		.foyer-display-card__body{padding:10px 12px 12px}
+		.foyer-display-card__title{font-weight:600;margin:0 0 6px;font-size:14px}
+		.foyer-display-card__meta{margin:0; font-size:12px; color:#555}
+		.foyer-display-card__actions{margin-top:8px}
+		.foyer-display-card__actions a{margin-right:8px;text-decoration:none}
+		.foyer_card_preview_iframe_container{position:relative;width:100%;height:180px;overflow:hidden}
+		.foyer_card_preview_iframe_container .preview-viewport{position:relative;width:100%;height:100%;}
+		.foyer_card_preview_iframe_container iframe{position:absolute;left:0;top:0;border:0;background:#000;transform-origin:top left}
+		</style>';
+
+		echo '<div id="foyer-displays-search-slot" class="foyer-display-search-slot"></div><div id="foyer-displays-grid-wrap" class="foyer-display-grid-wrap"><div class="foyer-display-grid" aria-label="Display previews">';
+		if ( empty( $displays ) ) {
+			echo '<div class="foyer-display-card"><div class="foyer-display-card__body">' . esc_html__( 'No displays found.', 'foyer' ) . '</div></div>';
+		} else {
+			foreach ( $displays as $disp ) {
+				$display_obj = new Foyer_Display( $disp );
+				$active_id   = $display_obj->get_active_channel();
+				$default_id  = $display_obj->get_default_channel();
+				$active_suffix = '';
+				if ( $active_id && $default_id && intval( $active_id ) === intval( $default_id ) ) {
+					$active_suffix = ' (' . esc_html__( 'Default', 'foyer' ) . ')';
+				} elseif ( $active_id ) {
+					$now_utc = current_time( 'timestamp', true );
+					$schedules = $display_obj->get_schedule();
+					if ( ! empty( $schedules ) && is_array( $schedules ) ) {
+						foreach ( $schedules as $sch ) {
+							$cid = isset( $sch['channel'] ) ? intval( $sch['channel'] ) : 0;
+							$st  = isset( $sch['start'] ) ? intval( $sch['start'] ) : null;
+							$en  = isset( $sch['end'] )   ? intval( $sch['end'] )   : null;
+							if ( $cid === intval( $active_id ) && ! is_null( $st ) && ! is_null( $en ) && $st <= $now_utc && $en > $now_utc ) {
+								$human_left = function_exists( 'human_time_diff' ) ? human_time_diff( $now_utc, $en ) : '';
+								if ( ! empty( $human_left ) ) {
+									$active_suffix = ' (' . sprintf( esc_html__( '%s left', 'foyer' ), $human_left ) . ')';
+								}
+								break;
+							}
+						}
+					}
+				}
+				$active_html = $active_id ? '<a href="' . esc_url( get_edit_post_link( $active_id ) ) . '">' . esc_html( get_the_title( $active_id ) ) . '</a>' . $active_suffix : esc_html__( 'None', 'foyer' );
+				$default_html = $default_id ? '<a href="' . esc_url( get_edit_post_link( $default_id ) ) . '">' . esc_html( get_the_title( $default_id ) ) . '</a>' : esc_html__( 'None', 'foyer' );
+
+				echo '<div class="foyer-display-card">';
+					echo '<div class="foyer-display-card__preview">' . self::get_display_preview_html( $disp->ID, array( 'ratio' => '16x9' ) ) . '</div>';
+					echo '<div class="foyer-display-card__body">';
+						echo '<div class="foyer-display-card__title"><a href="' . esc_url( get_edit_post_link( $disp->ID ) ) . '">' . esc_html( get_the_title( $disp->ID ) ) . '</a></div>';
+						echo '<p class="foyer-display-card__meta">' . esc_html__( 'Active channel', 'foyer' ) . ': ' . $active_html . '</p>';
+						echo '<p class="foyer-display-card__meta">' . esc_html__( 'Default channel', 'foyer' ) . ': ' . $default_html . '</p>';
+						echo '<div class="foyer-display-card__actions">'
+							. '<a class="button button-small" href="' . esc_url( get_edit_post_link( $disp->ID ) ) . '">' . esc_html__( 'Edit', 'foyer' ) . '</a>'
+							. '<a class="button button-small" target="_blank" href="' . esc_url( add_query_arg( 'foyer-preview', 1, get_permalink( $disp->ID ) ) ) . '">' . esc_html__( 'Preview', 'foyer' ) . '</a>'
+						. '</div>';
+					echo '</div>';
+				echo '</div>';
+			}
+		}
+		echo '</div></div>';
+
+		// Script to scale iframes to the card width while keeping 16:9 or 9:16 aspect
+		$script = <<<'JS'
+<script>(function($){function placeHeaderAndSearch(){var $wrap=$(".wrap");if(!$wrap.length)return;var $slot=$("#foyer-displays-search-slot");var $grid=$("#foyer-displays-grid-wrap");var $after=$wrap.find(".wp-header-end").first();if(!$after.length){$after=$wrap.find("h1.wp-heading-inline, h1").first();}if($after.length){$slot.insertAfter($after);$grid.insertAfter($slot);} else {$grid.before($slot);} } function adoptSearchBox(){var $wrap=$(".wrap");var $slot=$("#foyer-displays-search-slot");if(!$wrap.length||!$slot.length)return;var $sb=$wrap.find(".tablenav.top .search-box").first();if($sb.length){var $clone=$sb.clone(true,true);$clone.addClass("foyer-grid-search");$slot.empty().append($clone);$sb.hide();} } function getQueryParam(name){var m=new RegExp("[?&]"+name+"=([^&]*)").exec(window.location.search);return m?decodeURIComponent(m[1].replace(/\+/g,' ')):'';} function applyGridSearch(q){q=(q||'').toLowerCase();var $cards=$(".foyer-display-grid .foyer-display-card");if(!$cards.length)return;$cards.each(function(){var $c=$(this);var t=$c.find('.foyer-display-card__title').text().toLowerCase();var show=(!q||t.indexOf(q)!==-1);$c.toggle(show);});} function bindSearchLive(){var $slot=$("#foyer-displays-search-slot");var $input=$slot.find("input[name='s']").first();if(!$input.length)return;$input.on('input',function(){applyGridSearch($(this).val());});} function scalePreviews(){ $(".foyer-display-grid .preview-viewport").each(function(){ var $v=$(this); var fw=parseInt($v.attr("data-fw"),10)||1920; var fh=parseInt($v.attr("data-fh"),10)||1080; var w=$v.width(); if(!w){return;} var s=w/fw; var h=Math.round(fh*s); $v.closest(".foyer_card_preview_iframe_container").css({height:h+"px"}); var $if=$v.find("iframe"); $if.css({width:fw+"px",height:fh+"px",transform:"scale("+s+")"}); }); } $(function(){ placeHeaderAndSearch(); adoptSearchBox(); bindSearchLive(); });
+$(window).on("load", function(){ placeHeaderAndSearch(); adoptSearchBox(); scalePreviews(); var q=getQueryParam('s'); if(q){var $slot=$("#foyer-displays-search-slot"); var $input=$slot.find("input[name='s']").first(); if($input.length){$input.val(q);} applyGridSearch(q);} bindSearchLive(); }); $(window).on("resize", function(){ clearTimeout(window.__foyerGridT||0); window.__foyerGridT=setTimeout(scalePreviews,120); }); })(jQuery);</script>
+JS;
+		echo $script;
+	}
+
+	/**
+	 * Helper: compact display preview iframe (front-end view with ?foyer-preview=1), ratio 16:9 or 9:16.
+	 */
+	static function get_display_preview_html( $display_id, $args = array() ) {
+		$display_id = intval( $display_id );
+		if ( empty( $display_id ) ) { return ''; }
+		$defaults = array( 'ratio' => '16x9' );
+		$args = wp_parse_args( $args, $defaults );
+		$is_wide = ( '16x9' === $args['ratio'] );
+		$fw = $is_wide ? 1920 : 1080; // native frame width
+		$fh = $is_wide ? 1080 : 1920; // native frame height
+		$src = add_query_arg( 'foyer-preview', 1, get_permalink( $display_id ) );
+		ob_start();
+		?>
+		<div class="foyer_card_preview_iframe_container">
+			<div class="preview-viewport" data-fw="<?php echo esc_attr( $fw ); ?>" data-fh="<?php echo esc_attr( $fh ); ?>">
+				<iframe src="<?php echo esc_url( $src ); ?>" width="<?php echo esc_attr( $fw ); ?>" height="<?php echo esc_attr( $fh ); ?>" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+			</div>
+		</div>
+		<?php
+		return ob_get_clean();
+	}
+
+	/**
 	 * Localizes the JavaScript for the display admin area.
 	 *
 	 * @since	1.0.0
@@ -1105,6 +1222,9 @@ class Foyer_Admin_Display {
         // Security nonce for display admin AJAX
         $ajax_sec = array( 'nonce' => wp_create_nonce( 'foyer_display_ajax_nonce' ) );
         wp_localize_script( Foyer::get_plugin_name() . '-admin', 'foyer_display_ajax', $ajax_sec );
+
+        // Hook grid renderer on Displays list screen (keeps the table below)
+        add_action( 'admin_notices', array( __CLASS__, 'render_displays_grid' ), 5 );
     }
 
 	/**
