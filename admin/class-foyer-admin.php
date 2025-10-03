@@ -32,6 +32,9 @@ class Foyer_Admin {
 		add_action( 'add_meta_boxes', array( 'Foyer_Admin_Schedule', 'add_meta_boxes' ) );
 		add_action( 'save_post_foyer_schedule', array( 'Foyer_Admin_Schedule', 'save_schedule' ), 10, 2 );
 		add_action( 'wp_ajax_foyer_schedule_preview', array( 'Foyer_Admin_Schedule', 'ajax_preview' ) );
+		// List table columns for Schedules
+		add_filter( 'manage_edit-foyer_schedule_columns', array( 'Foyer_Admin_Schedule', 'add_list_columns' ) );
+		add_action( 'manage_foyer_schedule_posts_custom_column', array( 'Foyer_Admin_Schedule', 'render_list_columns' ), 10, 2 );
 		add_action( 'admin_menu', array( 'Foyer_Admin_Settings', 'add_menu' ), 11 );
 		add_action( 'admin_post_foyer_save_scheduler', array( 'Foyer_Admin_Scheduler', 'handle_post' ) );
 		add_action( 'admin_post_foyer_apply_scheduler_template', array( 'Foyer_Admin_Scheduler', 'handle_apply_template' ) );
@@ -112,15 +115,7 @@ class Foyer_Admin {
 			'dashicons-welcome-view-site',
 			31
 		);
-		// Ensure a direct submenu entry to the central Schedules CPT exists
-		add_submenu_page(
-			'foyer',
-			_x( 'Schedules', 'schedule cpt', 'foyer' ),
-			_x( 'Schedules', 'schedule cpt', 'foyer' ),
-			'edit_posts',
-			'edit.php?post_type=foyer_schedule'
-		);
-	}
+			}
 
 	/**
 	 * Enqueues the JavaScript for the admin area.

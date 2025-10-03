@@ -95,6 +95,17 @@ class Foyer_Admin_Schedule {
         $dtstart_local = get_post_meta( $post->ID, 'foyer_schedule_dtstart_local', true );
         $duration = intval( get_post_meta( $post->ID, 'foyer_schedule_duration', true ) );
         if ( $duration <= 0 ) { $duration = HOUR_IN_SECONDS; }
+        // Suggest end (local) from dtstart_local + duration
+        $end_local_calc = '';
+        if ( is_string( $dtstart_local ) && '' !== $dtstart_local ) {
+            try {
+                $tzobj = new DateTimeZone( $tz );
+                $start_obj = DateTimeImmutable::createFromFormat( 'Y-m-d H:i:s', str_replace( 'T', ' ', $dtstart_local ), $tzobj );
+                if ( $start_obj ) {
+                    $end_local_calc = $start_obj->modify( '+' . intval( $duration ) . ' seconds' )->format( 'Y-m-d H:i:s' );
+                }
+            } catch ( Exception $e ) {}
+        }
         $rrule = get_post_meta( $post->ID, 'foyer_schedule_rrule', true );
         ?>
         <fieldset>
@@ -127,8 +138,8 @@ class Foyer_Admin_Schedule {
                     <td><input type="text" id="foyer_schedule_dtstart_local" name="foyer_schedule_dtstart_local" class="regular-text" value="<?php echo esc_attr( $dtstart_local ); ?>" placeholder="2025-01-01 09:00:00" /></td>
                 </tr>
                 <tr>
-                    <th><label for="foyer_schedule_duration"><?php echo esc_html__( 'Duration (seconds)', 'foyer' ); ?></label></th>
-                    <td><input type="number" min="1" id="foyer_schedule_duration" name="foyer_schedule_duration" value="<?php echo esc_attr( $duration ); ?>" /></td>
+                    <th><label for="foyer_schedule_end_local"><?php echo esc_html__( 'End (local)', 'foyer' ); ?></label></th>
+                    <td><input type="text" id="foyer_schedule_end_local" name="foyer_schedule_end_local" class="regular-text" value="<?php echo esc_attr( $end_local_calc ); ?>" placeholder="2025-01-01 10:00:00" /></td>
                 </tr>
                 <tr>
                     <th><label for="foyer_schedule_rrule"><?php echo esc_html__( 'RRULE', 'foyer' ); ?></label></th>
@@ -445,8 +456,23 @@ class Foyer_Admin_Schedule {
         } else {
             $out['tz'] = isset( $src['foyer_schedule_tz'] ) ? sanitize_text_field( $src['foyer_schedule_tz'] ) : wp_timezone_string();
             $out['dtstart_local'] = isset( $src['foyer_schedule_dtstart_local'] ) ? trim( $src['foyer_schedule_dtstart_local'] ) : '';
-            $dur = isset( $src['foyer_schedule_duration'] ) ? intval( $src['foyer_schedule_duration'] ) : HOUR_IN_SECONDS;
-            $out['duration'] = max( 1, $dur );
+            // Compute duration from end (local) - start (local)
+            $end_local_in = isset( $src['foyer_schedule_end_local'] ) ? trim( $src['foyer_schedule_end_local'] ) : '';
+            $out['duration'] = HOUR_IN_SECONDS;
+            try {
+                $tz = new DateTimeZone( $out['tz'] );
+                if ( '' !== $out['dtstart_local'] && '' !== $end_local_in ) {
+                    $start_obj = DateTimeImmutable::createFromFormat( 'Y-m-d H:i:s', str_replace('T',' ', $out['dtstart_local'] ), $tz );
+                    if ( false === $start_obj ) { $start_obj = new DateTimeImmutable( $out['dtstart_local'], $tz ); }
+                    $end_obj = DateTimeImmutable::createFromFormat( 'Y-m-d H:i:s', str_replace('T',' ', $end_local_in ), $tz );
+                    if ( false === $end_obj ) { $end_obj = new DateTimeImmutable( $end_local_in, $tz ); }
+                    if ( $start_obj && $end_obj ) {
+                        $dur = $end_obj->getTimestamp() - $start_obj->getTimestamp();
+                        if ( $dur <= 0 ) { $dur += DAY_IN_SECONDS; }
+                        $out['duration'] = max( 1, intval( $dur ) );
+                    }
+                }
+            } catch ( Exception $e ) {}
             // Prefer manual RRULE if provided; otherwise build from builder fields
             $manual_rrule = isset( $src['foyer_schedule_rrule'] ) ? strtoupper( trim( $src['foyer_schedule_rrule'] ) ) : '';
             if ( $manual_rrule ) {
@@ -540,6 +566,65 @@ class Foyer_Admin_Schedule {
                 default: $class .= ' notice-info'; break;
             }
             echo '<div class="' . esc_attr( $class ) . '"><p>' . esc_html( $n['message'] ) . '</p></div>';
+        }
+    }
+
+    // List table: add columns for the Schedules CPT
+    public static function add_list_columns( $cols ) {
+        $new = array();
+        $new['cb'] = isset( $cols['cb'] ) ? $cols['cb'] : '<input type="checkbox" />';
+        $new['title'] = __( 'Title', 'foyer' );
+        $new['foyer_sched_channel'] = __( 'Channel', 'foyer' );
+        $new['foyer_sched_displays'] = __( 'Displays', 'foyer' );
+        $new['foyer_sched_mode'] = __( 'Mode', 'foyer' );
+        $new['foyer_sched_next'] = __( 'Next occurrence', 'foyer' );
+        if ( isset( $cols['date'] ) ) { $new['date'] = $cols['date']; }
+        return $new;
+    }
+
+    public static function render_list_columns( $column, $post_id ) {
+        switch ( $column ) {
+            case 'foyer_sched_channel':
+                $cid = intval( get_post_meta( $post_id, 'foyer_schedule_channel', true ) );
+                echo $cid ? esc_html( get_the_title( $cid ) ) : '—';
+                break;
+            case 'foyer_sched_displays':
+                $d = get_post_meta( $post_id, 'foyer_schedule_displays', true );
+                if ( ! is_array( $d ) ) { $d = array(); }
+                $links = array();
+                foreach ( $d as $did ) {
+                    $did = intval( $did );
+                    $title = get_the_title( $did );
+                    if ( ! is_string( $title ) || '' === $title ) { continue; }
+                    $edit_url = get_edit_post_link( $did );
+                    if ( $edit_url ) {
+                        $links[] = '<a href="' . esc_url( $edit_url ) . '">' . esc_html( $title ) . '</a>';
+                    } else {
+                        $links[] = esc_html( $title );
+                    }
+                }
+                if ( empty( $links ) ) {
+                    echo '—';
+                } else {
+                    echo wp_kses_post( implode( ', ', $links ) );
+                }
+                break;
+            case 'foyer_sched_mode':
+                $m = get_post_meta( $post_id, 'foyer_schedule_mode', true );
+                if ( ! $m ) { $m = ''; }
+                echo $m ? esc_html( ucfirst( $m ) ) : '—';
+                break;
+            case 'foyer_sched_next':
+                $meta = Foyer_Schedules::read_meta( $post_id );
+                $now = current_time( 'timestamp', true );
+                $occ = Foyer_Schedule_Engine::expand_occurrences( $meta, $now, $now + 365 * DAY_IN_SECONDS );
+                if ( ! empty( $occ ) ) {
+                    $first = reset( $occ );
+                    echo esc_html( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), intval( $first['start_utc'] ), wp_timezone() ) );
+                } else {
+                    echo '—';
+                }
+                break;
         }
     }
 }
