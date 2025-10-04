@@ -58,6 +58,10 @@
 #foyerSchedulesCalendar .ec .ec-event:hover {
   filter: brightness(0.98);
 }
+/* In month view keep swatches compact without extra gap */
+#foyerSchedulesCalendar.foyer-month-view .ec .foyer-ev-head {
+  margin-bottom: 0;
+}
 
 /* Display selector styling */
 #foyer-cal-sidebar .foyer-display-item {

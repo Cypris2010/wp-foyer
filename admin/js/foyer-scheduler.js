@@ -158,6 +158,20 @@
               sw.appendChild(s);
             });
             head.appendChild(sw);
+            // Clicking swatches: ensure all displays of this event are selected in the sidebar
+            sw.addEventListener('click', function(e){
+              try {
+                e.preventDefault();
+                e.stopPropagation();
+                var ids = Array.isArray(xp.display_ids) ? xp.display_ids : (Array.isArray(xp.displays) ? xp.displays.map(function(d){ return d && d.id; }) : []);
+                ids.forEach(function(id){
+                  var cb = document.querySelector('#foyerCalDisplays .foyerCalDisplay[value="'+id+'"]');
+                  if (cb) { cb.checked = true; }
+                });
+                if (typeof updateDisplaySelectionStyles === 'function') { updateDisplaySelectionStyles(); }
+                if (typeof scheduleRefetch === 'function') { scheduleRefetch('display-change'); }
+              } catch(err){}
+            }, false);
             var anchor = timeNode || titleNode;
             if (anchor && anchor.parentNode) {
               anchor.parentNode.insertBefore(head, anchor);
