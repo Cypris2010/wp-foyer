@@ -1,0 +1,45 @@
+/* Scheduler calendar layout and sidebar styles */
+
+#foyerSchedulesCalendar.foyer-month-view .ec .ec-event,
+#foyerSchedulesCalendar.foyer-month-view .ec .ec-event .ec-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#foyerSchedulesCalendar.foyer-month-view .ec .ec-event {
+  line-height: 20px;
+  max-height: 20px;
+}
+#foyerSchedulesCalendar.foyer-month-view .ec .ec-day {
+  min-height: 110px;
+  overflow: hidden;
+}
+#foyerSchedulesCalendar { box-sizing: border-box; }
+#foyerSchedulesCalendar > .ec { padding: 12px; }
+#foyerSchedulesCalendar .ec .ec-body { max-height: 640px; overflow-y: auto; }
+
+/* Display selector styling */
+#foyer-cal-sidebar .foyer-display-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  margin: 4px 0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease;
+  border: 1px solid transparent;
+}
+#foyer-cal-sidebar .foyer-display-item:hover { background: #f6f7f7; }
+#foyer-cal-sidebar .foyer-display-item.is-selected { border-color: rgba(0,0,0,.1); }
+#foyer-cal-sidebar .foyer-display-item .foyer-display-swatch { display:inline-block; width:12px; height:12px; border:1px solid #999; border-radius:2px; }
+#foyer-cal-sidebar .foyer-display-item .foyer-display-title { flex:1; }
+#foyer-cal-sidebar .foyer-display-item input.foyerCalDisplay { display:none; }
+
+/* Select-all swatch pattern */
+#foyer-cal-sidebar .foyer-select-all .foyer-display-swatch {
+  background: repeating-linear-gradient(45deg, #bbb, #bbb 4px, #dedede 4px, #dedede 8px);
+  border-color: #aaa;
+}
+#foyerCalSelectAll { display: none; }
+#foyerCalSelectAllRow { cursor: pointer; }

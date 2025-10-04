@@ -25,6 +25,7 @@ class Foyer_Admin_Scheduler {
         add_action( 'wp_ajax_foyer_schedules_create_event', array( __CLASS__, 'ajax_create_event' ) );
         add_action( 'wp_ajax_foyer_schedules_update_event', array( __CLASS__, 'ajax_update_event' ) );
         add_action( 'wp_ajax_foyer_schedules_delete_event', array( __CLASS__, 'ajax_delete_event' ) );
+        add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
     }
 
     /**
@@ -32,6 +33,66 @@ class Foyer_Admin_Scheduler {
      */
     private static function get_calendar_nonce() {
         return wp_create_nonce( 'foyer_calendar_nonce' );
+    }
+
+    /**
+     * Enqueue assets for the scheduler page (calendar UI, styles, and script).
+     *
+     * @param string $hook
+     * @return void
+     */
+    public static function enqueue_assets( $hook = '' ) {
+        $page = isset( $_GET['page'] ) ? sanitize_key( $_GET['page'] ) : '';
+        if ( 'foyer_scheduler' !== $page ) {
+            return;
+        }
+
+        // EventCalendar from CDN
+        wp_enqueue_style(
+            'foyer-event-calendar',
+            'https://cdn.jsdelivr.net/npm/@event-calendar/build@4.6.0/dist/event-calendar.min.css',
+            array(),
+            '4.6.0'
+        );
+        wp_enqueue_script(
+            'foyer-event-calendar',
+            'https://cdn.jsdelivr.net/npm/@event-calendar/build@4.6.0/dist/event-calendar.min.js',
+            array(),
+            '4.6.0',
+            true
+        );
+
+        $base_url  = plugin_dir_url( __FILE__ );
+        $base_path = plugin_dir_path( __FILE__ );
+        $css_rel = 'css/foyer-scheduler.css';
+        $js_rel  = 'js/foyer-scheduler.js';
+        $css_ver = file_exists( $base_path . $css_rel ) ? filemtime( $base_path . $css_rel ) : null;
+        $js_ver  = file_exists( $base_path . $js_rel ) ? filemtime( $base_path . $js_rel ) : null;
+
+        // Our scheduler assets
+        wp_enqueue_style( 'foyer-scheduler', $base_url . $css_rel, array(), $css_ver );
+        wp_register_script( 'foyer-scheduler', $base_url . $js_rel, array( 'foyer-event-calendar' ), $js_ver, true );
+
+        // Localized data for JS (nonce, AJAX url, site TZ, channels)
+        $channels = Foyer_Channels::get_posts();
+        $channels_data = array();
+        if ( ! empty( $channels ) ) {
+            foreach ( $channels as $ch ) {
+                $channels_data[] = array(
+                    'id'    => intval( $ch->ID ),
+                    'title' => get_the_title( $ch->ID ),
+                );
+            }
+        }
+
+        $data = array(
+            'ajaxurl' => admin_url( 'admin-ajax.php' ),
+            'nonce'   => self::get_calendar_nonce(),
+            'siteTz'  => wp_timezone_string(),
+            'channels'=> $channels_data,
+        );
+        wp_localize_script( 'foyer-scheduler', 'foyerSchedulerData', $data );
+        wp_enqueue_script( 'foyer-scheduler' );
     }
 
     /**
@@ -625,22 +686,26 @@ class Foyer_Admin_Scheduler {
         echo '<div id="foyer-cal-main" style="flex:1; min-height:640px;">';
         echo '<div id="foyerSchedulesCalendar" style="min-height:640px; border:1px solid #ccd0d4; background:#fff;"></div>';
         echo '<div id="foyerCalDebug" style="margin-top:8px; font-size:12px; color:#666;"></div>';
-        echo '</div>';
+                echo '</div>';
         echo '<div id="foyer-cal-sidebar" class="postbox" style="width:320px;">';
         echo '<h2 class="hndle" style="padding:8px 12px; margin:0;">' . esc_html__( 'Display-Selektor', 'foyer' ) . '</h2>';
         echo '<div class="inside" style="padding:8px 12px;">';
-        echo '<label style="display:block; margin-bottom:6px;"><input type="checkbox" id="foyerCalSelectAll" /> ' . esc_html__( 'Alle Displays auswählen', 'foyer' ) . '</label>';
+        echo '<div id="foyerCalSelectAllRow" class="foyer-display-item foyer-select-all" role="button" tabindex="0" data-color="hsl(210, 20%, 72%)">'
+    . '<input type="checkbox" id="foyerCalSelectAll" />'
+    . '<span class="foyer-display-swatch foyer-swatch-all"></span>'
+    . '<span class="foyer-display-title">' . esc_html__( 'Alle Displays auswählen', 'foyer' ) . '</span>'
+    . '</div>';
         if ( empty( $displays_data ) ) {
             echo '<em>' . esc_html__( 'No displays found.', 'foyer' ) . '</em>';
         } else {
-            echo '<div id="foyerCalDisplays" style="max-height:420px; overflow:auto; border:1px solid #e2e4e7; padding:6px; background:#fff;">';
+            echo '<div id="foyerCalDisplays" class="foyer-display-list" style="max-height:420px; overflow:auto; background:#fff;">';
             foreach ( $displays_data as $row ) {
                 $color = self::color_for_display( $row['id'] );
-                echo '<label style="display:flex; align-items:center; gap:8px; margin:4px 0;">'
+                echo '<div class="foyer-display-item" data-id="' . intval( $row['id'] ) . '" data-color="' . esc_attr( $color ) . '" role="button" tabindex="0">'
                     . '<input type="checkbox" class="foyerCalDisplay" value="' . intval( $row['id'] ) . '" />'
-                    . '<span style="display:inline-block; width:10px; height:10px; background:' . esc_attr( $color ) . '; border:1px solid #999;"></span>'
-                    . '<span>' . esc_html( $row['title'] ) . '</span>'
-                    . '</label>';
+                    . '<span class="foyer-display-swatch" style="background:' . esc_attr( $color ) . ';"></span>'
+                    . '<span class="foyer-display-title">' . esc_html( $row['title'] ) . '</span>'
+                    . '</div>';
             }
             echo '</div>';
         }
@@ -651,10 +716,8 @@ class Foyer_Admin_Scheduler {
         // Load EventCalendar (CDN) and bootstrap minimal fetch wiring; full CRUD follows in next step
         // We keep times strictly in Site-TZ by shifting render times
         ?>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@event-calendar/build@4.6.0/dist/event-calendar.min.css" />
-        <script src="https://cdn.jsdelivr.net/npm/@event-calendar/build@4.6.0/dist/event-calendar.min.js"></script>
-        <script>
-        (function(){
+                        <script>
+        (function(){ return;
             var ajaxurl = window.ajaxurl || '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>';
             var nonce = '<?php echo esc_js( $nonce ); ?>';
             var siteTz = '<?php echo esc_js( $site_tz ); ?>';
@@ -685,8 +748,87 @@ class Foyer_Admin_Scheduler {
                 return out;
             }
             var selAll = document.getElementById('foyerCalSelectAll');
-            if (selAll){ selAll.addEventListener('change', function(){ var c=this.checked; document.querySelectorAll('#foyerCalDisplays .foyerCalDisplay').forEach(function(i){ i.checked=c; }); refetch(); }); }
-            document.addEventListener('change', function(e){ if(e.target && e.target.classList && e.target.classList.contains('foyerCalDisplay')){ refetch(); } });
+            var selAllRow = document.getElementById('foyerCalSelectAllRow');
+            if (selAll){ selAll.addEventListener('change', function(){ var c=this.checked; document.querySelectorAll('#foyerCalDisplays .foyerCalDisplay').forEach(function(i){ i.checked=c; }); updateDisplaySelectionStyles(); scheduleRefetch('display-select-all'); }); }
+            document.addEventListener('change', function(e){ if(e.target && e.target.classList && e.target.classList.contains('foyerCalDisplay')){ updateDisplaySelectionStyles(); scheduleRefetch('display-change'); } });
+            var dispList = document.getElementById('foyerCalDisplays');
+            function makeLightColor(hsl){
+                try{
+                    var m = /^hsl\(\s*(\d{1,3})\s*,\s*([\d\.]+)%\s*,\s*([\d\.]+)%\s*\)$/i.exec(hsl);
+                    if(!m) return '';
+                    var h = parseInt(m[1],10), s = parseFloat(m[2]), l = parseFloat(m[3]);
+                    var l2 = Math.min(95, l + 22);
+                    return 'hsl('+h+','+s+'%,'+l2+'%)';
+                }catch(e){ return ''; }
+            }
+            function syncSelectAllFromItems(){
+                try{
+                    var boxes = document.querySelectorAll('#foyerCalDisplays .foyerCalDisplay');
+                    var all = boxes.length > 0 && Array.prototype.every.call(boxes, function(cb){ return cb.checked; });
+                    if (selAll) selAll.checked = all;
+                }catch(e){}
+            }
+            function updateDisplaySelectionStyles(){
+                var items = document.querySelectorAll('#foyerCalDisplays .foyer-display-item');
+                items.forEach(function(item){
+                    var cb = item.querySelector('.foyerCalDisplay');
+                    var base = item.getAttribute('data-color') || '';
+                    if (cb && cb.checked) {
+                        var light = makeLightColor(base) || base;
+                        item.style.backgroundColor = light;
+                        item.classList.add('is-selected');
+                        item.setAttribute('aria-pressed','true');
+                    } else {
+                        item.style.backgroundColor = '';
+                        item.classList.remove('is-selected');
+                        item.setAttribute('aria-pressed','false');
+                    }
+                });
+                if (typeof syncSelectAllFromItems === 'function') { syncSelectAllFromItems(); }
+                var selRow = document.getElementById('foyerCalSelectAllRow');
+                if (selRow && selAll){
+                    var base = selRow.getAttribute('data-color') || 'hsl(210, 20%, 85%)';
+                    if (selAll.checked){
+                        var light = makeLightColor(base) || base;
+                        selRow.style.backgroundColor = light;
+                        selRow.classList.add('is-selected');
+                        selRow.setAttribute('aria-pressed','true');
+                    } else {
+                        selRow.style.backgroundColor = '';
+                        selRow.classList.remove('is-selected');
+                        selRow.setAttribute('aria-pressed','false');
+                    }
+                }
+            }
+            if (dispList){
+                dispList.addEventListener('click', function(e){
+                    var item = e.target.closest('.foyer-display-item');
+                    if(!item || !dispList.contains(item)) return;
+                    var cb = item.querySelector('.foyerCalDisplay');
+                    if (cb){ cb.checked = !cb.checked; syncSelectAllFromItems(); updateDisplaySelectionStyles(); scheduleRefetch('display-change'); }
+                });
+                dispList.addEventListener('keydown', function(e){
+                    var item = e.target.closest('.foyer-display-item');
+                    if(!item || !dispList.contains(item)) return;
+                    if (e.key === ' ' || e.key === 'Enter'){
+                        e.preventDefault();
+                        var cb = item.querySelector('.foyerCalDisplay');
+                        if (cb){ cb.checked = !cb.checked; syncSelectAllFromItems(); updateDisplaySelectionStyles(); scheduleRefetch('display-change'); }
+                    }
+                });
+            }
+            if (selAllRow){
+                selAllRow.addEventListener('click', function(e){
+                    e.preventDefault();
+                    selAll.checked = !selAll.checked;
+                    document.querySelectorAll('#foyerCalDisplays .foyerCalDisplay').forEach(function(i){ i.checked = selAll.checked; });
+                    updateDisplaySelectionStyles();
+                    scheduleRefetch('display-select-all');
+                });
+                selAllRow.addEventListener('keydown', function(e){
+                    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); selAllRow.click(); }
+                });
+            }
 
             var calEl = document.getElementById('foyerSchedulesCalendar');
             var ec = null;
@@ -699,7 +841,15 @@ class Foyer_Admin_Scheduler {
                         date: new Date(),      // anchor current date
                         editable: true,
                         selectable: true,
+                        scrollTime: '07:00:00',
                         events: [],
+                        headerToolbar: { start: 'title', center: '', end: 'today prev,next dayGridMonth,timeGridWeek' },
+                        views: {
+                            dayGridMonth: { dayMaxEvents: 3, displayEventEnd: false },
+                            timeGridWeek: { slotDuration: '00:30:00', nowIndicator: true, allDaySlot: false }
+                        },
+                        datesSet: function(info){ try { applyMonthStyling(); scheduleRefetch('datesSet', info.start, info.end); scrollToCoreTime(); } catch(e){} },
+                        loading: function(isLoading){ try { var dbg=document.getElementById('foyerCalDebug'); if(dbg){ dbg.innerHTML = isLoading ? 'Loading…' : dbg.innerHTML; } } catch(e){} },
                         dateClick: handleDateClick,
                         select: handleSelect,
                         eventClick: handleEventClick,
@@ -708,10 +858,62 @@ class Foyer_Admin_Scheduler {
                         eventDidMount: function(info){ try{ console.log('[Scheduler] eventDidMount', info && info.event ? { id: info.event.id, title: info.event.title, start: info.event.start, end: info.event.end } : info); }catch(e){} },
                         eventAllUpdated: function(info){ try{ console.log('[Scheduler] eventAllUpdated', info && info.view ? info.view.type : info); }catch(e){} }
                     });
+                    applyMonthStyling();
+                    setTimeout(scrollToCoreTime, 60);
                 } catch(e){
                     calEl.innerHTML = '<div style="padding:12px;">'+ (e && e.message ? e.message : 'Calendar failed to initialize') +'</div>';
                 }
                 return ec;
+            }
+
+            function applyMonthStyling(){
+                try {
+                    var type = (ec && typeof ec.getView === 'function' && ec.getView()) ? ec.getView().type : '';
+                    if (!calEl) return;
+                    if (type === 'dayGridMonth') { calEl.classList.add('foyer-month-view'); }
+                    else { calEl.classList.remove('foyer-month-view'); }
+                } catch(e){}
+            }
+
+            // Fallback scroll-to-hour for time-grid views if library option is unsupported
+            function findCalendarScroller(){
+                try {
+                    // Prefer known class names first
+                    var known = calEl.querySelector('.ec-scroll-y') || calEl.querySelector('.ec-timegrid-scroller') || calEl.querySelector('.ec-scroller');
+                    if (known && known.scrollHeight > known.clientHeight) { return known; }
+                    // Heuristic: find first descendant with vertical overflow and significant scroll area
+                    var all = calEl.querySelectorAll('*');
+                    for (var i=0;i<all.length;i++){
+                        var el = all[i];
+                        var cs = window.getComputedStyle(el);
+                        if (!cs) continue;
+                        var oy = cs.overflowY;
+                        if ((oy === 'auto' || oy === 'scroll') && (el.scrollHeight - el.clientHeight) > 40){
+                            return el;
+                        }
+                    }
+                } catch(e){}
+                return null;
+            }
+            function scrollToHour(hour){
+                try {
+                    var sc = findCalendarScroller();
+                    if (!sc) return;
+                    var ratio = Math.max(0, Math.min(1, hour/24));
+                    var maxScroll = Math.max(0, sc.scrollHeight - sc.clientHeight);
+                    sc.scrollTop = Math.round(maxScroll * ratio);
+                } catch(e){}
+            }
+            function scrollToCoreTime(){
+                try {
+                    if (!ec || typeof ec.getView !== 'function') return;
+                    var v = ec.getView();
+                    var t = v && v.type ? v.type : '';
+                    if (t && t.indexOf('timeGrid') === 0){
+                        // allow layout to settle
+                        setTimeout(function(){ scrollToHour(7); }, 30);
+                    }
+                } catch(e){}
             }
 
             function toSiteLocalString(date){
@@ -911,76 +1113,97 @@ class Foyer_Admin_Scheduler {
                 if (typeof cal.setOptions === 'function') { cal.setOptions({ events: evs }); return; }
             }
 
-            function refetch(){
+            // View-range based fetching with debounce and caching
+            var lastFetch = { startIso: '', endIso: '', displaysKey: '', viewType: '' };
+            var refetchTimer = null;
+
+            function mapServerEvents(evs){
+                return (evs||[]).map(function(e){
+                    var s = parseIsoUtc(e.startDate), en = parseIsoUtc(e.endDate);
+                    var startD = shiftUtcToSite(s);
+                    var endD = shiftUtcToSite(en);
+                    var t = e.title || (e.extendedProps && e.extendedProps.title) || 'Schedule';
+                    return {
+                        id: e.id,
+                        title: t,
+                        start: startD,
+                        end: endD,
+                        startDate: startD,
+                        endDate: endD,
+                        name: t,
+                        text: t,
+                        allDay: false,
+                        color: e.backgroundColor || e.color || '',
+                        backgroundColor: e.backgroundColor || e.color || '',
+                        extendedProps: e.extendedProps || {}
+                    };
+                });
+            }
+
+            function getVisibleRangeFromView(){
+                if (!ec || typeof ec.getView !== 'function') return null;
+                var v = ec.getView();
+                return { start: v.activeStart, end: v.activeEnd, type: v.type };
+            }
+
+            function scheduleRefetch(trigger, startOpt, endOpt){
+                var vr = (startOpt && endOpt) ? { start: startOpt, end: endOpt } : getVisibleRangeFromView();
+                if (!vr || !vr.start || !vr.end) return;
                 var displays = getSelectedDisplays();
                 if (!displays.length){ setCalendarEvents([]); return; }
-                var now = new Date();
-                var rangeStart = new Date(now.getFullYear(), now.getMonth()-1, 1, 0, 0, 0);
-                var rangeEnd = new Date(now.getFullYear(), now.getMonth()+2, 0, 23, 59, 59);
+                var startIso = new Date(vr.start).toISOString();
+                var endIso   = new Date(vr.end).toISOString();
+                var viewType = (ec && typeof ec.getView === 'function' && ec.getView()) ? ec.getView().type : '';
+                var displaysKey = displays.slice().sort(function(a,b){return a-b;}).join(',');
+
+                // Force bypass of cache for CRUD/manual triggers
+                var force = (trigger === 'create' || trigger === 'update' || trigger === 'delete' || trigger === 'manual');
+                if (!force && lastFetch.startIso === startIso && lastFetch.endIso === endIso && lastFetch.displaysKey === displaysKey && lastFetch.viewType === viewType) {
+                    return; // no change
+                }
+
+                clearTimeout(refetchTimer);
+                refetchTimer = setTimeout(function(){ doRefetch(startIso, endIso, displays, viewType); }, 200);
+            }
+
+            function refetch(){ try { scheduleRefetch('manual'); } catch(e){} }
+
+            function doRefetch(startIso, endIso, displayIds, viewType){
+                lastFetch = { startIso: startIso, endIso: endIso, displaysKey: displayIds.slice().sort(function(a,b){return a-b;}).join(','), viewType: viewType };
                 var data = new FormData();
                 data.append('action', 'foyer_schedules_get_events');
                 data.append('nonce', nonce);
-                displays.forEach(function(id){ data.append('display_ids[]', String(id)); });
-                data.append('start', rangeStart.toISOString());
-                data.append('end', rangeEnd.toISOString());
+                displayIds.forEach(function(id){ data.append('display_ids[]', String(id)); });
+                data.append('start', startIso);
+                data.append('end', endIso);
                 fetch(ajaxurl, { method:'POST', credentials:'same-origin', body:data })
                     .then(function(r){ return r.json(); })
                     .then(function(resp){
                         try { console.log('[Scheduler] AJAX get_events resp:', resp); } catch(e){}
                         if (!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message) || 'Fetch failed'); }
-                        var evs = (resp.data && resp.data.events) ? resp.data.events : [];
-                        // Shift to site TZ for rendering (robust mapping across libs)
-                        var mapped = evs.map(function(e){
-                            var s = parseIsoUtc(e.startDate), en = parseIsoUtc(e.endDate);
-                            var startD = shiftUtcToSite(s);
-                            var endD = shiftUtcToSite(en);
-                            var t = e.title || (e.extendedProps && e.extendedProps.title) || 'Schedule';
-                            return {
-                                id: e.id,
-                                title: t,
-                                // Dates für maximale Kompatibilität
-                                start: startD,
-                                end: endD,
-                                startDate: startD,
-                                endDate: endD,
-                                name: t,
-                                text: t,
-                                allDay: false,
-                                color: e.backgroundColor || e.color || '',
-                                backgroundColor: e.backgroundColor || e.color || '',
-                                extendedProps: e.extendedProps || {}
-                            };
-                        });
+                        var mapped = mapServerEvents(resp.data && resp.data.events ? resp.data.events : []);
                         try { console.log('[Scheduler] Mapped events:', mapped.slice(0,5)); } catch(e){}
-                        setCalendarEvents(mapped);
-                        // Navigiere zum ersten Event, um Sichtbarkeit sicherzustellen
-                        try {
-                            var calInst = ensureCalendar();
-                            if (mapped.length) {
-                                var firstDate = mapped[0].startDate || mapped[0].start || new Date();
-                                if (typeof calInst.setOption === 'function') {
-                                    calInst.setOption('date', firstDate);
-                                }
-                            }
-                        } catch (e) {}
-                        // Nach kurzem Delay gerenderte DOM-Elemente zählen
+                        ec.setOption('events', mapped);
                         setTimeout(function(){
                             var calNode = document.getElementById('foyerSchedulesCalendar');
                             var n1 = calNode ? calNode.querySelectorAll('.ec-event').length : 0;
                             var n2 = calNode ? calNode.querySelectorAll('.ec .ec-event').length : 0;
                             var n = Math.max(n1, n2);
                             try { console.log('[Scheduler] Rendered .ec-event count:', { direct: n1, nested: n2, used: n }); } catch(e){}
+                            scrollToCoreTime();
                             var dbg = document.getElementById('foyerCalDebug');
                             if (dbg) {
                                 var first = mapped[0] ? { id: mapped[0].id, title: mapped[0].title, start: mapped[0].start, end: mapped[0].end } : null;
                                 dbg.innerHTML = 'Events: ' + mapped.length + '<br/>First: ' + (first ? JSON.stringify(first) : '-') + '<br/>Rendered: ' + n;
                             }
                         }, 300);
-                    }).catch(function(err){ var dbg=document.getElementById('foyerCalDebug'); if(dbg){ dbg.textContent = 'Error: ' + (err && err.message ? err.message : String(err)); } });
+                    })
+                    .catch(function(err){ var dbg=document.getElementById('foyerCalDebug'); if(dbg){ dbg.textContent = 'Error: ' + (err && err.message ? err.message : String(err)); } });
             }
 
             ensureCalendar();
-            refetch();
+            updateDisplaySelectionStyles();
+            scheduleRefetch('init');
         })();
         </script>
         <?php
