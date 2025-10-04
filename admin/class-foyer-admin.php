@@ -45,6 +45,11 @@ class Foyer_Admin {
 		add_action( 'admin_enqueue_scripts', array( 'Foyer_Admin_Display', 'localize_scripts' ) );
 		add_action( 'admin_notices', array( 'Foyer_Admin_Display', 'render_notices' ) );
 		add_action( 'wp_ajax_foyer_validate_schedule', array( 'Foyer_Admin_Display', 'validate_schedule_over_ajax' ) );
+		// Calendar scheduler AJAX endpoints
+		add_action( 'wp_ajax_foyer_schedules_get_events', array( 'Foyer_Admin_Scheduler', 'ajax_get_events' ) );
+		add_action( 'wp_ajax_foyer_schedules_create_event', array( 'Foyer_Admin_Scheduler', 'ajax_create_event' ) );
+		add_action( 'wp_ajax_foyer_schedules_update_event', array( 'Foyer_Admin_Scheduler', 'ajax_update_event' ) );
+		add_action( 'wp_ajax_foyer_schedules_delete_event', array( 'Foyer_Admin_Scheduler', 'ajax_delete_event' ) );
 		add_action( 'add_meta_boxes', array( 'Foyer_Admin_Display', 'add_channel_editor_meta_box' ) );
 			// Only use the new multi-entry scheduler list UI
 			add_action( 'add_meta_boxes', array( 'Foyer_Admin_Display', 'add_channel_scheduler_list_meta_box' ) );

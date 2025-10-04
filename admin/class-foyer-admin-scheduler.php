@@ -19,6 +19,320 @@ class Foyer_Admin_Scheduler {
             'foyer_scheduler',
             array( __CLASS__, 'render_page' )
         );
+
+        // Register AJAX endpoints for calendar-based schedules
+        add_action( 'wp_ajax_foyer_schedules_get_events', array( __CLASS__, 'ajax_get_events' ) );
+        add_action( 'wp_ajax_foyer_schedules_create_event', array( __CLASS__, 'ajax_create_event' ) );
+        add_action( 'wp_ajax_foyer_schedules_update_event', array( __CLASS__, 'ajax_update_event' ) );
+        add_action( 'wp_ajax_foyer_schedules_delete_event', array( __CLASS__, 'ajax_delete_event' ) );
+    }
+
+    /**
+     * Nonce used by the calendar AJAX endpoints.
+     */
+    private static function get_calendar_nonce() {
+        return wp_create_nonce( 'foyer_calendar_nonce' );
+    }
+
+    /**
+     * Deterministic color per display for calendar event backgrounds.
+     */
+    private static function color_for_display( $display_id ) {
+        $display_id = intval( $display_id );
+        $h = ( $display_id * 57 ) % 360; // pseudo-random hue
+        return sprintf( 'hsl(%d, 60%%, 70%%)', $h );
+    }
+
+    private static function parse_iso_to_ts( $value ) {
+        $value = is_string( $value ) ? trim( $value ) : '';
+        if ( '' === $value ) { return null; }
+        try {
+            $dt = new DateTimeImmutable( $value );
+            return $dt->getTimestamp();
+        } catch ( Exception $e ) { return null; }
+    }
+
+    /**
+     * Returns events for the selected displays and time window.
+     * Output format tailored for calendar consumption.
+     */
+    public static function ajax_get_events() {
+        check_ajax_referer( 'foyer_calendar_nonce', 'nonce', true );
+        if ( ! current_user_can( 'edit_posts' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Not allowed', 'foyer' ) ), 403 );
+        }
+
+        $display_ids = isset( $_POST['display_ids'] ) ? (array) $_POST['display_ids'] : array();
+        $display_ids = array_values( array_unique( array_map( 'intval', $display_ids ) ) );
+        $start_iso = isset( $_POST['start'] ) ? (string) $_POST['start'] : '';
+        $end_iso   = isset( $_POST['end'] )   ? (string) $_POST['end']   : '';
+        $start_ts = self::parse_iso_to_ts( $start_iso );
+        $end_ts   = self::parse_iso_to_ts( $end_iso );
+        if ( empty( $display_ids ) || is_null( $start_ts ) || is_null( $end_ts ) ) {
+            wp_send_json_success( array( 'events' => array() ) );
+        }
+
+        $events = array();
+        foreach ( $display_ids as $did ) {
+            // Find schedules that include this display
+            $posts = get_posts( array(
+                'post_type'      => 'foyer_schedule',
+                'post_status'    => 'publish',
+                'posts_per_page' => -1,
+                'meta_query'     => array(
+                    'relation' => 'OR',
+                    array(
+                        'key'     => 'foyer_schedule_displays',
+                        'value'   => 'i:' . $did . ';',
+                        'compare' => 'LIKE',
+                    ),
+                    array(
+                        'key'     => 'foyer_schedule_displays',
+                        'value'   => '"' . $did . '"',
+                        'compare' => 'LIKE',
+                    ),
+                ),
+            ) );
+
+            if ( empty( $posts ) ) { continue; }
+
+            foreach ( $posts as $p ) {
+                $meta = Foyer_Schedules::read_meta( $p->ID );
+                $occ  = Foyer_Schedule_Engine::expand_occurrences( $meta, $start_ts, $end_ts );
+                if ( empty( $occ ) ) { continue; }
+                foreach ( $occ as $o ) {
+                    $cid = isset( $o['channel'] ) && intval( $o['channel'] ) > 0 ? intval( $o['channel'] ) : intval( $meta['channel'] );
+                    $ctitle = $cid ? get_the_title( $cid ) : __( '(No channel)', 'foyer' );
+                    $dtitle = get_the_title( $did );
+                    $start_utc = intval( $o['start_utc'] );
+                    $end_utc   = intval( $o['end_utc'] );
+                    $occ_id    = isset( $o['occ_id'] ) ? (string) $o['occ_id'] : gmdate( 'Y-m-d\TH:i:s\Z', $start_utc );
+                    $events[] = array(
+                        'id' => $p->ID . '|' . $did . '|' . $occ_id,
+                        'title' => $ctitle . ( $dtitle ? ' (' . $dtitle . ')' : '' ),
+                        'startDate' => gmdate( 'Y-m-d\TH:i:s\Z', $start_utc ),
+                        'endDate'   => gmdate( 'Y-m-d\TH:i:s\Z', $end_utc ),
+                        'backgroundColor' => self::color_for_display( $did ),
+                        'extendedProps' => array(
+                            'schedule_post_id' => intval( $p->ID ),
+                            'display_id' => $did,
+                            'occ_id' => $occ_id,
+                            'channel_id' => $cid,
+                            'source' => isset( $o['source'] ) ? (string) $o['source'] : '',
+                            'tz' => isset( $meta['tz'] ) && $meta['tz'] ? (string) $meta['tz'] : wp_timezone_string(),
+                        ),
+                    );
+                }
+            }
+        }
+
+        wp_send_json_success( array( 'events' => $events ) );
+    }
+
+    public static function ajax_create_event() {
+        check_ajax_referer( 'foyer_calendar_nonce', 'nonce', true );
+        if ( ! current_user_can( 'edit_posts' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Not allowed', 'foyer' ) ), 403 );
+        }
+        $display_ids = isset( $_POST['display_ids'] ) ? array_map( 'intval', (array) $_POST['display_ids'] ) : array();
+        $channel_id  = isset( $_POST['channel_id'] ) ? intval( $_POST['channel_id'] ) : 0;
+        $start_local = isset( $_POST['start_local'] ) ? trim( (string) $_POST['start_local'] ) : '';
+        $end_local   = isset( $_POST['end_local'] ) ? trim( (string) $_POST['end_local'] ) : '';
+        $tzid        = isset( $_POST['tz'] ) ? (string) $_POST['tz'] : wp_timezone_string();
+        $display_ids = array_values( array_unique( array_filter( $display_ids ) ) );
+        if ( empty( $display_ids ) ) {
+            wp_send_json_error( array( 'message' => __( 'No displays selected.', 'foyer' ) ) );
+        }
+        if ( $channel_id <= 0 ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid channel.', 'foyer' ) ) );
+        }
+        if ( '' === $start_local ) {
+            wp_send_json_error( array( 'message' => __( 'Start time required.', 'foyer' ) ) );
+        }
+        try {
+            $tz = new DateTimeZone( $tzid );
+        } catch ( Exception $e ) {
+            $tz = wp_timezone();
+            $tzid = wp_timezone_string();
+        }
+        $start_dt = DateTimeImmutable::createFromFormat( 'Y-m-d H:i:s', str_replace('T',' ', $start_local ), $tz );
+        if ( false === $start_dt ) { try { $start_dt = new DateTimeImmutable( $start_local, $tz ); } catch ( Exception $e ) { $start_dt = false; } }
+        $end_dt   = DateTimeImmutable::createFromFormat( 'Y-m-d H:i:s', str_replace('T',' ', $end_local ), $tz );
+        if ( false === $end_dt ) { try { $end_dt = new DateTimeImmutable( $end_local, $tz ); } catch ( Exception $e ) { $end_dt = false; } }
+        if ( ! ( $start_dt instanceof DateTimeImmutable ) ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid start time.', 'foyer' ) ) );
+        }
+        if ( ! ( $end_dt instanceof DateTimeImmutable ) ) {
+            $end_dt = $start_dt->modify( '+1 hour' );
+        }
+        $s = $start_dt->setTimezone( new DateTimeZone('UTC') )->getTimestamp();
+        $e = $end_dt->setTimezone( new DateTimeZone('UTC') )->getTimestamp();
+        if ( $e <= $s ) { $e = $s + HOUR_IN_SECONDS; }
+
+        // Conflict check per display
+        $winStart = $s - DAY_IN_SECONDS; $winEnd = $e + DAY_IN_SECONDS;
+        foreach ( $display_ids as $did ) {
+            $others = get_posts( array(
+                'post_type'      => 'foyer_schedule',
+                'post_status'    => 'publish',
+                'posts_per_page' => -1,
+                'meta_query'     => array(
+                    'relation' => 'OR',
+                    array( 'key' => 'foyer_schedule_displays', 'value' => 'i:' . intval($did) . ';', 'compare' => 'LIKE' ),
+                    array( 'key' => 'foyer_schedule_displays', 'value' => '"' . intval($did) . '"', 'compare' => 'LIKE' ),
+                ),
+            ) );
+            foreach ( $others as $op ) {
+                $m = Foyer_Schedules::read_meta( $op->ID );
+                $o_occ = Foyer_Schedule_Engine::expand_occurrences( $m, $winStart, $winEnd );
+                foreach ( $o_occ as $b ) {
+                    $bs = intval( $b['start_utc'] ); $be = intval( $b['end_utc'] );
+                    if ( $be > $s && $e > $bs ) {
+                        $msg = sprintf( __( 'Display "%1$s" conflicts with schedule "%2$s".', 'foyer' ), get_the_title( $did ), get_the_title( $op->ID ) );
+                        wp_send_json_error( array( 'message' => $msg ) );
+                    }
+                }
+            }
+        }
+
+        // Create new foyer_schedule post
+        $title = sprintf( 'Schedule: %s (%s)', get_the_title( $channel_id ), wp_date( 'Y-m-d H:i', $s, wp_timezone() ) );
+        $pid = wp_insert_post( array( 'post_title' => $title, 'post_type' => 'foyer_schedule', 'post_status' => 'publish' ) );
+        if ( is_wp_error( $pid ) || ! $pid ) {
+            wp_send_json_error( array( 'message' => __( 'Could not create schedule.', 'foyer' ) ) );
+        }
+        update_post_meta( $pid, 'foyer_schedule_channel', $channel_id );
+        update_post_meta( $pid, 'foyer_schedule_displays', $display_ids );
+        update_post_meta( $pid, 'foyer_schedule_tz', $tzid );
+        update_post_meta( $pid, 'foyer_schedule_start_utc', $s );
+        update_post_meta( $pid, 'foyer_schedule_end_utc', $e );
+        update_post_meta( $pid, 'foyer_schedule_mode', 'single' );
+
+        wp_send_json_success( array( 'ok' => true, 'post_id' => intval( $pid ) ) );
+    }
+
+    public static function ajax_update_event() {
+        check_ajax_referer( 'foyer_calendar_nonce', 'nonce', true );
+        if ( ! current_user_can( 'edit_posts' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Not allowed', 'foyer' ) ), 403 );
+        }
+        $pid = isset( $_POST['schedule_post_id'] ) ? intval( $_POST['schedule_post_id'] ) : 0;
+        $did = isset( $_POST['display_id'] ) ? intval( $_POST['display_id'] ) : 0;
+        $occ_id = isset( $_POST['occ_id'] ) ? (string) $_POST['occ_id'] : '';
+        $new_start_local = isset( $_POST['new_start_local'] ) ? trim( (string) $_POST['new_start_local'] ) : '';
+        $new_end_local   = isset( $_POST['new_end_local'] ) ? trim( (string) $_POST['new_end_local'] ) : '';
+        $apply_to = isset( $_POST['apply_to'] ) ? (string) $_POST['apply_to'] : 'occurrence';
+        $channel_id = isset( $_POST['channel_id'] ) ? intval( $_POST['channel_id'] ) : 0;
+
+        if ( $pid <= 0 || $did <= 0 || '' === $occ_id ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid payload', 'foyer' ) ), 400 );
+        }
+        $meta = Foyer_Schedules::read_meta( $pid );
+        $tzid = isset( $meta['tz'] ) && $meta['tz'] ? (string) $meta['tz'] : wp_timezone_string();
+        try { $tz = new DateTimeZone( $tzid ); } catch ( Exception $e ) { $tz = wp_timezone(); $tzid = wp_timezone_string(); }
+
+        // Parse local -> UTC
+        $start_dt = DateTimeImmutable::createFromFormat( 'Y-m-d H:i:s', str_replace('T',' ', $new_start_local ), $tz );
+        if ( false === $start_dt ) { try { $start_dt = new DateTimeImmutable( $new_start_local, $tz ); } catch ( Exception $e ) { $start_dt = false; } }
+        $end_dt   = DateTimeImmutable::createFromFormat( 'Y-m-d H:i:s', str_replace('T',' ', $new_end_local ), $tz );
+        if ( false === $end_dt ) { try { $end_dt = new DateTimeImmutable( $new_end_local, $tz ); } catch ( Exception $e ) { $end_dt = false; } }
+        if ( ! ( $start_dt instanceof DateTimeImmutable ) ) { wp_send_json_error( array( 'message' => __( 'Invalid start time.', 'foyer' ) ) ); }
+        if ( ! ( $end_dt instanceof DateTimeImmutable ) ) { $end_dt = $start_dt->modify( '+1 hour' ); }
+        $s = $start_dt->setTimezone( new DateTimeZone('UTC') )->getTimestamp();
+        $e = $end_dt->setTimezone( new DateTimeZone('UTC') )->getTimestamp();
+        if ( $e <= $s ) { $e = $s + HOUR_IN_SECONDS; }
+
+        // Conflict check on target display, excluding this schedule post
+        $winStart = $s - DAY_IN_SECONDS; $winEnd = $e + DAY_IN_SECONDS;
+        $others = get_posts( array(
+            'post_type'      => 'foyer_schedule',
+            'post_status'    => 'publish',
+            'posts_per_page' => -1,
+            'post__not_in'   => array( $pid ),
+            'meta_query'     => array(
+                'relation' => 'OR',
+                array( 'key' => 'foyer_schedule_displays', 'value' => 'i:' . intval($did) . ';', 'compare' => 'LIKE' ),
+                array( 'key' => 'foyer_schedule_displays', 'value' => '"' . intval($did) . '"', 'compare' => 'LIKE' ),
+            ),
+        ) );
+        foreach ( $others as $op ) {
+            $m = Foyer_Schedules::read_meta( $op->ID );
+            $o_occ = Foyer_Schedule_Engine::expand_occurrences( $m, $winStart, $winEnd );
+            foreach ( $o_occ as $b ) {
+                $bs = intval( $b['start_utc'] ); $be = intval( $b['end_utc'] );
+                if ( $be > $s && $e > $bs ) {
+                    $msg = sprintf( __( 'Display "%1$s" conflicts with schedule "%2$s".', 'foyer' ), get_the_title( $did ), get_the_title( $op->ID ) );
+                    wp_send_json_error( array( 'message' => $msg ) );
+                }
+            }
+        }
+
+        // Determine single or recurring
+        $is_single = ( ! empty( $meta['start_utc'] ) && ! empty( $meta['end_utc'] ) );
+        $has_recur = ( ! empty( $meta['rrule'] ) && ! empty( $meta['dtstart_local'] ) );
+
+        if ( $is_single || ! $has_recur ) {
+            // Update single occurrence schedule
+            update_post_meta( $pid, 'foyer_schedule_start_utc', $s );
+            update_post_meta( $pid, 'foyer_schedule_end_utc', $e );
+            if ( $channel_id > 0 ) { update_post_meta( $pid, 'foyer_schedule_channel', $channel_id ); }
+        } else {
+            // Recurrence: occurrence override and/or series-level channel change
+            if ( 'series' === strtolower( $apply_to ) ) {
+                if ( $channel_id > 0 ) { update_post_meta( $pid, 'foyer_schedule_channel', $channel_id ); }
+            }
+            $duration = max( 1, intval( $e - $s ) );
+            $overrides = get_post_meta( $pid, 'foyer_schedule_overrides', true );
+            if ( ! is_array( $overrides ) ) { $overrides = array(); }
+            $ov = array( 'start_local' => $start_dt->format('Y-m-d H:i:s'), 'duration' => $duration );
+            if ( $channel_id > 0 ) { $ov['channel'] = $channel_id; }
+            $overrides[ $occ_id ] = $ov;
+            update_post_meta( $pid, 'foyer_schedule_overrides', $overrides );
+        }
+
+        wp_send_json_success( array( 'ok' => true ) );
+    }
+
+    public static function ajax_delete_event() {
+        check_ajax_referer( 'foyer_calendar_nonce', 'nonce', true );
+        if ( ! current_user_can( 'edit_posts' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Not allowed', 'foyer' ) ), 403 );
+        }
+        $pid = isset( $_POST['schedule_post_id'] ) ? intval( $_POST['schedule_post_id'] ) : 0;
+        $occ_id = isset( $_POST['occ_id'] ) ? (string) $_POST['occ_id'] : '';
+        $delete_mode = isset( $_POST['delete_mode'] ) ? (string) $_POST['delete_mode'] : 'all';
+        if ( $pid <= 0 ) { wp_send_json_error( array( 'message' => __( 'Invalid payload', 'foyer' ) ), 400 ); }
+
+        if ( 'all' === strtolower( $delete_mode ) ) {
+            $del = wp_delete_post( $pid, true );
+            if ( ! $del ) { wp_send_json_error( array( 'message' => __( 'Could not delete schedule.', 'foyer' ) ) ); }
+            wp_send_json_success( array( 'ok' => true ) );
+        }
+
+        // occurrence delete (recurrence only): add EXDATE
+        $meta = Foyer_Schedules::read_meta( $pid );
+        $tzid = isset( $meta['tz'] ) && $meta['tz'] ? (string) $meta['tz'] : wp_timezone_string();
+        try { $tz = new DateTimeZone( $tzid ); } catch ( Exception $e ) { $tz = wp_timezone(); $tzid = wp_timezone_string(); }
+        if ( '' === $occ_id ) { wp_send_json_error( array( 'message' => __( 'Occurrence ID required.', 'foyer' ) ) ); }
+        try {
+            $occ_dt_utc = new DateTimeImmutable( $occ_id, new DateTimeZone('UTC') );
+        } catch ( Exception $e ) { $occ_dt_utc = false; }
+        if ( ! ( $occ_dt_utc instanceof DateTimeImmutable ) ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid occurrence ID.', 'foyer' ) ) );
+        }
+        $local = $occ_dt_utc->setTimezone( $tz )->format( 'Y-m-d H:i:s' );
+        $exdates = get_post_meta( $pid, 'foyer_schedule_exdates', true );
+        if ( ! is_array( $exdates ) ) { $exdates = array(); }
+        $exdates[] = $local;
+        $exdates = array_values( array_unique( $exdates ) );
+        update_post_meta( $pid, 'foyer_schedule_exdates', $exdates );
+        // Remove matching override if present
+        $overrides = get_post_meta( $pid, 'foyer_schedule_overrides', true );
+        if ( is_array( $overrides ) && isset( $overrides[ $occ_id ] ) ) {
+            unset( $overrides[ $occ_id ] );
+            update_post_meta( $pid, 'foyer_schedule_overrides', $overrides );
+        }
+        wp_send_json_success( array( 'ok' => true ) );
     }
 
     /**
@@ -287,7 +601,393 @@ class Foyer_Admin_Scheduler {
      * Renders the Scheduler page.
      */
     public static function render_page() {
-        // Ensure defaults are localized for datetimepicker
+        // New Calendar-based Scheduler UI
+        $nonce = self::get_calendar_nonce();
+        $site_tz = wp_timezone_string();
+        $displays = Foyer_Displays::get_posts( array( 'orderby' => 'title', 'order' => 'ASC' ) );
+        $displays_data = array();
+        if ( ! empty( $displays ) ) {
+            foreach ( $displays as $d ) {
+                $displays_data[] = array( 'id' => intval( $d->ID ), 'title' => get_the_title( $d->ID ) );
+            }
+        }
+        $channels = Foyer_Channels::get_posts();
+        $channels_data = array();
+        if ( ! empty( $channels ) ) {
+            foreach ( $channels as $ch ) {
+                $channels_data[] = array( 'id' => intval( $ch->ID ), 'title' => get_the_title( $ch->ID ) );
+            }
+        }
+        echo '<div class="wrap">';
+        echo '<h1>' . esc_html__( 'Scheduler', 'foyer' ) . '</h1>';
+        // Basic layout: left calendar, right display selector
+        echo '<div id="foyer-cal-layout" style="display:flex; gap:16px; align-items:flex-start;">';
+        echo '<div id="foyer-cal-main" style="flex:1; min-height:640px;">';
+        echo '<div id="foyerSchedulesCalendar" style="min-height:640px; border:1px solid #ccd0d4; background:#fff;"></div>';
+        echo '<div id="foyerCalDebug" style="margin-top:8px; font-size:12px; color:#666;"></div>';
+        echo '</div>';
+        echo '<div id="foyer-cal-sidebar" class="postbox" style="width:320px;">';
+        echo '<h2 class="hndle" style="padding:8px 12px; margin:0;">' . esc_html__( 'Display-Selektor', 'foyer' ) . '</h2>';
+        echo '<div class="inside" style="padding:8px 12px;">';
+        echo '<label style="display:block; margin-bottom:6px;"><input type="checkbox" id="foyerCalSelectAll" /> ' . esc_html__( 'Alle Displays auswählen', 'foyer' ) . '</label>';
+        if ( empty( $displays_data ) ) {
+            echo '<em>' . esc_html__( 'No displays found.', 'foyer' ) . '</em>';
+        } else {
+            echo '<div id="foyerCalDisplays" style="max-height:420px; overflow:auto; border:1px solid #e2e4e7; padding:6px; background:#fff;">';
+            foreach ( $displays_data as $row ) {
+                $color = self::color_for_display( $row['id'] );
+                echo '<label style="display:flex; align-items:center; gap:8px; margin:4px 0;">'
+                    . '<input type="checkbox" class="foyerCalDisplay" value="' . intval( $row['id'] ) . '" />'
+                    . '<span style="display:inline-block; width:10px; height:10px; background:' . esc_attr( $color ) . '; border:1px solid #999;"></span>'
+                    . '<span>' . esc_html( $row['title'] ) . '</span>'
+                    . '</label>';
+            }
+            echo '</div>';
+        }
+        echo '</div>'; // inside
+        echo '</div>'; // sidebar
+        echo '</div>'; // layout
+
+        // Load EventCalendar (CDN) and bootstrap minimal fetch wiring; full CRUD follows in next step
+        // We keep times strictly in Site-TZ by shifting render times
+        ?>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@event-calendar/build@4.6.0/dist/event-calendar.min.css" />
+        <script src="https://cdn.jsdelivr.net/npm/@event-calendar/build@4.6.0/dist/event-calendar.min.js"></script>
+        <script>
+        (function(){
+            var ajaxurl = window.ajaxurl || '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>';
+            var nonce = '<?php echo esc_js( $nonce ); ?>';
+            var siteTz = '<?php echo esc_js( $site_tz ); ?>';
+            var foyerCalChannels = <?php echo wp_json_encode( $channels_data ); ?>;
+
+            function getOffsetMinutesForTZ(dateUTC, timeZone){
+                try {
+                    var fmt = new Intl.DateTimeFormat('en-US', {timeZone: timeZone, hour12:false, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit'});
+                    var parts = fmt.formatToParts(dateUTC);
+                    function v(t){ var p = parts.find(function(x){return x.type===t}); return p? p.value : '00'; }
+                    var asIfUTC = Date.UTC(parseInt(v('year'),10), parseInt(v('month'),10)-1, parseInt(v('day'),10), parseInt(v('hour'),10), parseInt(v('minute'),10), parseInt(v('second'),10));
+                    var diffMs = asIfUTC - dateUTC.getTime();
+                    return Math.round(diffMs/60000);
+                } catch(e){ return -dateUTC.getTimezoneOffset(); }
+            }
+            function shiftUtcToSite(dateUTC){
+                var browserOffset = -dateUTC.getTimezoneOffset();
+                var siteOffset = getOffsetMinutesForTZ(dateUTC, siteTz);
+                var deltaMin = siteOffset - browserOffset;
+                return new Date(dateUTC.getTime() + deltaMin*60000);
+            }
+            function parseIsoUtc(value){ var t = Date.parse(value); return isNaN(t)? null : new Date(t); }
+
+            var selectedDisplays = [];
+            function getSelectedDisplays(){
+                var out=[]; document.querySelectorAll('#foyerCalDisplays .foyerCalDisplay:checked').forEach(function(i){ out.push(parseInt(i.value,10)); });
+                try { console.log('[Scheduler] Selected displays:', out); } catch(e){}
+                return out;
+            }
+            var selAll = document.getElementById('foyerCalSelectAll');
+            if (selAll){ selAll.addEventListener('change', function(){ var c=this.checked; document.querySelectorAll('#foyerCalDisplays .foyerCalDisplay').forEach(function(i){ i.checked=c; }); refetch(); }); }
+            document.addEventListener('change', function(e){ if(e.target && e.target.classList && e.target.classList.contains('foyerCalDisplay')){ refetch(); } });
+
+            var calEl = document.getElementById('foyerSchedulesCalendar');
+            var ec = null;
+            function ensureCalendar(){
+                if (ec) return ec;
+                try {
+                    if (!window.EventCalendar || !window.EventCalendar.create) { throw new Error('EventCalendar.create not found'); }
+                    ec = window.EventCalendar.create(calEl, {
+                        view: 'timeGridWeek', // switched for robust timed-event rendering
+                        date: new Date(),      // anchor current date
+                        editable: true,
+                        selectable: true,
+                        events: [],
+                        dateClick: handleDateClick,
+                        select: handleSelect,
+                        eventClick: handleEventClick,
+                        eventDrop: handleEventDrop,
+                        eventResize: handleEventResize,
+                        eventDidMount: function(info){ try{ console.log('[Scheduler] eventDidMount', info && info.event ? { id: info.event.id, title: info.event.title, start: info.event.start, end: info.event.end } : info); }catch(e){} },
+                        eventAllUpdated: function(info){ try{ console.log('[Scheduler] eventAllUpdated', info && info.view ? info.view.type : info); }catch(e){} }
+                    });
+                } catch(e){
+                    calEl.innerHTML = '<div style="padding:12px;">'+ (e && e.message ? e.message : 'Calendar failed to initialize') +'</div>';
+                }
+                return ec;
+            }
+
+            function toSiteLocalString(date){
+                try {
+                    var fmt = new Intl.DateTimeFormat('en-CA', { timeZone: siteTz, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false });
+                    var parts = fmt.formatToParts(date);
+                    var v = function(t){ var p=parts.find(function(x){return x.type===t}); return p?p.value:'00'; };
+                    return v('year')+'-'+v('month')+'-'+v('day')+' '+v('hour')+':'+v('minute')+':'+v('second');
+                } catch(e) {
+                    // Fallback to local
+                    var pad=function(n){ return (n<10?'0':'')+n; };
+                    return date.getFullYear()+'-'+pad(date.getMonth()+1)+'-'+pad(date.getDate())+' '+pad(date.getHours())+':'+pad(date.getMinutes())+':'+pad(date.getSeconds());
+                }
+            }
+
+            function buildChannelSelect(selectedId){
+                var html = '<select id="foyerCalChannelSelect">';
+                html += '<option value="">—</option>';
+                (foyerCalChannels||[]).forEach(function(ch){ html += '<option value="'+ch.id+'"'+(selectedId && selectedId==ch.id?' selected':'')+'>'+ (ch.title||('Channel #'+ch.id)) +'</option>'; });
+                html += '</select>';
+                return html;
+            }
+
+            function openModal(html){
+                var existing = document.getElementById('foyerCalModal'); if (existing) existing.remove();
+                var wrap = document.createElement('div');
+                wrap.id = 'foyerCalModal';
+                wrap.style.position = 'fixed'; wrap.style.left='0'; wrap.style.top='0'; wrap.style.right='0'; wrap.style.bottom='0'; wrap.style.background='rgba(0,0,0,0.4)'; wrap.style.zIndex='100000';
+                wrap.innerHTML = '<div style="position:absolute;left:50%;top:10%;transform:translateX(-50%);background:#fff;border:1px solid #ccd0d4;box-shadow:0 2px 12px rgba(0,0,0,.2);padding:16px;min-width:420px;">'+html+'</div>';
+                document.body.appendChild(wrap);
+                return wrap;
+            }
+            function closeModal(){ var m=document.getElementById('foyerCalModal'); if(m) m.remove(); }
+
+            function handleDateClick(info){
+                var displays = getSelectedDisplays();
+                if (!displays.length){ alert('Bitte mindestens ein Display auswählen.'); return; }
+                var base = info && info.date ? info.date : new Date();
+                var startLocal = toSiteLocalString(base);
+                var endLocal = toSiteLocalString(new Date(base.getTime()+60*60*1000));
+                var html = '<h3>Neuen geplanten Channel erstellen</h3>'
+                    + '<p><label>Channel: '+buildChannelSelect('')+'</label></p>'
+                    + '<p><label>Start (Site-TZ): <input type="text" id="foyerCalStartLocal" value="'+startLocal+'" /></label></p>'
+                    + '<p><label>Ende (Site-TZ): <input type="text" id="foyerCalEndLocal" value="'+endLocal+'" /></label></p>'
+                    + '<div style="display:flex;gap:8px;justify-content:flex-end;">'
+                        + '<button class="button" id="foyerCalCancel">Cancel</button>'
+                        + '<button class="button button-primary" id="foyerCalSave">Save</button>'
+                    + '</div>';
+                var modal = openModal(html);
+                modal.addEventListener('click', function(e){ if(e.target && e.target.id==='foyerCalCancel'){ e.preventDefault(); closeModal(); }});
+                modal.addEventListener('click', function(e){ if(e.target && e.target.id==='foyerCalSave'){ e.preventDefault();
+                    var ch = document.getElementById('foyerCalChannelSelect').value;
+                    var s  = document.getElementById('foyerCalStartLocal').value;
+                    var en = document.getElementById('foyerCalEndLocal').value;
+                    if (!ch){ alert('Bitte Channel auswählen.'); return; }
+                    var data = new FormData();
+                    data.append('action','foyer_schedules_create_event');
+                    data.append('nonce', nonce);
+                    data.append('channel_id', ch);
+                    data.append('start_local', s);
+                    data.append('end_local', en);
+                    data.append('tz', siteTz);
+                    displays.forEach(function(id){ data.append('display_ids[]', String(id)); });
+                    fetch(ajaxurl, { method:'POST', credentials:'same-origin', body:data })
+                        .then(function(r){ return r.json(); })
+                        .then(function(resp){ if(!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message)||'Save failed'); } closeModal(); refetch(); })
+                        .catch(function(err){ alert(err && err.message ? err.message : String(err)); });
+                }});
+            }
+
+            function handleSelect(info){
+                var displays = getSelectedDisplays();
+                if (!displays.length){ alert('Bitte mindestens ein Display auswählen.'); return; }
+                var startLocal = toSiteLocalString(info.start);
+                var endLocal = toSiteLocalString(info.end || new Date(info.start.getTime()+60*60*1000));
+                var html = '<h3>Neuen geplanten Channel erstellen</h3>'
+                    + '<p><label>Channel: '+buildChannelSelect('')+'</label></p>'
+                    + '<p><label>Start (Site-TZ): <input type="text" id="foyerCalStartLocal" value="'+startLocal+'" /></label></p>'
+                    + '<p><label>Ende (Site-TZ): <input type="text" id="foyerCalEndLocal" value="'+endLocal+'" /></label></p>'
+                    + '<div style="display:flex;gap:8px;justify-content:flex-end;">'
+                        + '<button class="button" id="foyerCalCancel">Cancel</button>'
+                        + '<button class="button button-primary" id="foyerCalSave">Save</button>'
+                    + '</div>';
+                var modal = openModal(html);
+                modal.addEventListener('click', function(e){ if(e.target && e.target.id==='foyerCalCancel'){ e.preventDefault(); closeModal(); }});
+                modal.addEventListener('click', function(e){ if(e.target && e.target.id==='foyerCalSave'){ e.preventDefault();
+                    var ch = document.getElementById('foyerCalChannelSelect').value;
+                    var s  = document.getElementById('foyerCalStartLocal').value;
+                    var en = document.getElementById('foyerCalEndLocal').value;
+                    if (!ch){ alert('Bitte Channel auswählen.'); return; }
+                    var data = new FormData();
+                    data.append('action','foyer_schedules_create_event');
+                    data.append('nonce', nonce);
+                    data.append('channel_id', ch);
+                    data.append('start_local', s);
+                    data.append('end_local', en);
+                    data.append('tz', siteTz);
+                    displays.forEach(function(id){ data.append('display_ids[]', String(id)); });
+                    fetch(ajaxurl, { method:'POST', credentials:'same-origin', body:data })
+                        .then(function(r){ return r.json(); })
+                        .then(function(resp){ if(!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message)||'Save failed'); } closeModal(); refetch(); })
+                        .catch(function(err){ alert(err && err.message ? err.message : String(err)); });
+                }});
+            }
+
+            function handleEventClick(info){
+                var ev = info.event; var xp = ev && ev.extendedProps ? ev.extendedProps : {};
+                var title = ev && ev.text ? ev.text : (ev && ev.title ? ev.title : '');
+                var sLocal = toSiteLocalString(ev.start); var eLocal = toSiteLocalString(ev.end);
+                var html = '<h3>Geplanten Channel bearbeiten</h3>'
+                    + '<p><strong>'+title+'</strong></p>'
+                    + '<p><label>Channel: '+buildChannelSelect(xp.channel_id||'')+'</label></p>'
+                    + '<p><label>Start (Site-TZ): <input type="text" id="foyerCalStartLocal" value="'+sLocal+'" /></label></p>'
+                    + '<p><label>Ende (Site-TZ): <input type="text" id="foyerCalEndLocal" value="'+eLocal+'" /></label></p>'
+                    + ((xp.source && xp.source!=='SINGLE') ? '<p><label><input type="radio" name="foyer_apply_to" value="occurrence" checked /> Nur diesen Termin</label> <label style="margin-left:12px;"><input type="radio" name="foyer_apply_to" value="series" /> Serie</label></p>' : '')
+                    + '<div style="display:flex;gap:8px;justify-content:space-between;">'
+                        + '<div>' + ((xp.source && xp.source!=='SINGLE') ? '<button class="button" id="foyerCalDeleteOcc">Nur diesen Termin löschen</button>' : '') + '</div>'
+                        + '<div>'
+                            + '<button class="button" id="foyerCalCancel">Cancel</button>'
+                            + '<button class="button button-primary" id="foyerCalSave">Save</button>'
+                            + '<button class="button button-secondary" id="foyerCalDelete">Delete schedule</button>'
+                        + '</div>'
+                    + '</div>';
+                var modal = openModal(html);
+                modal.addEventListener('click', function(e){ if(e.target && e.target.id==='foyerCalCancel'){ e.preventDefault(); closeModal(); }});
+                modal.addEventListener('click', function(e){ if(e.target && e.target.id==='foyerCalSave'){ e.preventDefault();
+                    var ch = document.getElementById('foyerCalChannelSelect').value || '';
+                    var s  = document.getElementById('foyerCalStartLocal').value;
+                    var en = document.getElementById('foyerCalEndLocal').value;
+                    var applyTo = (document.querySelector('input[name="foyer_apply_to"]:checked')||{}).value || 'occurrence';
+                    var data = new FormData();
+                    data.append('action','foyer_schedules_update_event');
+                    data.append('nonce', nonce);
+                    data.append('schedule_post_id', xp.schedule_post_id);
+                    data.append('display_id', xp.display_id);
+                    data.append('occ_id', xp.occ_id);
+                    data.append('new_start_local', s);
+                    data.append('new_end_local', en);
+                    data.append('apply_to', applyTo);
+                    if (ch) { data.append('channel_id', ch); }
+                    fetch(ajaxurl, { method:'POST', credentials:'same-origin', body:data })
+                        .then(function(r){ return r.json(); })
+                        .then(function(resp){ if(!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message)||'Save failed'); } closeModal(); refetch(); })
+                        .catch(function(err){ alert(err && err.message ? err.message : String(err)); });
+                }});
+                modal.addEventListener('click', function(e){ if(e.target && e.target.id==='foyerCalDelete'){ e.preventDefault();
+                    if(!confirm('Gesamten Schedule löschen? Dies betrifft alle Displays.')) return;
+                    var data = new FormData();
+                    data.append('action','foyer_schedules_delete_event');
+                    data.append('nonce', nonce);
+                    data.append('schedule_post_id', xp.schedule_post_id);
+                    data.append('delete_mode','all');
+                    fetch(ajaxurl, { method:'POST', credentials:'same-origin', body:data })
+                        .then(function(r){ return r.json(); })
+                        .then(function(resp){ if(!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message)||'Delete failed'); } closeModal(); refetch(); })
+                        .catch(function(err){ alert(err && err.message ? err.message : String(err)); });
+                }});
+                modal.addEventListener('click', function(e){ if(e.target && e.target.id==='foyerCalDeleteOcc'){ e.preventDefault();
+                    if(!confirm('Diesen einzelnen Termin (Serie) löschen? Dies betrifft alle Displays dieses Schedules.')) return;
+                    var data = new FormData();
+                    data.append('action','foyer_schedules_delete_event');
+                    data.append('nonce', nonce);
+                    data.append('schedule_post_id', xp.schedule_post_id);
+                    data.append('occ_id', xp.occ_id);
+                    data.append('delete_mode','occurrence');
+                    fetch(ajaxurl, { method:'POST', credentials:'same-origin', body:data })
+                        .then(function(r){ return r.json(); })
+                        .then(function(resp){ if(!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message)||'Delete failed'); } closeModal(); refetch(); })
+                        .catch(function(err){ alert(err && err.message ? err.message : String(err)); });
+                }});
+            }
+
+            function handleEventDrop(info){
+                var ev = info.event; var xp = ev.extendedProps||{};
+                var data = new FormData();
+                data.append('action','foyer_schedules_update_event');
+                data.append('nonce', nonce);
+                data.append('schedule_post_id', xp.schedule_post_id);
+                data.append('display_id', xp.display_id);
+                data.append('occ_id', xp.occ_id);
+                data.append('new_start_local', toSiteLocalString(ev.start));
+                data.append('new_end_local', toSiteLocalString(ev.end));
+                data.append('apply_to','occurrence');
+                fetch(ajaxurl, { method:'POST', credentials:'same-origin', body:data })
+                    .then(function(r){ return r.json(); })
+                    .then(function(resp){ if(!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message)||'Update failed'); } refetch(); })
+                    .catch(function(err){ if (info && typeof info.revert === 'function') info.revert(); alert(err && err.message ? err.message : String(err)); });
+            }
+            function handleEventResize(info){ handleEventDrop(info); }
+
+            function setCalendarEvents(evs){
+                var cal = ensureCalendar();
+                if (!cal) return;
+                if (typeof cal.setOption === 'function') { cal.setOption('events', evs); return; }
+                // Fallbacks for older builds
+                if (typeof cal.setEvents === 'function') { cal.setEvents(evs); return; }
+                if (typeof cal.setOptions === 'function') { cal.setOptions({ events: evs }); return; }
+            }
+
+            function refetch(){
+                var displays = getSelectedDisplays();
+                if (!displays.length){ setCalendarEvents([]); return; }
+                var now = new Date();
+                var rangeStart = new Date(now.getFullYear(), now.getMonth()-1, 1, 0, 0, 0);
+                var rangeEnd = new Date(now.getFullYear(), now.getMonth()+2, 0, 23, 59, 59);
+                var data = new FormData();
+                data.append('action', 'foyer_schedules_get_events');
+                data.append('nonce', nonce);
+                displays.forEach(function(id){ data.append('display_ids[]', String(id)); });
+                data.append('start', rangeStart.toISOString());
+                data.append('end', rangeEnd.toISOString());
+                fetch(ajaxurl, { method:'POST', credentials:'same-origin', body:data })
+                    .then(function(r){ return r.json(); })
+                    .then(function(resp){
+                        try { console.log('[Scheduler] AJAX get_events resp:', resp); } catch(e){}
+                        if (!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message) || 'Fetch failed'); }
+                        var evs = (resp.data && resp.data.events) ? resp.data.events : [];
+                        // Shift to site TZ for rendering (robust mapping across libs)
+                        var mapped = evs.map(function(e){
+                            var s = parseIsoUtc(e.startDate), en = parseIsoUtc(e.endDate);
+                            var startD = shiftUtcToSite(s);
+                            var endD = shiftUtcToSite(en);
+                            var t = e.title || (e.extendedProps && e.extendedProps.title) || 'Schedule';
+                            return {
+                                id: e.id,
+                                title: t,
+                                // Dates für maximale Kompatibilität
+                                start: startD,
+                                end: endD,
+                                startDate: startD,
+                                endDate: endD,
+                                name: t,
+                                text: t,
+                                allDay: false,
+                                color: e.backgroundColor || e.color || '',
+                                backgroundColor: e.backgroundColor || e.color || '',
+                                extendedProps: e.extendedProps || {}
+                            };
+                        });
+                        try { console.log('[Scheduler] Mapped events:', mapped.slice(0,5)); } catch(e){}
+                        setCalendarEvents(mapped);
+                        // Navigiere zum ersten Event, um Sichtbarkeit sicherzustellen
+                        try {
+                            var calInst = ensureCalendar();
+                            if (mapped.length) {
+                                var firstDate = mapped[0].startDate || mapped[0].start || new Date();
+                                if (typeof calInst.setOption === 'function') {
+                                    calInst.setOption('date', firstDate);
+                                }
+                            }
+                        } catch (e) {}
+                        // Nach kurzem Delay gerenderte DOM-Elemente zählen
+                        setTimeout(function(){
+                            var calNode = document.getElementById('foyerSchedulesCalendar');
+                            var n1 = calNode ? calNode.querySelectorAll('.ec-event').length : 0;
+                            var n2 = calNode ? calNode.querySelectorAll('.ec .ec-event').length : 0;
+                            var n = Math.max(n1, n2);
+                            try { console.log('[Scheduler] Rendered .ec-event count:', { direct: n1, nested: n2, used: n }); } catch(e){}
+                            var dbg = document.getElementById('foyerCalDebug');
+                            if (dbg) {
+                                var first = mapped[0] ? { id: mapped[0].id, title: mapped[0].title, start: mapped[0].start, end: mapped[0].end } : null;
+                                dbg.innerHTML = 'Events: ' + mapped.length + '<br/>First: ' + (first ? JSON.stringify(first) : '-') + '<br/>Rendered: ' + n;
+                            }
+                        }, 300);
+                    }).catch(function(err){ var dbg=document.getElementById('foyerCalDebug'); if(dbg){ dbg.textContent = 'Error: ' + (err && err.message ? err.message : String(err)); } });
+            }
+
+            ensureCalendar();
+            refetch();
+        })();
+        </script>
+        <?php
+        echo '</div>';
+        return;
+
+        // Legacy UI (not reached): Ensure defaults are localized for datetimepicker
         Foyer_Admin_Display::localize_scripts();
 
         $displays = Foyer_Displays::get_posts( array( 'orderby' => 'title', 'order' => 'ASC' ) );
