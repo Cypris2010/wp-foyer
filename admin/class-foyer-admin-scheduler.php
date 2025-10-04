@@ -133,7 +133,8 @@ class Foyer_Admin_Scheduler {
             wp_send_json_success( array( 'events' => array() ) );
         }
 
-        $events = array();
+        // Group events by schedule occurrence (schedule_post_id + occ_id)
+        $groups = array();
         foreach ( $display_ids as $did ) {
             // Find schedules that include this display
             $posts = get_posts( array(
@@ -162,29 +163,64 @@ class Foyer_Admin_Scheduler {
                 $occ  = Foyer_Schedule_Engine::expand_occurrences( $meta, $start_ts, $end_ts );
                 if ( empty( $occ ) ) { continue; }
                 foreach ( $occ as $o ) {
-                    $cid = isset( $o['channel'] ) && intval( $o['channel'] ) > 0 ? intval( $o['channel'] ) : intval( $meta['channel'] );
-                    $ctitle = $cid ? get_the_title( $cid ) : __( '(No channel)', 'foyer' );
-                    $dtitle = get_the_title( $did );
                     $start_utc = intval( $o['start_utc'] );
                     $end_utc   = intval( $o['end_utc'] );
                     $occ_id    = isset( $o['occ_id'] ) ? (string) $o['occ_id'] : gmdate( 'Y-m-d\TH:i:s\Z', $start_utc );
-                    $events[] = array(
-                        'id' => $p->ID . '|' . $did . '|' . $occ_id,
-                        'title' => $ctitle . ( $dtitle ? ' (' . $dtitle . ')' : '' ),
-                        'startDate' => gmdate( 'Y-m-d\TH:i:s\Z', $start_utc ),
-                        'endDate'   => gmdate( 'Y-m-d\TH:i:s\Z', $end_utc ),
-                        'backgroundColor' => self::color_for_display( $did ),
-                        'extendedProps' => array(
-                            'schedule_post_id' => intval( $p->ID ),
-                            'display_id' => $did,
-                            'occ_id' => $occ_id,
-                            'channel_id' => $cid,
-                            'source' => isset( $o['source'] ) ? (string) $o['source'] : '',
-                            'tz' => isset( $meta['tz'] ) && $meta['tz'] ? (string) $meta['tz'] : wp_timezone_string(),
-                        ),
-                    );
+                    $cid       = isset( $o['channel'] ) && intval( $o['channel'] ) > 0 ? intval( $o['channel'] ) : intval( $meta['channel'] );
+                    $key       = $p->ID . '|' . $occ_id;
+
+                    if ( ! isset( $groups[ $key ] ) ) {
+                        $ctitle = $cid ? get_the_title( $cid ) : __( '(No channel)', 'foyer' );
+                        // Build full display set for this schedule (all affected displays)
+                        $sched_displays = get_post_meta( $p->ID, 'foyer_schedule_displays', true );
+                        if ( ! is_array( $sched_displays ) ) { $sched_displays = array(); }
+                        $sched_displays = array_values( array_unique( array_map( 'intval', $sched_displays ) ) );
+
+                        $groups[ $key ] = array(
+                            'id'        => $key,
+                            'title'     => $ctitle,
+                            'startDate' => gmdate( 'Y-m-d\TH:i:s\Z', $start_utc ),
+                            'endDate'   => gmdate( 'Y-m-d\TH:i:s\Z', $end_utc ),
+                            'extendedProps' => array(
+                                'schedule_post_id' => intval( $p->ID ),
+                                'occ_id'           => $occ_id,
+                                'channel_id'       => $cid,
+                                'display_ids'      => $sched_displays,
+                                'displays'         => array(),
+                                'source'           => isset( $o['source'] ) ? (string) $o['source'] : '',
+                                'tz'               => isset( $meta['tz'] ) && $meta['tz'] ? (string) $meta['tz'] : wp_timezone_string(),
+                            ),
+                        );
+
+                        foreach ( $sched_displays as $sdid ) {
+                            $groups[ $key ]['extendedProps']['displays'][] = array(
+                                'id'    => intval( $sdid ),
+                                'title' => get_the_title( $sdid ),
+                                'color' => self::color_for_display( $sdid ),
+                            );
+                        }
+                    }
                 }
             }
+        }
+
+        // Normalize groups: de-duplicate displays
+        $events = array();
+        foreach ( $groups as $g ) {
+            // unique display_ids
+            $g['extendedProps']['display_ids'] = array_values( array_unique( array_map( 'intval', $g['extendedProps']['display_ids'] ) ) );
+            // unique displays by id
+            $seen = array();
+            $uniq = array();
+            foreach ( $g['extendedProps']['displays'] as $d ) {
+                $id = isset( $d['id'] ) ? intval( $d['id'] ) : 0;
+                if ( $id && ! isset( $seen[ $id ] ) ) {
+                    $seen[ $id ] = true;
+                    $uniq[] = $d;
+                }
+            }
+            $g['extendedProps']['displays'] = $uniq;
+            $events[] = $g;
         }
 
         wp_send_json_success( array( 'events' => $events ) );
@@ -278,6 +314,7 @@ class Foyer_Admin_Scheduler {
             wp_send_json_error( array( 'message' => __( 'Not allowed', 'foyer' ) ), 403 );
         }
         $pid = isset( $_POST['schedule_post_id'] ) ? intval( $_POST['schedule_post_id'] ) : 0;
+        // display_id is optional now; updates apply to all displays of the schedule
         $did = isset( $_POST['display_id'] ) ? intval( $_POST['display_id'] ) : 0;
         $occ_id = isset( $_POST['occ_id'] ) ? (string) $_POST['occ_id'] : '';
         $new_start_local = isset( $_POST['new_start_local'] ) ? trim( (string) $_POST['new_start_local'] ) : '';
@@ -285,7 +322,7 @@ class Foyer_Admin_Scheduler {
         $apply_to = isset( $_POST['apply_to'] ) ? (string) $_POST['apply_to'] : 'occurrence';
         $channel_id = isset( $_POST['channel_id'] ) ? intval( $_POST['channel_id'] ) : 0;
 
-        if ( $pid <= 0 || $did <= 0 || '' === $occ_id ) {
+        if ( $pid <= 0 || '' === $occ_id ) {
             wp_send_json_error( array( 'message' => __( 'Invalid payload', 'foyer' ) ), 400 );
         }
         $meta = Foyer_Schedules::read_meta( $pid );
@@ -303,27 +340,34 @@ class Foyer_Admin_Scheduler {
         $e = $end_dt->setTimezone( new DateTimeZone('UTC') )->getTimestamp();
         if ( $e <= $s ) { $e = $s + HOUR_IN_SECONDS; }
 
-        // Conflict check on target display, excluding this schedule post
+        // Conflict check across all displays of this schedule, excluding this schedule post
         $winStart = $s - DAY_IN_SECONDS; $winEnd = $e + DAY_IN_SECONDS;
-        $others = get_posts( array(
-            'post_type'      => 'foyer_schedule',
-            'post_status'    => 'publish',
-            'posts_per_page' => -1,
-            'post__not_in'   => array( $pid ),
-            'meta_query'     => array(
-                'relation' => 'OR',
-                array( 'key' => 'foyer_schedule_displays', 'value' => 'i:' . intval($did) . ';', 'compare' => 'LIKE' ),
-                array( 'key' => 'foyer_schedule_displays', 'value' => '"' . intval($did) . '"', 'compare' => 'LIKE' ),
-            ),
-        ) );
-        foreach ( $others as $op ) {
-            $m = Foyer_Schedules::read_meta( $op->ID );
-            $o_occ = Foyer_Schedule_Engine::expand_occurrences( $m, $winStart, $winEnd );
-            foreach ( $o_occ as $b ) {
-                $bs = intval( $b['start_utc'] ); $be = intval( $b['end_utc'] );
-                if ( $be > $s && $e > $bs ) {
-                    $msg = sprintf( __( 'Display "%1$s" conflicts with schedule "%2$s".', 'foyer' ), get_the_title( $did ), get_the_title( $op->ID ) );
-                    wp_send_json_error( array( 'message' => $msg ) );
+        $schedule_displays = get_post_meta( $pid, 'foyer_schedule_displays', true );
+        $affected_displays = is_array( $schedule_displays ) ? array_map( 'intval', $schedule_displays ) : array();
+        // Fallback to single provided display (backward compatibility) if meta is empty
+        if ( empty( $affected_displays ) && $did > 0 ) { $affected_displays = array( $did ); }
+
+        foreach ( $affected_displays as $aff_did ) {
+            $others = get_posts( array(
+                'post_type'      => 'foyer_schedule',
+                'post_status'    => 'publish',
+                'posts_per_page' => -1,
+                'post__not_in'   => array( $pid ),
+                'meta_query'     => array(
+                    'relation' => 'OR',
+                    array( 'key' => 'foyer_schedule_displays', 'value' => 'i:' . intval($aff_did) . ';', 'compare' => 'LIKE' ),
+                    array( 'key' => 'foyer_schedule_displays', 'value' => '"' . intval($aff_did) . '"', 'compare' => 'LIKE' ),
+                ),
+            ) );
+            foreach ( $others as $op ) {
+                $m = Foyer_Schedules::read_meta( $op->ID );
+                $o_occ = Foyer_Schedule_Engine::expand_occurrences( $m, $winStart, $winEnd );
+                foreach ( $o_occ as $b ) {
+                    $bs = intval( $b['start_utc'] ); $be = intval( $b['end_utc'] );
+                    if ( $be > $s && $e > $bs ) {
+                        $msg = sprintf( __( 'Display "%1$s" conflicts with schedule "%2$s".', 'foyer' ), get_the_title( $aff_did ), get_the_title( $op->ID ) );
+                        wp_send_json_error( array( 'message' => $msg ) );
+                    }
                 }
             }
         }
@@ -1025,6 +1069,7 @@ class Foyer_Admin_Scheduler {
                 var sLocal = toSiteLocalString(ev.start); var eLocal = toSiteLocalString(ev.end);
                 var html = '<h3>Geplanten Channel bearbeiten</h3>'
                     + '<p><strong>'+title+'</strong></p>'
+                    + '<p style="margin:6px 0;color:#555;">Diese Änderung wirkt auf alle Displays dieses Schedules.</p>'
                     + '<p><label>Channel: '+buildChannelSelect(xp.channel_id||'')+'</label></p>'
                     + '<p><label>Start (Site-TZ): <input type="text" id="foyerCalStartLocal" value="'+sLocal+'" /></label></p>'
                     + '<p><label>Ende (Site-TZ): <input type="text" id="foyerCalEndLocal" value="'+eLocal+'" /></label></p>'
@@ -1048,7 +1093,7 @@ class Foyer_Admin_Scheduler {
                     data.append('action','foyer_schedules_update_event');
                     data.append('nonce', nonce);
                     data.append('schedule_post_id', xp.schedule_post_id);
-                    data.append('display_id', xp.display_id);
+                    // no display_id needed; updates apply to all displays
                     data.append('occ_id', xp.occ_id);
                     data.append('new_start_local', s);
                     data.append('new_end_local', en);
@@ -1092,7 +1137,7 @@ class Foyer_Admin_Scheduler {
                 data.append('action','foyer_schedules_update_event');
                 data.append('nonce', nonce);
                 data.append('schedule_post_id', xp.schedule_post_id);
-                data.append('display_id', xp.display_id);
+                // no display_id needed; updates apply to all displays
                 data.append('occ_id', xp.occ_id);
                 data.append('new_start_local', toSiteLocalString(ev.start));
                 data.append('new_end_local', toSiteLocalString(ev.end));

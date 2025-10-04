@@ -20,6 +20,45 @@
 #foyerSchedulesCalendar { min-height: 800px !important; }
 #foyerSchedulesCalendar .ec .ec-body { max-height: 800px; overflow-y: auto; }
 
+/* Event header with display swatches */
+#foyerSchedulesCalendar .ec .foyer-ev-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+#foyerSchedulesCalendar .ec .foyer-ev-swatches {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+#foyerSchedulesCalendar .ec .foyer-ev-swatches .foyer-display-swatch {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15);
+}
+
+/* Make calendar events background white (override library defaults) */
+#foyerSchedulesCalendar .ec .ec-event {
+  background-color: #fff !important;
+  color: #1d2327;
+  border: 1px solid #ccd0d4;
+}
+#foyerSchedulesCalendar.foyer-month-view .ec .ec-event {
+  background-color: #fff !important;
+}
+#foyerSchedulesCalendar .ec .ec-event .ec-title,
+#foyerSchedulesCalendar .ec .ec-event .ec-time {
+  color: inherit;
+}
+#foyerSchedulesCalendar .ec .ec-event:hover {
+  filter: brightness(0.98);
+}
+
 /* Display selector styling */
 #foyer-cal-sidebar .foyer-display-item {
   display: flex;

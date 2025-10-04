@@ -137,7 +137,37 @@
         eventClick: handleEventClick,
         eventDrop: handleEventDrop,
         eventResize: handleEventResize,
-        eventDidMount: function(info){},
+        eventDidMount: function(info){
+          try {
+            var el = info.el || null;
+            var ev = info.event || {};
+            var xp = ev.extendedProps || {};
+            var displays = Array.isArray(xp.displays) ? xp.displays : [];
+            if (!el || !displays.length) return;
+            var titleNode = el.querySelector('.ec-title') || el.querySelector('.ec-event-title') || null;
+            var timeNode = el.querySelector('.ec-time') || el.querySelector('.ec-event-time') || null;
+            var head = document.createElement('div');
+            head.className = 'foyer-ev-head';
+            var sw = document.createElement('div');
+            sw.className = 'foyer-ev-swatches';
+            displays.forEach(function(d){
+              var s = document.createElement('span');
+              s.className = 'foyer-display-swatch';
+              s.style.background = d.color || '';
+              s.title = d.title || ('Display #' + d.id);
+              sw.appendChild(s);
+            });
+            head.appendChild(sw);
+            var anchor = timeNode || titleNode;
+            if (anchor && anchor.parentNode) {
+              anchor.parentNode.insertBefore(head, anchor);
+            } else if (el.firstChild) {
+              el.insertBefore(head, el.firstChild);
+            } else {
+              el.appendChild(head);
+            }
+          } catch(e){}
+        },
         eventAllUpdated: function(info){}
       });
       applyMonthStyling();
@@ -367,7 +397,7 @@
       data.append('action','foyer_schedules_update_event');
       data.append('nonce', nonce);
       data.append('schedule_post_id', xp.schedule_post_id);
-      data.append('display_id', xp.display_id);
+      // no display_id needed; updates apply to all displays of this schedule
       data.append('occ_id', xp.occ_id);
       data.append('new_start_local', s);
       data.append('new_end_local', en);
@@ -411,7 +441,7 @@
     data.append('action','foyer_schedules_update_event');
     data.append('nonce', nonce);
     data.append('schedule_post_id', xp.schedule_post_id);
-    data.append('display_id', xp.display_id);
+    // no display_id needed; updates apply to all displays of this schedule
     data.append('occ_id', xp.occ_id);
     data.append('new_start_local', toSiteLocalString(ev.start));
     data.append('new_end_local', toSiteLocalString(ev.end));
@@ -450,8 +480,7 @@
         name: t,
         text: t,
         allDay: false,
-        color: e.backgroundColor || e.color || '',
-        backgroundColor: e.backgroundColor || e.color || '',
+        // keep event background neutral; colors are shown via swatches
         extendedProps: e.extendedProps || {}
       };
     });
