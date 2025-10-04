@@ -16,7 +16,9 @@
 }
 #foyerSchedulesCalendar { box-sizing: border-box; }
 #foyerSchedulesCalendar > .ec { padding: 12px; }
-#foyerSchedulesCalendar .ec .ec-body { max-height: 640px; overflow-y: auto; }
+#foyer-cal-main { min-height: 800px !important; }
+#foyerSchedulesCalendar { min-height: 800px !important; }
+#foyerSchedulesCalendar .ec .ec-body { max-height: 800px; overflow-y: auto; }
 
 /* Display selector styling */
 #foyer-cal-sidebar .foyer-display-item {
