@@ -434,6 +434,8 @@ class Foyer_Admin_Scheduler {
         $new_end_local   = isset( $_POST['new_end_local'] ) ? trim( (string) $_POST['new_end_local'] ) : '';
         $apply_to = isset( $_POST['apply_to'] ) ? (string) $_POST['apply_to'] : 'occurrence';
         $channel_id = isset( $_POST['channel_id'] ) ? intval( $_POST['channel_id'] ) : 0;
+        // Optional: update displays for this schedule (series-level)
+        $display_ids = isset( $_POST['display_ids'] ) ? array_values( array_unique( array_map( 'intval', (array) $_POST['display_ids'] ) ) ) : array();
 
         if ( $pid <= 0 || '' === $occ_id ) {
             wp_send_json_error( array( 'message' => __( 'Invalid payload', 'foyer' ) ), 400 );
@@ -453,14 +455,15 @@ class Foyer_Admin_Scheduler {
         $e = $end_dt->setTimezone( new DateTimeZone('UTC') )->getTimestamp();
         if ( $e <= $s ) { $e = $s + HOUR_IN_SECONDS; }
 
-        // Conflict check across all displays of this schedule, excluding this schedule post
+        // Conflict check across all displays of this schedule (or provided set), excluding this schedule post
         $winStart = $s - DAY_IN_SECONDS; $winEnd = $e + DAY_IN_SECONDS;
         $schedule_displays = get_post_meta( $pid, 'foyer_schedule_displays', true );
         $affected_displays = is_array( $schedule_displays ) ? array_map( 'intval', $schedule_displays ) : array();
-        // Fallback to single provided display (backward compatibility) if meta is empty
-        if ( empty( $affected_displays ) && $did > 0 ) { $affected_displays = array( $did ); }
+        $candidate_displays = ! empty( $display_ids ) ? $display_ids : $affected_displays;
+        // Fallback to single provided display (backward compatibility) if empty
+        if ( empty( $candidate_displays ) && $did > 0 ) { $candidate_displays = array( $did ); }
 
-        foreach ( $affected_displays as $aff_did ) {
+        foreach ( $candidate_displays as $aff_did ) {
             $others = get_posts( array(
                 'post_type'      => 'foyer_schedule',
                 'post_status'    => 'publish',
@@ -506,6 +509,11 @@ class Foyer_Admin_Scheduler {
             if ( $channel_id > 0 ) { $ov['channel'] = $channel_id; }
             $overrides[ $occ_id ] = $ov;
             update_post_meta( $pid, 'foyer_schedule_overrides', $overrides );
+        }
+
+        // If caller provided a new set of displays, persist them (series-level update)
+        if ( ! empty( $display_ids ) ) {
+            update_post_meta( $pid, 'foyer_schedule_displays', $display_ids );
         }
 
         wp_send_json_success( array( 'ok' => true ) );

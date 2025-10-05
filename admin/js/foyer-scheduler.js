@@ -992,12 +992,14 @@
     // Bind Save using update endpoint
     var save = document.getElementById('ovSave'); if(save){
       save.addEventListener('click', function(ev){ ev.preventDefault();
-        var displays = foyerOverlayGetSelectedDisplayIds(); if(!displays.length){ alert('Display-Auswahl wirkt nicht auf bestehende Serie, wird ignoriert.'); }
+        var displays = foyerOverlayGetSelectedDisplayIds();
+        if (!displays.length){ alert('Bitte mindestens ein Display auswählen.'); return; }
         var ch = __ovSelectedChannelId || '';
         var data = new FormData(); data.append('action','foyer_schedules_update_event'); data.append('nonce', nonce);
         data.append('schedule_post_id', String(evtMeta.schedule_post_id||'')); data.append('occ_id', String(evtMeta.occ_id||''));
         data.append('new_start_local', document.getElementById('ovStartLocal').value.trim()); data.append('new_end_local', document.getElementById('ovEndLocal').value.trim());
         data.append('apply_to', (evtMeta.source && evtMeta.source!=='SINGLE') ? 'occurrence' : 'occurrence'); if(ch){ data.append('channel_id', String(ch)); }
+        displays.forEach(function(id){ data.append('display_ids[]', String(id)); });
         fetch(ajaxurl, { method:'POST', credentials:'same-origin', body:data })
           .then(function(r){ return r.json(); })
           .then(function(resp){ if(!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message) || 'Update failed'); } foyerOverlayClose(); try{ scheduleRefetch('update'); }catch(e){} })
