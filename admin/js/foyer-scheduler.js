@@ -33,6 +33,16 @@
     return new Date(dateUTC.getTime() + deltaMin*60000);
   }
   function parseIsoUtc(value){ var t = Date.parse(value); return isNaN(t)? null : new Date(t); }
+  function parseLocalDateTime(value){
+    try {
+      var s = String(value||'').trim();
+      if (!s) return null;
+      var isoish = s.replace(' ', 'T');
+      var d = new Date(isoish);
+      if (isNaN(d.getTime())) return null;
+      return d;
+    } catch(e){ return null; }
+  }
 
   function getSelectedDisplays(){
     var out=[]; document.querySelectorAll('#foyerCalDisplays .foyerCalDisplay:checked').forEach(function(i){ out.push(parseInt(i.value,10)); });
@@ -633,6 +643,26 @@
       '#foyerSchedulerOverlay .ov-group{padding:10px;border-radius:4px;margin-bottom:10px;}' +
       '#foyerSchedulerOverlay .ov-group legend{font-weight:600;}' +
       '#foyerSchedulerOverlay .ov-hidden{display:none !important;}' +
+      '#foyerSchedulerOverlay .ov-datetime-grid{display:grid;grid-template-columns:1fr;gap:12px;align-items:end;}' +
+      '@media(min-width:700px){#foyerSchedulerOverlay .ov-datetime-grid{grid-template-columns:1fr;}}' +
+      '#foyerSchedulerOverlay .ov-field label{display:block;margin-bottom:4px;font-weight:600;}' +
+      '#foyerSchedulerOverlay .ov-field input{width:100%;}' +
+      '#foyerSchedulerOverlay #ovStartLocal, #foyerSchedulerOverlay #ovEndLocal{width:50%;}' +
+      '#foyerSchedulerOverlay #ovUntil{width:70%;}' +
+      '#foyerSchedulerOverlay .ov-end-row .ov-end-opt{display:inline-flex;align-items:center;white-space:nowrap;}' +
+      '#foyerSchedulerOverlay .ov-end-row .ov-end-opt input[type=text]{margin-left:6px;}' +
+      '#foyerSchedulerOverlay .ov-form-grid{display:grid;grid-template-columns:1fr;gap:16px;align-items:start;}' +
+      '@media(min-width:700px){#foyerSchedulerOverlay .ov-form-grid{grid-template-columns:1fr 1fr;}}' +
+      '#foyerSchedulerOverlay .ov-col-left,#foyerSchedulerOverlay .ov-col-right{min-width:0;}' +
+      '#foyerSchedulerOverlay .ov-recur-summary{margin:6px 0 2px 0;font-size:12px;color:#555;}' +
+      '#foyerSchedulerOverlay .ov-rrule{margin:4px 0;color:#666;font-size:11px;font-family:Menlo,Monaco,Consolas,monospace;word-break:break-all;}' +
+      '#foyerSchedulerOverlay .ov-freq-group{display:flex;gap:8px;flex-wrap:wrap;}' +
+      '#foyerSchedulerOverlay .ov-chip{border:1px solid #ccc;border-radius:16px;padding:4px 10px;cursor:pointer;user-select:none;}' +
+      '#foyerSchedulerOverlay .ov-chip input{display:none;}' +
+      '#foyerSchedulerOverlay .ov-chip.is-active{background:#2271b1;color:#fff;border-color:#1d5a8f;}' +
+      '#foyerSchedulerOverlay #ovWeeklyOpts label{border:1px solid #ccc;border-radius:16px;padding:4px 10px;cursor:pointer;user-select:none;}' +
+      '#foyerSchedulerOverlay #ovWeeklyOpts input{display:none;}' +
+      '#foyerSchedulerOverlay #ovWeeklyOpts label.is-active{background:#2271b1;color:#fff;border-color:#1d5a8f;}' +
       '';
     var style = document.createElement('style'); style.id='foyerSchedulerOverlayStyle'; style.type='text/css'; style.appendChild(document.createTextNode(css)); document.head.appendChild(style);
   }
@@ -654,28 +684,40 @@
     var top = document.createElement('section'); top.className='foyer-ov-top'; top.innerHTML = ''+
       '<div class="foyer-ov-head"><h2>'+ escapeHTML(titleText || 'Schedule') +'</h2><div><button class="button button-primary" id="ovSave">Speichern</button><button class="button" id="ovCloseBtn">Schließen</button></div></div>'+
       '<div class="ov-form">'+
-        '<div class="ov-form-row"><label><input type="checkbox" id="ovRecurToggle"/> Wiederkehrend</label></div>'+
-        '<div class="ov-single" id="ovSingleBox">'+
-          '<div class="ov-form-row"><label style="min-width:120px;display:inline-block;">Start</label><input type="text" id="ovStartLocal" class="regular-text" placeholder="YYYY-MM-DD HH:mm:ss"/></div>'+
-          '<div class="ov-form-row"><label style="min-width:120px;display:inline-block;">Ende</label><input type="text" id="ovEndLocal" class="regular-text" placeholder="YYYY-MM-DD HH:mm:ss"/></div>'+
+        '<div class="ov-form-grid">'+
+          '<div class="ov-col-left">'+
+            '<div class="ov-form-row ov-datetime-grid">'+
+              '<div class="ov-field"><label>Start</label><input type="text" id="ovStartLocal" class="regular-text" placeholder="YYYY-MM-DD HH:mm:ss"/></div>'+
+              '<div class="ov-field"><label>Ende</label><input type="text" id="ovEndLocal" class="regular-text" placeholder="YYYY-MM-DD HH:mm:ss"/></div>'+
+            '</div>'+
+            '<div class="ov-recur-summary" id="ovRecurSummary" aria-live="polite" style="opacity:.85;"></div>'+
+          '</div>'+
+          '<div class="ov-col-right">'+
+            '<fieldset class="ov-recur" id="ovRecurBox">'+
+              '<div class="ov-form-row ov-freq-row">'+
+                '<div class="ov-freq-group" role="radiogroup" aria-label="Häufigkeit">'+
+                  '<label class="ov-chip"><input type="radio" name="ovFreq" value="SINGLE" checked> Einmalig</label>'+
+                  '<label class="ov-chip"><input type="radio" name="ovFreq" value="DAILY"> Täglich</label>'+
+                  '<label class="ov-chip"><input type="radio" name="ovFreq" value="WEEKLY"> Wöchentlich</label>'+
+                  '<label class="ov-chip"><input type="radio" name="ovFreq" value="MONTHLY"> Monatlich</label>'+
+                '</div>'+
+                '<div id="ovIntervalWrap" style="margin-left:auto;">alle <input type="number" id="ovInterval" class="small-text" min="1" value="1"/> <span id="ovIntervalUnit">Tag(e)</span></div>'+
+              '</div>'+
+                            '<div class="ov-form-row ov-weekly ov-hidden" id="ovWeeklyOpts">Tage: '
+                +['MO','TU','WE','TH','FR','SA','SU'].map(function(d){return '<label style="margin-right:6px;"><input type="checkbox" class="ovByDay" value="'+d+'"/> '+d+'</label>';}).join(' ')
+              +'</div>'+
+              '<div class="ov-form-row ov-monthly ov-hidden" id="ovMonthlyOpts">'
+                +'<label>Monats-Tage (z.B. 1,15,31) <input type="text" id="ovByMonthDay" class="regular-text" placeholder="1,15,31"/></label>'+
+              '</div>'+
+                          '<div class="ov-form-row ov-end-row">'+
+                '<label class="ov-end-opt"><input type="radio" name="ovEndMode" value="never" checked> Endet nie</label>'+
+                '<label class="ov-end-opt"><input type="radio" name="ovEndMode" value="until"> Endet am <input type="text" id="ovUntil" class="regular-text" placeholder="YYYY-MM-DD HH:mm:ss"/></label>'+
+                '<label class="ov-end-opt"><input type="radio" name="ovEndMode" value="count"> Endet nach <input type="number" id="ovCount" class="small-text" min="1"/> Terminen</label>'+
+              '</div>'+
+              '<div class="ov-rrule" id="ovRRulePreview" aria-live="polite"></div>'+
+            '</fieldset>'+
+          '</div>'+
         '</div>'+
-        '<fieldset class="ov-recur ov-hidden" id="ovRecurBox"><legend>RRULE-Builder</legend>'+
-          '<div class="ov-form-row">'+
-            '<label><input type="radio" name="ovFreq" value="DAILY"> Daily</label>'+
-            '<label><input type="radio" name="ovFreq" value="WEEKLY"> Weekly</label>'+
-            '<label><input type="radio" name="ovFreq" value="MONTHLY"> Monthly</label>'+
-            '<label style="margin-left:auto;">Interval <input type="number" id="ovInterval" class="small-text" min="1" value="1"/></label>'+
-          '</div>'+
-          '<div class="ov-form-row ov-weekly ov-hidden" id="ovWeeklyOpts">Tage: '
-            +['MO','TU','WE','TH','FR','SA','SU'].map(function(d){return '<label style="margin-right:6px;"><input type="checkbox" class="ovByDay" value="'+d+'"/> '+d+'</label>';}).join(' ')
-          +'</div>'+
-          '<div class="ov-form-row ov-monthly ov-hidden" id="ovMonthlyOpts">'
-            +'<label>Monats-Tage (z.B. 1,15,31) <input type="text" id="ovByMonthDay" class="regular-text" placeholder="1,15,31"/></label>'+
-          '</div>'+
-          '<div class="ov-form-row"><label>DTSTART <input type="text" id="ovDtstartLocal" class="regular-text" placeholder="YYYY-MM-DD HH:mm:ss"/></label>'+
-          '<label>Dauer (Sek.) <input type="number" id="ovDuration" class="small-text" min="60" step="60" value="3600"/></label></div>'+
-          '<div class="ov-form-row"><label>Bis (local) <input type="text" id="ovUntil" class="regular-text" placeholder="YYYY-MM-DD HH:mm:ss"/></label><span style="opacity:.7;">oder</span><label>Anzahl <input type="number" id="ovCount" class="small-text" min="1"/></label></div>'+
-        '</fieldset>'+
       '</div>';
     var bottom = document.createElement('div'); bottom.className='foyer-ov-bottom';
     var channelsWrap = document.createElement('section'); channelsWrap.className='foyer-ov-channelsWrap'; channelsWrap.innerHTML = ''+
@@ -719,16 +761,134 @@
       window.__ovEscHandler = escHandler;
       document.addEventListener('keydown', escHandler);
     } catch(e){}
-        // Toggle recur UI
-    var recurToggle = document.getElementById('ovRecurToggle');
-    var boxSingle = document.getElementById('ovSingleBox');
+        // Recur UI ohne Checkbox
     var boxRecur = document.getElementById('ovRecurBox');
     var weekly = document.getElementById('ovWeeklyOpts'); var monthly = document.getElementById('ovMonthlyOpts');
-    function updateRecur(){ if(recurToggle.checked){ boxSingle.classList.add('ov-hidden'); boxRecur.classList.remove('ov-hidden'); } else { boxRecur.classList.add('ov-hidden'); boxSingle.classList.remove('ov-hidden'); } updateFreq(); }
-    function getCheckedFreq(){ var r = document.querySelector('#ovRecurBox input[name="ovFreq"]:checked'); return r ? r.value : ''; }
-    function updateFreq(){ var f = getCheckedFreq(); weekly.classList.toggle('ov-hidden', f!=='WEEKLY'); monthly.classList.toggle('ov-hidden', f!=='MONTHLY'); }
-    document.getElementById('ovRecurToggle').addEventListener('change', updateRecur);
+    var endRow = document.querySelector('.ov-end-row');
+    var intervalWrap = document.getElementById('ovIntervalWrap');
+    var intervalInput = document.getElementById('ovInterval');
+    function getCheckedFreq(){ var r = document.querySelector('#ovRecurBox input[name="ovFreq"]:checked'); return r ? r.value : 'SINGLE'; }
+    function updateFreq(){
+      var f = getCheckedFreq();
+      weekly.classList.toggle('ov-hidden', f!=='WEEKLY');
+      monthly.classList.toggle('ov-hidden', f!=='MONTHLY');
+      if (endRow) endRow.classList.toggle('ov-hidden', f==='SINGLE');
+      if (intervalWrap) intervalWrap.style.opacity = (f==='SINGLE') ? '.5' : '1';
+      if (intervalInput) intervalInput.disabled = (f==='SINGLE');
+      setIntervalUnit(); setActiveFreqChips(); if(f==='WEEKLY'){ ensureWeeklyDefaultDay(); } updateSummary();
+    }
     document.getElementById('ovRecurBox').addEventListener('change', function(e){ if (e.target && e.target.name==='ovFreq'){ updateFreq(); }});
+
+    function setIntervalUnit(){ try { var u=document.getElementById('ovIntervalUnit'); if(!u) return; var f=getCheckedFreq(); u.textContent = (f==='WEEKLY') ? 'Woche(n)' : (f==='MONTHLY' ? 'Monat(e)' : (f==='DAILY' ? 'Tag(e)' : '')); } catch(e){} }
+    function setActiveFreqChips(){ try { var chips=document.querySelectorAll('.ov-freq-group .ov-chip'); var f=getCheckedFreq(); chips.forEach(function(lbl){ var inp=lbl.querySelector('input'); lbl.classList.toggle('is-active', inp && inp.value===f && inp.checked); }); } catch(e){} }
+    function setActiveWeekdayChips(){ try { document.querySelectorAll('#ovWeeklyOpts label').forEach(function(lbl){ var inp=lbl.querySelector('input'); lbl.classList.toggle('is-active', !!(inp && inp.checked)); }); } catch(e){} }
+    function ensureWeeklyDefaultDay(){ try { var any=document.querySelector('#ovWeeklyOpts .ovByDay:checked'); if(any) return; var s=document.getElementById('ovStartLocal'); if(!s||!s.value) return; var d=parseLocalDateTime(s.value); if(!d) return; var map=['SU','MO','TU','WE','TH','FR','SA']; var code=map[d.getDay()]; var n=document.querySelector('#ovWeeklyOpts .ovByDay[value="'+code+'"]'); if(n){ n.checked=true; setActiveWeekdayChips(); } } catch(e){} }
+    function getEndMode(){ var r=document.querySelector('input[name="ovEndMode"]:checked'); return r? r.value : 'never'; }
+    function updateEndModeUI(){ try { var m=getEndMode(); var u=document.getElementById('ovUntil'); var c=document.getElementById('ovCount'); if(u){ u.disabled = (m!=='until'); if(m!=='until'){ u.value=''; } } if(c){ c.disabled = (m!=='count'); if(m!=='count'){ c.value=''; } } } catch(e){} }
+    function buildRRuleStringFromUI(){
+      try{
+        var f=getCheckedFreq(); if(f==='SINGLE') return '';
+        var parts=['FREQ='+f];
+        var interval=parseInt(document.getElementById('ovInterval').value,10)||1; if(interval>1){ parts.push('INTERVAL='+interval); }
+        if(f==='WEEKLY'){
+          var days=[]; document.querySelectorAll('#ovWeeklyOpts .ovByDay:checked').forEach(function(i){ days.push(i.value); });
+          if(days.length){ parts.push('BYDAY='+days.join(',')); }
+        }
+        if(f==='MONTHLY'){
+          var md=(document.getElementById('ovByMonthDay').value||'').split(',').map(function(s){return parseInt(s.trim(),10);}).filter(function(n){return n>=1 && n<=31;});
+          if(md.length){ parts.push('BYMONTHDAY='+md.join(',')); }
+        }
+        var endMode=getEndMode();
+        if(endMode==='until'){
+          var u=(document.getElementById('ovUntil').value||'').trim();
+          if(u){ var d=parseLocalDateTime(u); if(d){ var pad=function(n){return (n<10?'0':'')+n;}; var y=d.getUTCFullYear(),M=pad(d.getUTCMonth()+1),D=pad(d.getUTCDate()),H=pad(d.getUTCHours()),m=pad(d.getUTCMinutes()),s=pad(d.getUTCSeconds()); parts.push('UNTIL='+y+M+D+'T'+H+m+s+'Z'); } }
+        } else if(endMode==='count'){
+          var c=parseInt((document.getElementById('ovCount').value||'').trim(),10); if(c>0){ parts.push('COUNT='+c); }
+        }
+        return parts.join(';');
+      } catch(e){ return ''; }
+    }
+    function updateRRulePreview(){
+      try{ var el=document.getElementById('ovRRulePreview'); if(!el) return; var s=buildRRuleStringFromUI(); el.textContent = s ? ('RRULE: '+s) : 'RRULE: —'; } catch(e){}
+    }
+    function parseRRuleString(rrule){
+      try{
+        var out={ FREQ:'', INTERVAL:1, BYDAY:[], BYMONTHDAY:[], UNTIL:'', COUNT:null };
+        if(!rrule || typeof rrule!=='string'){ return out; }
+        var parts = rrule.toUpperCase().split(';');
+        parts.forEach(function(p){
+          var kv = p.split('='); if(kv.length<2) return; var k=kv[0].trim(); var v=kv.slice(1).join('=').trim();
+          if(k==='FREQ'){ out.FREQ=v; }
+          else if(k==='INTERVAL'){ var n=parseInt(v,10); out.INTERVAL = isNaN(n)?1:Math.max(1,n); }
+          else if(k==='BYDAY'){ out.BYDAY = v? v.split(',').map(function(x){return x.trim();}).filter(Boolean):[]; }
+          else if(k==='BYMONTHDAY'){ out.BYMONTHDAY = v? v.split(',').map(function(x){ var n=parseInt(x.trim(),10); return (n>=1&&n<=31)?n:null; }).filter(function(x){return x!==null;}):[]; }
+          else if(k==='UNTIL'){ out.UNTIL = v; }
+          else if(k==='COUNT'){ var c=parseInt(v,10); out.COUNT = isNaN(c)?null:Math.max(1,c); }
+        });
+        return out;
+      } catch(e){ return { FREQ:'', INTERVAL:1, BYDAY:[], BYMONTHDAY:[], UNTIL:'', COUNT:null }; }
+    }
+    function parseRRuleUntilToDate(val){
+      try{
+        if(!val||typeof val!=='string') return null;
+        var m = /^([0-9]{4})([0-9]{2})([0-9]{2})T([0-9]{2})([0-9]{2})([0-9]{2})Z$/.exec(val);
+        if(m){
+          var y=parseInt(m[1],10), M=parseInt(m[2],10), D=parseInt(m[3],10), h=parseInt(m[4],10), mi=parseInt(m[5],10), s=parseInt(m[6],10);
+          return new Date(Date.UTC(y, M-1, D, h, mi, s));
+        }
+        var d = new Date(val); if(isNaN(d.getTime())) return null; return d;
+      } catch(e){ return null; }
+    }
+    function applyRRuleToUI(rule){
+      try{
+        if(!rule || typeof rule!=='object') return;
+        var f = String(rule.FREQ||'');
+        var freqInp = document.querySelector('#ovRecurBox input[name="ovFreq"][value="'+f+'"]');
+        if(freqInp){ freqInp.checked = true; }
+        else { var singleInp=document.querySelector('#ovRecurBox input[name="ovFreq"][value="SINGLE"]'); if(singleInp){ singleInp.checked=true; } }
+        updateFreq(); // reveals proper sections
+        var iv=document.getElementById('ovInterval'); if(iv){ iv.value = String(Math.max(1, parseInt(rule.INTERVAL||1,10)||1)); }
+        // Weekly BYDAY
+        document.querySelectorAll('#ovWeeklyOpts .ovByDay').forEach(function(cb){ cb.checked=false; });
+        if(Array.isArray(rule.BYDAY)){
+          rule.BYDAY.forEach(function(code){ var cb=document.querySelector('#ovWeeklyOpts .ovByDay[value="'+code+'"]'); if(cb){ cb.checked=true; } });
+          setActiveWeekdayChips();
+        }
+        // Monthly BYMONTHDAY
+        var md=document.getElementById('ovByMonthDay'); if(md){ md.value = (Array.isArray(rule.BYMONTHDAY) && rule.BYMONTHDAY.length)? rule.BYMONTHDAY.join(','):''; }
+        // End mode
+        var endMode='never';
+        if(rule.UNTIL){ endMode='until'; var d=parseRRuleUntilToDate(rule.UNTIL); if(d){ var u=document.getElementById('ovUntil'); if(u){ u.value = toSiteLocalString(d); } } }
+        else if(rule.COUNT && parseInt(rule.COUNT,10)>0){ endMode='count'; var c=document.getElementById('ovCount'); if(c){ c.value = String(parseInt(rule.COUNT,10)); } }
+        var r=document.querySelector('input[name="ovEndMode"][value="'+endMode+'"]'); if(r){ r.checked = true; }
+        updateEndModeUI(); updateSummary();
+      } catch(e){}
+    }
+    function formatTimeRange(){ try { var s=document.getElementById('ovStartLocal').value.trim(); var e=document.getElementById('ovEndLocal').value.trim(); var out=''; var st=s.split(' ')[1]||''; var et=e.split(' ')[1]||''; if(st||et){ out = (st||'..')+'–'+(et||'..'); try { var sd=parseLocalDateTime(s), ed=parseLocalDateTime(e); if(sd && ed && ed.getTime()<sd.getTime()){ out += ' (+1)'; } } catch(err){} } return out; } catch(e){ return ''; } }
+    function updateSummary(){ try {
+      var sum=document.getElementById('ovRecurSummary'); if(!sum) return; var f=getCheckedFreq(); if(f==='SINGLE'){ sum.textContent = 'Einmalig '+ formatTimeRange(); updateRRulePreview(); return; }
+      var inter=parseInt(document.getElementById('ovInterval').value,10)||1; var range=formatTimeRange(); var parts=[];
+      if(f==='DAILY'){ parts.push(inter>1? ('Alle '+inter+' Tage') : 'Täglich'); }
+      else if(f==='WEEKLY'){ var days=[]; document.querySelectorAll('#ovWeeklyOpts .ovByDay:checked').forEach(function(i){ var map={MO:'Mo',TU:'Di',WE:'Mi',TH:'Do',FR:'Fr',SA:'Sa',SU:'So'}; days.push(map[i.value]||i.value); }); if(days.length===0){ ensureWeeklyDefaultDay(); document.querySelectorAll('#ovWeeklyOpts .ovByDay:checked').forEach(function(i){ var map={MO:'Mo',TU:'Di',WE:'Mi',TH:'Do',FR:'Fr',SA:'Sa',SU:'So'}; days.push(map[i.value]||i.value); }); }
+        parts.push((inter>1? ('Alle '+inter+' Wochen') : 'Wöchentlich') + (days.length? (' am '+days.join(', ')) : '')); }
+      else if(f==='MONTHLY'){ parts.push(inter>1? ('Alle '+inter+' Monate') : 'Monatlich'); var md=(document.getElementById('ovByMonthDay').value||'').trim(); if(md){ parts.push(' an Tag(en) '+md); } }
+      var endMode=getEndMode(); if(endMode==='until'){ var until=(document.getElementById('ovUntil').value||'').trim(); if(until){ parts.push(' endet am '+until); } }
+      else if(endMode==='count'){ var cnt=parseInt((document.getElementById('ovCount').value||'').trim(),10); if(cnt>0){ parts.push(' endet nach '+cnt+' Terminen'); } }
+      if(range){ parts.push(range); }
+      sum.textContent = parts.join(' • '); updateRRulePreview();
+    } catch(e){} }
+
+    // Events für Chips/Inputs
+    document.getElementById('ovRecurBox').addEventListener('change', function(e){ if(e.target && e.target.classList && e.target.classList.contains('ovByDay')){ setActiveWeekdayChips(); updateSummary(); }});
+    var iv=document.getElementById('ovInterval'); if(iv){ iv.addEventListener('input', updateSummary); }
+    var md=document.getElementById('ovByMonthDay'); if(md){ md.addEventListener('input', updateSummary); }
+    var st=document.getElementById('ovStartLocal'); var et=document.getElementById('ovEndLocal'); if(st){ st.addEventListener('input', function(){ ensureWeeklyDefaultDay(); updateSummary(); }); } if(et){ et.addEventListener('input', updateSummary); }
+    document.querySelectorAll('input[name="ovEndMode"]').forEach(function(r){ r.addEventListener('change', function(){ updateEndModeUI(); updateSummary(); }); });
+    var u=document.getElementById('ovUntil'); if(u){ u.addEventListener('input', updateSummary); }
+    var c=document.getElementById('ovCount'); if(c){ c.addEventListener('input', updateSummary); }
+
+    // Initialzustand setzen
+    try { updateFreq(); setActiveWeekdayChips(); updateEndModeUI(); updateSummary(); } catch(e){}
     return wrap;
   }
   function foyerOverlayClose(){
@@ -919,7 +1079,6 @@
     var startLocal = toSiteLocalString(startDate);
     var endLocal = toSiteLocalString(endDateOpt ? endDateOpt : new Date(startDate.getTime()+60*60*1000));
     var s = document.getElementById('ovStartLocal'); var e = document.getElementById('ovEndLocal'); if(s) s.value=startLocal; if(e) e.value=endLocal;
-    var dts = document.getElementById('ovDtstartLocal'); if(dts) dts.value = startLocal;
   }
 
   function foyerOverlayBindSaveCreate(){
@@ -927,25 +1086,39 @@
     save.addEventListener('click', function(e){ e.preventDefault();
       var displays = foyerOverlayGetSelectedDisplayIds(); if(!displays.length){ alert('Bitte mindestens ein Display auswählen.'); return; }
       var ch = __ovSelectedChannelId; if(!ch){ alert('Bitte einen Channel auswählen.'); return; }
-      var recur = document.getElementById('ovRecurToggle').checked;
       var data = new FormData(); data.append('action','foyer_schedules_create_event'); data.append('nonce', nonce); data.append('channel_id', String(ch)); data.append('tz', siteTz);
       displays.forEach(function(id){ data.append('display_ids[]', String(id)); });
-      if (recur){
+      var fSel = (function(){ var r=document.querySelector('#ovRecurBox input[name="ovFreq"]:checked'); return r? r.value : 'SINGLE'; })();
+      if (fSel && fSel !== 'SINGLE'){
         data.append('mode','recur');
-        var dtstart = document.getElementById('ovDtstartLocal').value.trim(); var duration = parseInt(document.getElementById('ovDuration').value,10)||3600;
-        if(!dtstart){ alert('DTSTART ist erforderlich.'); return; }
-        data.append('dtstart_local', dtstart); data.append('duration', String(duration));
-        var freqNode = document.querySelector('#ovRecurBox input[name="ovFreq"]:checked'); if(!freqNode){ alert('Bitte Frequenz wählen.'); return; }
-        data.append('foyer_rrule_freq', freqNode.value);
+        var sVal = document.getElementById('ovStartLocal').value.trim();
+        var eVal = document.getElementById('ovEndLocal').value.trim();
+        if(!sVal){ alert('Start ist erforderlich.'); return; }
+        data.append('dtstart_local', sVal);
+        var durSec = 3600;
+        try {
+          var sd = parseLocalDateTime(sVal);
+          var ed = parseLocalDateTime(eVal);
+          if (sd && ed) {
+            var diff = Math.round((ed.getTime() - sd.getTime())/1000);
+            if (diff >= 60) { durSec = diff; }
+          }
+        } catch(e){}
+        data.append('duration', String(durSec));
+        data.append('foyer_rrule_freq', fSel);
         var interval = parseInt(document.getElementById('ovInterval').value,10)||1; data.append('foyer_rrule_interval', String(Math.max(1,interval)));
-        if (freqNode.value==='WEEKLY'){
+        if (fSel==='WEEKLY'){
           document.querySelectorAll('#ovWeeklyOpts .ovByDay:checked').forEach(function(i){ data.append('foyer_rrule_byday[]', i.value); });
         }
-        if (freqNode.value==='MONTHLY'){
+        if (fSel==='MONTHLY'){
           var md = document.getElementById('ovByMonthDay').value.trim(); if(md) data.append('foyer_rrule_bymonthday', md);
         }
-        var until = (document.getElementById('ovUntil').value||'').trim(); if(until){ data.append('foyer_rrule_until', until); }
-        var count = parseInt((document.getElementById('ovCount').value||'').trim(),10); if(count>0){ data.append('foyer_rrule_count', String(count)); }
+        var endMode = (document.querySelector('input[name="ovEndMode"]:checked')||{}).value || 'never';
+        if (endMode === 'until') {
+          var until = (document.getElementById('ovUntil').value||'').trim(); if(until){ data.append('foyer_rrule_until', until); }
+        } else if (endMode === 'count') {
+          var count = parseInt((document.getElementById('ovCount').value||'').trim(),10); if(count>0){ data.append('foyer_rrule_count', String(count)); }
+        }
       } else {
         var s = document.getElementById('ovStartLocal').value.trim(); var en = document.getElementById('ovEndLocal').value.trim();
         if(!s){ alert('Start ist erforderlich.'); return; }
@@ -953,7 +1126,18 @@
       }
       fetch(ajaxurl, { method:'POST', credentials:'same-origin', body:data })
         .then(function(r){ return r.json(); })
-        .then(function(resp){ if(!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message) || 'Save failed'); } foyerOverlayClose(); try{ scheduleRefetch('create'); }catch(e){} })
+        .then(function(resp){ if(!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message) || 'Save failed'); }
+          try {
+            // Ensure sidebar filter includes the displays used for this new schedule
+            (displays||[]).forEach(function(id){
+              var cb = document.querySelector('#foyerCalDisplays .foyerCalDisplay[value="'+id+'"]');
+              if (cb) { cb.checked = true; }
+            });
+            if (typeof updateDisplaySelectionStyles === 'function') { updateDisplaySelectionStyles(); }
+          } catch(e){}
+          foyerOverlayClose();
+          try{ scheduleRefetch('create'); }catch(e){}
+        })
         .catch(function(err){ alert(err && err.message ? err.message : String(err)); });
     });
   }
@@ -963,6 +1147,7 @@
     foyerOverlayRenderDisplays();
     foyerOverlayRenderChannels();
     foyerOverlayFillDefaultsForCreate(startDate, endDateOpt);
+    try { var s=document.getElementById('ovStartLocal'); if(s){ s.dispatchEvent(new Event('input', { bubbles:true })); } } catch(e){}
     foyerOverlayBindSaveCreate();
     return wrap;
   }
@@ -993,8 +1178,33 @@
     // Fill singles by default
     var sLocal = toSiteLocalString(eventObj.start); var eLocal = toSiteLocalString(eventObj.end);
     var s = document.getElementById('ovStartLocal'); var e = document.getElementById('ovEndLocal'); if(s) s.value=sLocal; if(e) e.value=eLocal;
+    try { if(s){ s.dispatchEvent(new Event('input', { bubbles:true })); } } catch(err){}
+    // Pre-mark as recurring while loading, if event source indicates recurrence
+    try {
+      if (evtMeta && evtMeta.source && String(evtMeta.source).toUpperCase() !== 'SINGLE') {
+        var tmp=document.querySelector('#ovRecurBox input[name="ovFreq"][value="DAILY"]');
+        if(tmp){ tmp.checked = true; updateFreq(); updateSummary(); }
+      }
+    } catch(e){}
+    // Load schedule meta to populate recurrence UI (RRULE) in edit
+    try {
+      var pid = parseInt(evtMeta.schedule_post_id,10);
+      if(pid>0){
+        var fd=new FormData(); fd.append('action','foyer_schedules_get_schedule'); fd.append('nonce', nonce); fd.append('post_id', String(pid));
+        fetch(ajaxurl, { method:'POST', credentials:'same-origin', body: fd })
+          .then(function(r){ return r.json(); })
+          .then(function(resp){ try {
+            if(resp && resp.success && resp.data && resp.data.meta){
+              var meta = resp.data.meta || {}; var rr = meta.rrule || '';
+              if(rr){ var rule=parseRRuleString(rr); applyRRuleToUI(rule); }
+              else { var singleInp=document.querySelector('#ovRecurBox input[name="ovFreq"][value="SINGLE"]'); if(singleInp){ singleInp.checked=true; } updateFreq(); updateSummary(); }
+            }
+          } catch(e){} })
+          .catch(function(e){});
+      }
+    } catch(e){}
     // Force non-recur UI for edit for now
-    var recurToggle = document.getElementById('ovRecurToggle'); recurToggle.checked=false;
+    // (no recur toggle in this UI; nothing to enforce)
     // Bind Save using update endpoint
     var save = document.getElementById('ovSave'); if(save){
       save.addEventListener('click', function(ev){ ev.preventDefault();
