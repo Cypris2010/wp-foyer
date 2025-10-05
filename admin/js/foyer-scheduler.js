@@ -608,6 +608,7 @@
       '#foyerSchedulerOverlay .foyer-ov-channelsWrap{overflow:auto;padding-right:8px;}'+
       '#foyerSchedulerOverlay .foyer-ov-displaysWrap{overflow:auto;padding-left:8px;}'+
       '#foyerSchedulerOverlay .foyer-ov-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}'+
+      '#foyerSchedulerOverlay .foyer-ov-head > div{display:flex;gap:8px;}'+
       '#foyerSchedulerOverlay h2{margin:0 0 8px 0;}' +
       '#foyerSchedulerOverlay .ov-form-row{margin:8px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}' +
       '#foyerSchedulerOverlay .ov-actions{position:sticky;bottom:0;display:flex;gap:8px;justify-content:flex-end;padding-top:8px;margin-top:12px;background:#fff;}' +
@@ -678,16 +679,21 @@
       '</div>';
     var bottom = document.createElement('div'); bottom.className='foyer-ov-bottom';
     var channelsWrap = document.createElement('section'); channelsWrap.className='foyer-ov-channelsWrap'; channelsWrap.innerHTML = ''+
-      '<div class="foyer-ov-head"><h2>Channels</h2><div class="ov-chan-toolbar" style="display:flex;gap:8px;align-items:center;">'
-        +'<input type="search" id="ovChanSearch" class="regular-text" placeholder="Suchen…" style="max-width:220px;" />'
-        +'<label style="margin-left:auto;">Pro Seite '
-          +'<select id="ovChanPerPage"><option value="12" selected>12</option><option value="24">24</option><option value="48">48</option></select>'
-        +'</label>'
-      +'</div></div>'
-      +'<div id="ovChanPager" class="ov-chan-pager" style="display:flex;align-items:center;gap:8px;margin:4px 0 8px;">'
-        +'<button class="button" id="ovChanPrev" type="button">&laquo;</button>'
-        +'<span id="ovChanPageInfo"></span>'
-        +'<button class="button" id="ovChanNext" type="button">&raquo;</button>'
+      '<div class="foyer-ov-head">'
+        +'<div class="ov-chan-title" style="display:flex;gap:8px;align-items:center;">'
+          +'<h2>Channels</h2>'
+          +'<input type="search" id="ovChanSearch" class="regular-text" placeholder="Suchen…" style="max-width:220px;" />'
+        +'</div>'
+        +'<div class="ov-chan-toolbar" style="display:flex;gap:12px;align-items:center;">'
+          +'<label>Pro Seite '
+            +'<select id="ovChanPerPage"><option value="12" selected>12</option><option value="24">24</option><option value="48">48</option></select>'
+          +'</label>'
+          +'<div id="ovChanPager" class="ov-chan-pager" style="display:flex;align-items:center;gap:8px;">'
+            +'<button class="button" id="ovChanPrev" type="button">&laquo;</button>'
+            +'<span id="ovChanPageInfo"></span>'
+            +'<button class="button" id="ovChanNext" type="button">&raquo;</button>'
+          +'</div>'
+        +'</div>'
       +'</div>'
       +'<div class="foyer-ov-channels" id="ovChannels"></div>';
     var displaysWrap = document.createElement('aside'); displaysWrap.className='foyer-ov-displaysWrap'; displaysWrap.innerHTML = '<div class="foyer-ov-head"><h2>Displays</h2></div><div class="foyer-ov-displays" id="ovDisplays"></div>';
