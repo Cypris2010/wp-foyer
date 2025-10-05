@@ -611,8 +611,15 @@
       '#foyerSchedulerOverlay h2{margin:0 0 8px 0;}' +
       '#foyerSchedulerOverlay .ov-form-row{margin:8px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}' +
       '#foyerSchedulerOverlay .ov-actions{position:sticky;bottom:0;display:flex;gap:8px;justify-content:flex-end;padding-top:8px;margin-top:12px;background:#fff;}' +
-      '#foyerSchedulerOverlay .foyer-ov-displays .ov-item{display:flex;align-items:center;gap:8px;padding:6px;border-radius:4px;cursor:pointer;}' +
-      '#foyerSchedulerOverlay .foyer-ov-displays .ov-item input{margin-right:6px;}' +
+      '#foyerSchedulerOverlay .foyer-ov-displays .ov-display-item{display:flex;align-items:center;gap:8px;padding:8px 10px;margin:4px 0;border-radius:4px;cursor:pointer;user-select:none;transition:background-color .15s ease,border-color .15s ease;border:1px solid transparent;}' +
+      '#foyerSchedulerOverlay .foyer-ov-displays .ov-display-item input{display:none;}' +
+      '#foyerSchedulerOverlay .foyer-ov-displays .ov-display-item:hover{background:#f6f7f7;}' +
+      '#foyerSchedulerOverlay .foyer-ov-displays .ov-display-item.is-selected{border-color:rgba(0,0,0,.1);}' +
+      '#foyerSchedulerOverlay .foyer-ov-displays .ov-display-swatch{display:inline-block;width:12px;height:12px;border:1px solid #999;border-radius:2px;}' +
+      '#foyerSchedulerOverlay .foyer-ov-displays .ov-select-all .ov-display-swatch{background:repeating-linear-gradient(45deg,#bbb,#bbb 4px,#dedede 4px,#dedede 8px);border-color:#aaa;}' +
+      '#foyerSchedulerOverlay .foyer-ov-displays .ov-display-item .foyer-display-title{flex:1;}' +
+      '#foyerSchedulerOverlay input[type=checkbox].ovDisplay{display:none !important;}' +
+      '#foyerSchedulerOverlay #ovSelectAll{display:none !important;}' +
       '#foyerSchedulerOverlay .foyer-ov-channels{display:grid;gap:12px;grid-template-columns:repeat(2, 1fr);}' +
       '@media(min-width:1100px){#foyerSchedulerOverlay .foyer-ov-channels{grid-template-columns:repeat(3, 1fr);}}' +
       '@media(min-width:1400px){#foyerSchedulerOverlay .foyer-ov-channels{grid-template-columns:repeat(4, 1fr);}}' +
@@ -736,16 +743,81 @@
   function foyerOverlayRenderDisplays(){
     var host = document.getElementById('ovDisplays'); if(!host) return;
     host.innerHTML='';
+
+    function syncOvSelectAllFromItems(){
+      var boxes = host.querySelectorAll('.ovDisplay');
+      var all = boxes.length > 0 && Array.prototype.every.call(boxes, function(cb){ return cb.checked; });
+      var selAll = document.getElementById('ovSelectAll'); if (selAll) selAll.checked = all;
+      var selAllRow = document.getElementById('ovSelectAllRow');
+      if (selAllRow){
+        var base = selAllRow.getAttribute('data-color') || 'hsl(210, 20%, 85%)';
+        if (selAll && selAll.checked){ selAllRow.style.backgroundColor = makeLightColor(base) || base; selAllRow.classList.add('is-selected'); selAllRow.setAttribute('aria-pressed','true'); }
+        else { selAllRow.style.backgroundColor = ''; selAllRow.classList.remove('is-selected'); selAllRow.setAttribute('aria-pressed','false'); }
+      }
+    }
+    function updateOverlayDisplaySelectionStyles(){
+      var items = host.querySelectorAll('.ov-display-item[data-id]');
+      items.forEach(function(row){
+        var cb = row.querySelector('.ovDisplay');
+        var base = row.getAttribute('data-color') || '';
+        if (cb && cb.checked){
+          var light = makeLightColor(base) || base || '#eef6ff';
+          row.style.backgroundColor = light;
+          row.classList.add('is-selected');
+          row.setAttribute('aria-pressed','true');
+        } else {
+          row.style.backgroundColor = '';
+          row.classList.remove('is-selected');
+          row.setAttribute('aria-pressed','false');
+        }
+      });
+      syncOvSelectAllFromItems();
+    }
+    // expose for external calls (e.g., after programmatic checkbox changes)
+    host.__updateStyles = updateOverlayDisplaySelectionStyles;
+
+    // Select-All row
+    var selAllRow = document.createElement('div'); selAllRow.className='ov-display-item ov-select-all'; selAllRow.id='ovSelectAllRow'; selAllRow.setAttribute('data-color','hsl(210, 20%, 85%)'); selAllRow.tabIndex = 0;
+    var selAll = document.createElement('input'); selAll.type='checkbox'; selAll.id='ovSelectAll';
+    var selAllSw = document.createElement('span'); selAllSw.className='ov-display-swatch';
+    var selAllLabel = document.createElement('span'); selAllLabel.className='foyer-display-title'; selAllLabel.textContent = 'Alle auswählen';
+    selAllRow.appendChild(selAllSw); selAllRow.appendChild(selAllLabel); selAllRow.appendChild(selAll); host.appendChild(selAllRow);
+
     var srcList = document.querySelectorAll('#foyerCalDisplays .foyer-display-item');
     srcList.forEach(function(item){
       var id = parseInt(item.getAttribute('data-id'),10);
       var title = String(item.querySelector('.foyer-display-title') ? item.querySelector('.foyer-display-title').textContent : 'Display #'+id);
       var checked = !!(item.querySelector('.foyerCalDisplay') && item.querySelector('.foyerCalDisplay').checked);
-      var row = document.createElement('label'); row.className='ov-item';
+      var color = String(item.getAttribute('data-color')||'');
+      var row = document.createElement('div'); row.className='ov-display-item'; row.setAttribute('data-id', String(id)); if(color) row.setAttribute('data-color', color); row.tabIndex = 0;
       var cb = document.createElement('input'); cb.type='checkbox'; cb.className='ovDisplay'; cb.value=String(id); cb.checked = checked;
-      var span = document.createElement('span'); span.textContent = title;
-      row.appendChild(cb); row.appendChild(span); host.appendChild(row);
+      var sw = document.createElement('span'); sw.className='ov-display-swatch'; if(color) sw.style.background = color;
+      var span = document.createElement('span'); span.className = 'foyer-display-title'; span.textContent = title;
+      row.appendChild(sw); row.appendChild(span); row.appendChild(cb); host.appendChild(row);
     });
+
+    // interactions: click row toggles checkbox; keyboard space/enter
+    host.addEventListener('click', function(e){
+      var row = e.target.closest('.ov-display-item');
+      if (!row || !host.contains(row)) return;
+      var isSelectAll = row.id === 'ovSelectAllRow';
+      if (isSelectAll){ var box = row.querySelector('#ovSelectAll'); if (box){ box.checked = !box.checked; var all = host.querySelectorAll('.ovDisplay'); all.forEach(function(cb){ cb.checked = box.checked; }); updateOverlayDisplaySelectionStyles(); } return; }
+      var cb = row.querySelector('.ovDisplay'); if (cb){ cb.checked = !cb.checked; updateOverlayDisplaySelectionStyles(); }
+    });
+    host.addEventListener('keydown', function(e){
+      var row = e.target.closest('.ov-display-item');
+      if (!row || !host.contains(row)) return;
+      if (e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); row.click(); }
+    });
+    host.addEventListener('change', function(e){
+      var t = e.target;
+      if (t && t.id === 'ovSelectAll'){
+        var all = host.querySelectorAll('.ovDisplay'); all.forEach(function(cb){ cb.checked = t.checked; }); updateOverlayDisplaySelectionStyles(); return;
+      }
+      if (t && t.classList && t.classList.contains('ovDisplay')){ updateOverlayDisplaySelectionStyles(); }
+    });
+
+    updateOverlayDisplaySelectionStyles();
   }
   function foyerOverlayGetSelectedDisplayIds(){
     var out=[]; document.querySelectorAll('#ovDisplays .ovDisplay:checked').forEach(function(i){ var v=parseInt(i.value,10); if(!isNaN(v)) out.push(v);}); return out;
@@ -906,6 +978,7 @@
         var v = parseInt(cb.value,10);
         cb.checked = set.has(v);
       });
+      var ovHost = document.getElementById('ovDisplays'); if (ovHost && typeof ovHost.__updateStyles === 'function') { ovHost.__updateStyles(); }
     } catch(e){}
 
     // Render channels with the preselected channel highlighted
