@@ -636,7 +636,7 @@
     var style = document.createElement('style'); style.id='foyerSchedulerOverlayStyle'; style.type='text/css'; style.appendChild(document.createTextNode(css)); document.head.appendChild(style);
   }
 
-  function foyerOverlayCreateStructure(origin){
+  function foyerOverlayCreateStructure(origin, titleText){
     foyerInjectOverlayCSS();
     var wrap = document.getElementById('foyerSchedulerOverlay');
     if (wrap) { try { if (window.__ovEscHandler) { document.removeEventListener('keydown', window.__ovEscHandler); window.__ovEscHandler = null; } } catch(e){} wrap.remove(); }
@@ -651,7 +651,7 @@
     try { wrap.style.clipPath = 'circle(0px at '+ox+'px '+oy+'px)'; } catch(e){}
     var panel = document.createElement('div'); panel.className='foyer-ov-panel';
     var top = document.createElement('section'); top.className='foyer-ov-top'; top.innerHTML = ''+
-      '<div class="foyer-ov-head"><h2>Schedule</h2><div><button class="button button-primary" id="ovSave">Speichern</button><button class="button" id="ovCloseBtn">Schließen</button></div></div>'+
+      '<div class="foyer-ov-head"><h2>'+ escapeHTML(titleText || 'Schedule') +'</h2><div><button class="button button-primary" id="ovSave">Speichern</button><button class="button" id="ovCloseBtn">Schließen</button></div></div>'+
       '<div class="ov-form">'+
         '<div class="ov-form-row"><label><input type="checkbox" id="ovRecurToggle"/> Wiederkehrend</label></div>'+
         '<div class="ov-single" id="ovSingleBox">'+
@@ -953,7 +953,7 @@
   }
 
   function foyerOpenOverlayCreate(startDate, endDateOpt){
-    var wrap = foyerOverlayCreateStructure(getLastCalPointer());
+    var wrap = foyerOverlayCreateStructure(getLastCalPointer(), 'Create new Schedule');
     foyerOverlayRenderDisplays();
     foyerOverlayRenderChannels();
     foyerOverlayFillDefaultsForCreate(startDate, endDateOpt);
@@ -963,7 +963,7 @@
 
   function foyerOpenOverlayEdit(eventObj){
     // For now, reuse single-occurrence edit inside overlay; series editing remains basic (apply_to radios)
-    var wrap = foyerOverlayCreateStructure(getLastCalPointer());
+    var wrap = foyerOverlayCreateStructure(getLastCalPointer(), 'Edit Schedule');
     var evtMeta = (eventObj && eventObj.extendedProps) ? eventObj.extendedProps : {};
 
     // Preselect channel before rendering grid so the correct card is highlighted
