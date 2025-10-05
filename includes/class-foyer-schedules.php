@@ -119,6 +119,68 @@ if ( ! class_exists( 'Foyer_Schedules' ) ) {
 				'overrides'      => $overrides,
 			);
 		}
+
+		/**
+		 * Builds an RRULE string from builder-style fields.
+		 *
+		 * Accepts keys similarly to the schedule meta box builder:
+		 * - foyer_rrule_freq: DAILY|WEEKLY|MONTHLY
+		 * - foyer_rrule_interval: int >= 1
+		 * - foyer_rrule_byday[]: array of MO,TU,WE,TH,FR,SA,SU (WEEKLY only)
+		 * - foyer_rrule_bymonthday: comma-separated ints (MONTHLY only)
+		 * - foyer_rrule_until: local datetime string (Y-m-d H:i:s). Converted to UTC UNTIL=YYYYMMDDTHHMMSSZ
+		 * - foyer_rrule_count: int
+		 *
+		 * If UNTIL is provided, COUNT is ignored.
+		 *
+		 * @param array $src
+		 * @return string RRULE
+		 */
+		public static function build_rrule_from_builder_fields( $src ) {
+			$parts = array();
+			$freq = isset( $src['foyer_rrule_freq'] ) ? strtoupper( trim( (string) $src['foyer_rrule_freq'] ) ) : '';
+			if ( in_array( $freq, array( 'DAILY', 'WEEKLY', 'MONTHLY' ), true ) ) {
+				$parts[] = 'FREQ=' . $freq;
+				$interval = isset( $src['foyer_rrule_interval'] ) ? intval( $src['foyer_rrule_interval'] ) : 1;
+				$interval = max( 1, $interval );
+				if ( $interval > 1 ) { $parts[] = 'INTERVAL=' . $interval; }
+
+				if ( 'WEEKLY' === $freq && ! empty( $src['foyer_rrule_byday'] ) && is_array( $src['foyer_rrule_byday'] ) ) {
+					$byday = array();
+					foreach ( $src['foyer_rrule_byday'] as $d ) {
+						$d = strtoupper( trim( (string) $d ) );
+						if ( preg_match( '/^(MO|TU|WE|TH|FR|SA|SU)$/', $d ) ) {
+							$byday[] = $d;
+						}
+					}
+					if ( ! empty( $byday ) ) { $parts[] = 'BYDAY=' . implode( ',', $byday ); }
+				}
+
+				if ( 'MONTHLY' === $freq && ! empty( $src['foyer_rrule_bymonthday'] ) ) {
+					$raw = explode( ',', (string) $src['foyer_rrule_bymonthday'] );
+					$md = array();
+					foreach ( $raw as $v ) { $v = intval( trim( $v ) ); if ( $v >= 1 && $v <= 31 ) { $md[] = $v; } }
+					if ( ! empty( $md ) ) { $parts[] = 'BYMONTHDAY=' . implode( ',', $md ); }
+				}
+
+				$until_in = isset( $src['foyer_rrule_until'] ) ? trim( (string) $src['foyer_rrule_until'] ) : '';
+				if ( '' !== $until_in ) {
+					// Convert local datetime to UTC UNTIL in RFC form
+					try {
+						$tz = wp_timezone();
+						$dt = DateTimeImmutable::createFromFormat( 'Y-m-d H:i:s', str_replace( 'T', ' ', $until_in ), $tz );
+						if ( false === $dt ) { $dt = new DateTimeImmutable( $until_in, $tz ); }
+						if ( $dt instanceof DateTimeImmutable ) {
+							$parts[] = 'UNTIL=' . $dt->setTimezone( new DateTimeZone( 'UTC' ) )->format( 'Ymd\THis\Z' );
+						}
+					} catch ( Exception $e ) {}
+				} else {
+					$count = isset( $src['foyer_rrule_count'] ) ? intval( $src['foyer_rrule_count'] ) : 0;
+					if ( $count > 0 ) { $parts[] = 'COUNT=' . $count; }
+				}
+			}
+			return implode( ';', $parts );
+		}
 	}
 }
 

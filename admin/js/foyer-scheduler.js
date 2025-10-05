@@ -5,6 +5,8 @@
   var siteTz = String(foyerSchedulerData.siteTz||'UTC');
   var foyerCalChannels = Array.isArray(foyerSchedulerData.channels) ? foyerSchedulerData.channels : [];
 
+  var __ovEscHandler = null;
+
   function escapeHTML(s){
     return String(s)
       .replace(/&/g,'&amp;')
@@ -114,6 +116,13 @@
 
   var calEl = document.getElementById('foyerSchedulesCalendar');
   var ec = null;
+  // track last pointer position inside calendar for overlay animation origin
+  if (calEl){
+    var __storePointer = function(e){ try{ if(e && typeof e.clientX==='number'){ window.__lastCalPointer = { x: e.clientX, y: e.clientY }; } }catch(err){} };
+    calEl.addEventListener('mousedown', __storePointer, true);
+    calEl.addEventListener('click', __storePointer, true);
+    calEl.addEventListener('touchstart', function(e){ try{ var t = e && e.touches && e.touches[0]; if(t){ window.__lastCalPointer = { x: t.clientX, y: t.clientY }; } }catch(err){} }, true);
+  }
   function ensureCalendar(){
     if (ec) return ec;
     try {
@@ -586,6 +595,349 @@
   }
   var __pre = parsePreselectedDisplays();
   if (__pre && __pre.length) { preselectDisplays(__pre); }
+  function getLastCalPointer(){ var p = window.__lastCalPointer; if(p && typeof p.x==='number' && typeof p.y==='number'){ return p; } return { x: Math.round(window.innerWidth/2), y: Math.round(window.innerHeight/2) }; }
+
+  // Overlay CSS injector
+  function foyerInjectOverlayCSS(){
+    if (document.getElementById('foyerSchedulerOverlayStyle')) return;
+    var css = ''+
+      '#foyerSchedulerOverlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100001;display:flex;align-items:stretch;justify-content:center;will-change:clip-path;-webkit-clip-path:circle(150% at 50% 50%);clip-path:circle(150% at 50% 50%);transition:clip-path .32s ease-in-out,-webkit-clip-path .32s ease-in-out;}'+
+      '#foyerSchedulerOverlay .foyer-ov-panel{background:#fff;width:96vw;height:90vh;margin:auto;box-shadow:0 4px 24px rgba(0,0,0,.3);display:grid;grid-template-rows:auto 1fr;grid-template-columns:1fr;gap:16px;padding:16px;box-sizing:border-box;}'+
+      '#foyerSchedulerOverlay .foyer-ov-top{overflow:auto;padding:0 8px;}'+
+      '#foyerSchedulerOverlay .foyer-ov-bottom{display:grid;grid-template-columns:4fr 1fr;gap:16px;height:100%;overflow:hidden;}'+
+      '#foyerSchedulerOverlay .foyer-ov-channelsWrap{overflow:auto;padding-right:8px;}'+
+      '#foyerSchedulerOverlay .foyer-ov-displaysWrap{overflow:auto;padding-left:8px;}'+
+      '#foyerSchedulerOverlay .foyer-ov-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}'+
+      '#foyerSchedulerOverlay h2{margin:0 0 8px 0;}' +
+      '#foyerSchedulerOverlay .ov-form-row{margin:8px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}' +
+      '#foyerSchedulerOverlay .ov-actions{position:sticky;bottom:0;display:flex;gap:8px;justify-content:flex-end;padding-top:8px;margin-top:12px;background:#fff;}' +
+      '#foyerSchedulerOverlay .foyer-ov-displays .ov-item{display:flex;align-items:center;gap:8px;padding:6px;border-radius:4px;cursor:pointer;}' +
+      '#foyerSchedulerOverlay .foyer-ov-displays .ov-item input{margin-right:6px;}' +
+      '#foyerSchedulerOverlay .foyer-ov-channels{display:grid;gap:12px;grid-template-columns:repeat(2, 1fr);}' +
+      '@media(min-width:1100px){#foyerSchedulerOverlay .foyer-ov-channels{grid-template-columns:repeat(3, 1fr);}}' +
+      '@media(min-width:1400px){#foyerSchedulerOverlay .foyer-ov-channels{grid-template-columns:repeat(4, 1fr);}}' +
+      '#foyerSchedulerOverlay .foyer-channel-card{display:block;text-align:left;border:1px solid #ddd;border-radius:4px;overflow:hidden;background:#fafafa;cursor:pointer;}' +
+      '#foyerSchedulerOverlay .foyer-channel-card.is-selected{outline:2px solid #2271b1; background:#eef6ff;}' +
+      '#foyerSchedulerOverlay .foyer-channel-card__preview{position:relative;width:100%;padding-top:56.25%;background:#e0e0e0;}' +
+      '#foyerSchedulerOverlay .foyer-channel-card__preview iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}' +
+      '#foyerSchedulerOverlay .foyer-channel-card__meta{padding:8px 10px;}' +
+      '#foyerSchedulerOverlay .foyer-channel-card__title{font-weight:600;margin-bottom:4px;}' +
+      '#foyerSchedulerOverlay .ov-group{padding:10px;border-radius:4px;margin-bottom:10px;}' +
+      '#foyerSchedulerOverlay .ov-group legend{font-weight:600;}' +
+      '#foyerSchedulerOverlay .ov-hidden{display:none !important;}' +
+      '';
+    var style = document.createElement('style'); style.id='foyerSchedulerOverlayStyle'; style.type='text/css'; style.appendChild(document.createTextNode(css)); document.head.appendChild(style);
+  }
+
+  function foyerOverlayCreateStructure(origin){
+    foyerInjectOverlayCSS();
+    var wrap = document.getElementById('foyerSchedulerOverlay');
+    if (wrap) { try { if (window.__ovEscHandler) { document.removeEventListener('keydown', window.__ovEscHandler); window.__ovEscHandler = null; } } catch(e){} wrap.remove(); }
+    wrap = document.createElement('div');
+    wrap.id = 'foyerSchedulerOverlay';
+    var ox = (origin && typeof origin.x === 'number') ? origin.x : Math.round(window.innerWidth/2);
+    var oy = (origin && typeof origin.y === 'number') ? origin.y : Math.round(window.innerHeight/2);
+    wrap.dataset.originX = String(ox);
+    wrap.dataset.originY = String(oy);
+    // start collapsed at origin (will expand via RAF)
+    try { wrap.style.webkitClipPath = 'circle(0px at '+ox+'px '+oy+'px)'; } catch(e){}
+    try { wrap.style.clipPath = 'circle(0px at '+ox+'px '+oy+'px)'; } catch(e){}
+    var panel = document.createElement('div'); panel.className='foyer-ov-panel';
+    var top = document.createElement('section'); top.className='foyer-ov-top'; top.innerHTML = ''+
+      '<div class="foyer-ov-head"><h2>Schedule</h2><div><button class="button button-primary" id="ovSave">Speichern</button><button class="button" id="ovCloseBtn">Schließen</button></div></div>'+
+      '<div class="ov-form">'+
+        '<div class="ov-form-row"><label><input type="checkbox" id="ovRecurToggle"/> Wiederkehrend</label></div>'+
+        '<div class="ov-single" id="ovSingleBox">'+
+          '<div class="ov-form-row"><label style="min-width:120px;display:inline-block;">Start</label><input type="text" id="ovStartLocal" class="regular-text" placeholder="YYYY-MM-DD HH:mm:ss"/></div>'+
+          '<div class="ov-form-row"><label style="min-width:120px;display:inline-block;">Ende</label><input type="text" id="ovEndLocal" class="regular-text" placeholder="YYYY-MM-DD HH:mm:ss"/></div>'+
+        '</div>'+
+        '<fieldset class="ov-recur ov-hidden" id="ovRecurBox"><legend>RRULE-Builder</legend>'+
+          '<div class="ov-form-row">'+
+            '<label><input type="radio" name="ovFreq" value="DAILY"> Daily</label>'+
+            '<label><input type="radio" name="ovFreq" value="WEEKLY"> Weekly</label>'+
+            '<label><input type="radio" name="ovFreq" value="MONTHLY"> Monthly</label>'+
+            '<label style="margin-left:auto;">Interval <input type="number" id="ovInterval" class="small-text" min="1" value="1"/></label>'+
+          '</div>'+
+          '<div class="ov-form-row ov-weekly ov-hidden" id="ovWeeklyOpts">Tage: '
+            +['MO','TU','WE','TH','FR','SA','SU'].map(function(d){return '<label style="margin-right:6px;"><input type="checkbox" class="ovByDay" value="'+d+'"/> '+d+'</label>';}).join(' ')
+          +'</div>'+
+          '<div class="ov-form-row ov-monthly ov-hidden" id="ovMonthlyOpts">'
+            +'<label>Monats-Tage (z.B. 1,15,31) <input type="text" id="ovByMonthDay" class="regular-text" placeholder="1,15,31"/></label>'+
+          '</div>'+
+          '<div class="ov-form-row"><label>DTSTART <input type="text" id="ovDtstartLocal" class="regular-text" placeholder="YYYY-MM-DD HH:mm:ss"/></label>'+
+          '<label>Dauer (Sek.) <input type="number" id="ovDuration" class="small-text" min="60" step="60" value="3600"/></label></div>'+
+          '<div class="ov-form-row"><label>Bis (local) <input type="text" id="ovUntil" class="regular-text" placeholder="YYYY-MM-DD HH:mm:ss"/></label><span style="opacity:.7;">oder</span><label>Anzahl <input type="number" id="ovCount" class="small-text" min="1"/></label></div>'+
+        '</fieldset>'+
+      '</div>';
+    var bottom = document.createElement('div'); bottom.className='foyer-ov-bottom';
+    var channelsWrap = document.createElement('section'); channelsWrap.className='foyer-ov-channelsWrap'; channelsWrap.innerHTML = ''+
+      '<div class="foyer-ov-head"><h2>Channels</h2><div class="ov-chan-toolbar" style="display:flex;gap:8px;align-items:center;">'
+        +'<input type="search" id="ovChanSearch" class="regular-text" placeholder="Suchen…" style="max-width:220px;" />'
+        +'<label style="margin-left:auto;">Pro Seite '
+          +'<select id="ovChanPerPage"><option value="12" selected>12</option><option value="24">24</option><option value="48">48</option></select>'
+        +'</label>'
+      +'</div></div>'
+      +'<div id="ovChanPager" class="ov-chan-pager" style="display:flex;align-items:center;gap:8px;margin:4px 0 8px;">'
+        +'<button class="button" id="ovChanPrev" type="button">&laquo;</button>'
+        +'<span id="ovChanPageInfo"></span>'
+        +'<button class="button" id="ovChanNext" type="button">&raquo;</button>'
+      +'</div>'
+      +'<div class="foyer-ov-channels" id="ovChannels"></div>';
+    var displaysWrap = document.createElement('aside'); displaysWrap.className='foyer-ov-displaysWrap'; displaysWrap.innerHTML = '<div class="foyer-ov-head"><h2>Displays</h2></div><div class="foyer-ov-displays" id="ovDisplays"></div>';
+    bottom.appendChild(channelsWrap); bottom.appendChild(displaysWrap);
+    panel.appendChild(top); panel.appendChild(bottom); wrap.appendChild(panel); document.body.appendChild(wrap);
+    // animate open (expand from origin)
+    try {
+      requestAnimationFrame(function(){
+        requestAnimationFrame(function(){
+          var _ox = parseInt(wrap.dataset.originX||'',10); if (isNaN(_ox)) _ox = Math.round(window.innerWidth/2);
+          var _oy = parseInt(wrap.dataset.originY||'',10); if (isNaN(_oy)) _oy = Math.round(window.innerHeight/2);
+          wrap.style.webkitClipPath = 'circle(150% at '+_ox+'px '+_oy+'px)';
+          wrap.style.clipPath = 'circle(150% at '+_ox+'px '+_oy+'px)';
+        });
+      });
+    } catch(e){}
+    document.body.style.overflow='hidden';
+    wrap.addEventListener('click', function(e){ if(e.target && e.target.id==='foyerSchedulerOverlay'){ foyerOverlayClose(); }});
+    document.getElementById('ovCloseBtn').addEventListener('click', function(e){ e.preventDefault(); foyerOverlayClose(); });
+    // ESC key to close overlay without saving
+    try {
+      var escHandler = function(e){ if ((e.key === 'Escape') || (e.key === 'Esc') || (e.keyCode === 27)) { e.preventDefault(); foyerOverlayClose(); } };
+      window.__ovEscHandler = escHandler;
+      document.addEventListener('keydown', escHandler);
+    } catch(e){}
+        // Toggle recur UI
+    var recurToggle = document.getElementById('ovRecurToggle');
+    var boxSingle = document.getElementById('ovSingleBox');
+    var boxRecur = document.getElementById('ovRecurBox');
+    var weekly = document.getElementById('ovWeeklyOpts'); var monthly = document.getElementById('ovMonthlyOpts');
+    function updateRecur(){ if(recurToggle.checked){ boxSingle.classList.add('ov-hidden'); boxRecur.classList.remove('ov-hidden'); } else { boxRecur.classList.add('ov-hidden'); boxSingle.classList.remove('ov-hidden'); } updateFreq(); }
+    function getCheckedFreq(){ var r = document.querySelector('#ovRecurBox input[name="ovFreq"]:checked'); return r ? r.value : ''; }
+    function updateFreq(){ var f = getCheckedFreq(); weekly.classList.toggle('ov-hidden', f!=='WEEKLY'); monthly.classList.toggle('ov-hidden', f!=='MONTHLY'); }
+    document.getElementById('ovRecurToggle').addEventListener('change', updateRecur);
+    document.getElementById('ovRecurBox').addEventListener('change', function(e){ if (e.target && e.target.name==='ovFreq'){ updateFreq(); }});
+    return wrap;
+  }
+  function foyerOverlayClose(){
+    var w=document.getElementById('foyerSchedulerOverlay');
+    if(!w){ document.body.style.overflow=''; return; }
+    var ox = parseInt(w.dataset.originX||'',10); if (isNaN(ox)) ox = Math.round(window.innerWidth/2);
+    var oy = parseInt(w.dataset.originY||'',10); if (isNaN(oy)) oy = Math.round(window.innerHeight/2);
+    var cleaned = false;
+    function cleanup(){ if(cleaned) return; cleaned=true; try{ if (window.__ovEscHandler) { document.removeEventListener('keydown', window.__ovEscHandler); window.__ovEscHandler = null; } }catch(e){} if(w && w.parentNode){ w.parentNode.removeChild(w); } document.body.style.overflow=''; }
+    try {
+      w.addEventListener('transitionend', function(ev){ if(ev && ev.propertyName && ev.propertyName.indexOf('clip-path')===-1 && ev.propertyName.indexOf('webkit-clip-path')===-1) return; cleanup(); }, { once:true });
+      setTimeout(cleanup, 420);
+      w.style.webkitClipPath = 'circle(0px at '+ox+'px '+oy+'px)';
+      w.style.clipPath = 'circle(0px at '+ox+'px '+oy+'px)';
+    } catch(e) { cleanup(); }
+  }
+
+  function foyerOverlayRenderDisplays(){
+    var host = document.getElementById('ovDisplays'); if(!host) return;
+    host.innerHTML='';
+    var srcList = document.querySelectorAll('#foyerCalDisplays .foyer-display-item');
+    srcList.forEach(function(item){
+      var id = parseInt(item.getAttribute('data-id'),10);
+      var title = String(item.querySelector('.foyer-display-title') ? item.querySelector('.foyer-display-title').textContent : 'Display #'+id);
+      var checked = !!(item.querySelector('.foyerCalDisplay') && item.querySelector('.foyerCalDisplay').checked);
+      var row = document.createElement('label'); row.className='ov-item';
+      var cb = document.createElement('input'); cb.type='checkbox'; cb.className='ovDisplay'; cb.value=String(id); cb.checked = checked;
+      var span = document.createElement('span'); span.textContent = title;
+      row.appendChild(cb); row.appendChild(span); host.appendChild(row);
+    });
+  }
+  function foyerOverlayGetSelectedDisplayIds(){
+    var out=[]; document.querySelectorAll('#ovDisplays .ovDisplay:checked').forEach(function(i){ var v=parseInt(i.value,10); if(!isNaN(v)) out.push(v);}); return out;
+  }
+
+  var __ovSelectedChannelId = null;
+  function foyerOverlayRenderChannels(){
+    var host = document.getElementById('ovChannels'); if(!host) return;
+    // State für Suche/Pagination
+    if (!window.__ovChanState) { window.__ovChanState = { query: '', page: 1, perPage: 12, sorted: null }; }
+    var state = window.__ovChanState;
+
+    function getSortedChannels(){
+      var arr = Array.isArray(foyerCalChannels) ? foyerCalChannels.slice() : [];
+      arr.sort(function(a,b){
+        var fa = (a && a.favorite) ? 1 : 0; var fb = (b && b.favorite) ? 1 : 0;
+        if (fa !== fb) return fb - fa; // Favoriten zuerst
+        var ca = parseInt(a && a.created_ts ? a.created_ts : 0, 10);
+        var cb = parseInt(b && b.created_ts ? b.created_ts : 0, 10);
+        if (cb !== ca) return cb - ca; // neueste zuerst
+        var ta = String(a && a.title ? a.title : '').toLowerCase();
+        var tb = String(b && b.title ? b.title : '').toLowerCase();
+        if (ta < tb) return -1; if (ta > tb) return 1; return 0;
+      });
+      return arr;
+    }
+    function filterChannels(chans, q){
+      var s = String(q||'').trim().toLowerCase(); if (!s) return chans;
+      return chans.filter(function(ch){
+        var t = String(ch && ch.title ? ch.title : '').toLowerCase();
+        var a = String(ch && ch.author_name ? ch.author_name : '').toLowerCase();
+        return t.indexOf(s) !== -1 || a.indexOf(s) !== -1;
+      });
+    }
+    function getPaged(arr, page, per){
+      var total = arr.length; var pages = Math.max(1, Math.ceil(total/Math.max(1,per)));
+      var p = Math.min(Math.max(1, page), pages);
+      var start = (p-1)*per; var end = Math.min(start+per, total);
+      return { items: arr.slice(start,end), page: p, pages: pages, total: total };
+    }
+    function updatePager(p){
+      var info = document.getElementById('ovChanPageInfo'); if (info) { info.textContent = 'Seite '+p.page+' / '+p.pages+' ('+p.total+' Treffer)'; }
+      var prev = document.getElementById('ovChanPrev'); if (prev) { prev.disabled = (p.page<=1); }
+      var next = document.getElementById('ovChanNext'); if (next) { next.disabled = (p.page>=p.pages); }
+    }
+    function renderCards(list){
+      host.innerHTML = '';
+      list.forEach(function(ch){
+        var card = document.createElement('button'); card.type='button'; card.className='foyer-channel-card'; card.dataset.id=String(ch.id);
+        var prev = document.createElement('div'); prev.className='foyer-channel-card__preview';
+        var iframe = document.createElement('iframe'); iframe.src = ch.preview_url || ''; prev.appendChild(iframe);
+        var meta = document.createElement('div'); meta.className='foyer-channel-card__meta';
+        var title = document.createElement('div'); title.className='foyer-channel-card__title'; title.textContent = ((ch && ch.favorite) ? '★ ' : '') + (ch.title || ('Channel #'+ch.id));
+        var info = document.createElement('div'); info.className='foyer-channel-card__info'; info.textContent = (ch.slides_count||0)+' Slides • '+(ch.author_name||'');
+        meta.appendChild(title); meta.appendChild(info);
+        card.appendChild(prev); card.appendChild(meta);
+        card.addEventListener('click', function(){ __ovSelectedChannelId = ch.id; updateSelectionStyles(); });
+        if (String(ch.id) === String(__ovSelectedChannelId)) { card.classList.add('is-selected'); }
+        host.appendChild(card);
+      });
+    }
+    function updateSelectionStyles(){
+      var nodes = host.querySelectorAll('.foyer-channel-card');
+      nodes.forEach(function(n){ n.classList.toggle('is-selected', String(n.dataset.id)===String(__ovSelectedChannelId)); });
+    }
+    function doRender(){
+      if (!state.sorted) { state.sorted = getSortedChannels(); }
+      var filtered = filterChannels(state.sorted, state.query);
+      var paged = getPaged(filtered, state.page, state.perPage);
+      updatePager(paged);
+      renderCards(paged.items);
+    }
+    // Toolbar-Events
+    (function bindToolbar(){
+      var search = document.getElementById('ovChanSearch');
+      var perSel = document.getElementById('ovChanPerPage');
+      var prev = document.getElementById('ovChanPrev');
+      var next = document.getElementById('ovChanNext');
+      if (search){
+        search.value = state.query || '';
+        var timer = null;
+        search.addEventListener('input', function(){ clearTimeout(timer); var self=this; timer=setTimeout(function(){ state.query = String(self.value||''); state.page = 1; doRender(); }, 250); });
+      }
+      if (perSel){ perSel.value = String(state.perPage||12); perSel.addEventListener('change', function(){ var v=parseInt(this.value,10)||12; state.perPage = v; state.page = 1; doRender(); }); }
+      if (prev){ prev.addEventListener('click', function(){ state.page = Math.max(1, (state.page||1)-1 ); doRender(); }); }
+      if (next){ next.addEventListener('click', function(){ state.page = (state.page||1)+1; doRender(); }); }
+    })();
+
+    doRender();
+  }
+
+  function foyerOverlayFillDefaultsForCreate(startDate, endDateOpt){
+    var startLocal = toSiteLocalString(startDate);
+    var endLocal = toSiteLocalString(endDateOpt ? endDateOpt : new Date(startDate.getTime()+60*60*1000));
+    var s = document.getElementById('ovStartLocal'); var e = document.getElementById('ovEndLocal'); if(s) s.value=startLocal; if(e) e.value=endLocal;
+    var dts = document.getElementById('ovDtstartLocal'); if(dts) dts.value = startLocal;
+  }
+
+  function foyerOverlayBindSaveCreate(){
+    var save = document.getElementById('ovSave'); if(!save) return;
+    save.addEventListener('click', function(e){ e.preventDefault();
+      var displays = foyerOverlayGetSelectedDisplayIds(); if(!displays.length){ alert('Bitte mindestens ein Display auswählen.'); return; }
+      var ch = __ovSelectedChannelId; if(!ch){ alert('Bitte einen Channel auswählen.'); return; }
+      var recur = document.getElementById('ovRecurToggle').checked;
+      var data = new FormData(); data.append('action','foyer_schedules_create_event'); data.append('nonce', nonce); data.append('channel_id', String(ch)); data.append('tz', siteTz);
+      displays.forEach(function(id){ data.append('display_ids[]', String(id)); });
+      if (recur){
+        data.append('mode','recur');
+        var dtstart = document.getElementById('ovDtstartLocal').value.trim(); var duration = parseInt(document.getElementById('ovDuration').value,10)||3600;
+        if(!dtstart){ alert('DTSTART ist erforderlich.'); return; }
+        data.append('dtstart_local', dtstart); data.append('duration', String(duration));
+        var freqNode = document.querySelector('#ovRecurBox input[name="ovFreq"]:checked'); if(!freqNode){ alert('Bitte Frequenz wählen.'); return; }
+        data.append('foyer_rrule_freq', freqNode.value);
+        var interval = parseInt(document.getElementById('ovInterval').value,10)||1; data.append('foyer_rrule_interval', String(Math.max(1,interval)));
+        if (freqNode.value==='WEEKLY'){
+          document.querySelectorAll('#ovWeeklyOpts .ovByDay:checked').forEach(function(i){ data.append('foyer_rrule_byday[]', i.value); });
+        }
+        if (freqNode.value==='MONTHLY'){
+          var md = document.getElementById('ovByMonthDay').value.trim(); if(md) data.append('foyer_rrule_bymonthday', md);
+        }
+        var until = (document.getElementById('ovUntil').value||'').trim(); if(until){ data.append('foyer_rrule_until', until); }
+        var count = parseInt((document.getElementById('ovCount').value||'').trim(),10); if(count>0){ data.append('foyer_rrule_count', String(count)); }
+      } else {
+        var s = document.getElementById('ovStartLocal').value.trim(); var en = document.getElementById('ovEndLocal').value.trim();
+        if(!s){ alert('Start ist erforderlich.'); return; }
+        data.append('start_local', s); if(en){ data.append('end_local', en); }
+      }
+      fetch(ajaxurl, { method:'POST', credentials:'same-origin', body:data })
+        .then(function(r){ return r.json(); })
+        .then(function(resp){ if(!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message) || 'Save failed'); } foyerOverlayClose(); try{ scheduleRefetch('create'); }catch(e){} })
+        .catch(function(err){ alert(err && err.message ? err.message : String(err)); });
+    });
+  }
+
+  function foyerOpenOverlayCreate(startDate, endDateOpt){
+    var wrap = foyerOverlayCreateStructure(getLastCalPointer());
+    foyerOverlayRenderDisplays();
+    foyerOverlayRenderChannels();
+    foyerOverlayFillDefaultsForCreate(startDate, endDateOpt);
+    foyerOverlayBindSaveCreate();
+    return wrap;
+  }
+
+  function foyerOpenOverlayEdit(eventObj){
+    // For now, reuse single-occurrence edit inside overlay; series editing remains basic (apply_to radios)
+    var wrap = foyerOverlayCreateStructure(getLastCalPointer());
+    var evtMeta = (eventObj && eventObj.extendedProps) ? eventObj.extendedProps : {};
+
+    // Preselect channel before rendering grid so the correct card is highlighted
+    try { __ovSelectedChannelId = evtMeta.channel_id ? evtMeta.channel_id : null; } catch(e) { __ovSelectedChannelId = null; }
+
+    // Render displays and preselect those that belong to this schedule (evtMeta.display_ids)
+    foyerOverlayRenderDisplays();
+    try {
+      var wanted = Array.isArray(evtMeta.display_ids) ? evtMeta.display_ids.map(function(x){ return parseInt(x,10); }) : [];
+      var set = new Set(wanted);
+      document.querySelectorAll('#ovDisplays .ovDisplay').forEach(function(cb){
+        var v = parseInt(cb.value,10);
+        cb.checked = set.has(v);
+      });
+    } catch(e){}
+
+    // Render channels with the preselected channel highlighted
+    foyerOverlayRenderChannels();
+
+    // Fill singles by default
+    var sLocal = toSiteLocalString(eventObj.start); var eLocal = toSiteLocalString(eventObj.end);
+    var s = document.getElementById('ovStartLocal'); var e = document.getElementById('ovEndLocal'); if(s) s.value=sLocal; if(e) e.value=eLocal;
+    // Force non-recur UI for edit for now
+    var recurToggle = document.getElementById('ovRecurToggle'); recurToggle.checked=false;
+    // Bind Save using update endpoint
+    var save = document.getElementById('ovSave'); if(save){
+      save.addEventListener('click', function(ev){ ev.preventDefault();
+        var displays = foyerOverlayGetSelectedDisplayIds(); if(!displays.length){ alert('Display-Auswahl wirkt nicht auf bestehende Serie, wird ignoriert.'); }
+        var ch = __ovSelectedChannelId || '';
+        var data = new FormData(); data.append('action','foyer_schedules_update_event'); data.append('nonce', nonce);
+        data.append('schedule_post_id', String(evtMeta.schedule_post_id||'')); data.append('occ_id', String(evtMeta.occ_id||''));
+        data.append('new_start_local', document.getElementById('ovStartLocal').value.trim()); data.append('new_end_local', document.getElementById('ovEndLocal').value.trim());
+        data.append('apply_to', (evtMeta.source && evtMeta.source!=='SINGLE') ? 'occurrence' : 'occurrence'); if(ch){ data.append('channel_id', String(ch)); }
+        fetch(ajaxurl, { method:'POST', credentials:'same-origin', body:data })
+          .then(function(r){ return r.json(); })
+          .then(function(resp){ if(!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message) || 'Update failed'); } foyerOverlayClose(); try{ scheduleRefetch('update'); }catch(e){} })
+          .catch(function(err){ alert(err && err.message ? err.message : String(err)); });
+      });
+    }
+    return wrap;
+  }
+
+  // Override click/select handlers to open overlay instead of small modals
+  function handleDateClick(info){ try { foyerOpenOverlayCreate(info && info.date ? info.date : new Date(), null); } catch(e){} }
+  function handleSelect(info){ try { foyerOpenOverlayCreate(info.start, (info && info.end) ? info.end : null); } catch(e){} }
+  function handleEventClick(info){ try { if(info && info.event){ foyerOpenOverlayEdit(info.event); } } catch(e){} }
 
   ensureCalendar();
   updateDisplaySelectionStyles();

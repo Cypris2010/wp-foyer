@@ -25,6 +25,7 @@ class Foyer_Admin_Scheduler {
         add_action( 'wp_ajax_foyer_schedules_create_event', array( __CLASS__, 'ajax_create_event' ) );
         add_action( 'wp_ajax_foyer_schedules_update_event', array( __CLASS__, 'ajax_update_event' ) );
         add_action( 'wp_ajax_foyer_schedules_delete_event', array( __CLASS__, 'ajax_delete_event' ) );
+        add_action( 'wp_ajax_foyer_schedules_get_schedule', array( __CLASS__, 'ajax_get_schedule' ) );
         add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
     }
 
@@ -78,9 +79,29 @@ class Foyer_Admin_Scheduler {
         $channels_data = array();
         if ( ! empty( $channels ) ) {
             foreach ( $channels as $ch ) {
+                $author_name = get_the_author_meta( 'display_name', $ch->post_author );
+                $modified_gmt = get_post_modified_time( 'c', true, $ch );
+                $permalink = get_permalink( $ch->ID );
+                $preview_url = add_query_arg( 'foyer-preview', 1, $permalink );
+                $slides_count = 0;
+                $created_ts = get_post_time( 'U', true, $ch );
+                $favorite = get_post_meta( $ch->ID, 'foyer_channel_is_favorite', true ) ? 1 : 0;
+                try {
+                    $channel_obj = new Foyer_Channel( $ch );
+                    if ( method_exists( $channel_obj, 'get_slides' ) ) {
+                        $slides = $channel_obj->get_slides();
+                        if ( is_array( $slides ) ) { $slides_count = count( $slides ); }
+                    }
+                } catch ( Exception $e ) {}
                 $channels_data[] = array(
-                    'id'    => intval( $ch->ID ),
-                    'title' => get_the_title( $ch->ID ),
+                    'id'           => intval( $ch->ID ),
+                    'title'        => get_the_title( $ch->ID ),
+                    'author_name'  => $author_name,
+                    'modified_gmt' => $modified_gmt,
+                    'slides_count' => $slides_count,
+                    'preview_url'  => $preview_url,
+                    'favorite'     => $favorite,
+                    'created_ts'   => intval( $created_ts ),
                 );
             }
         }
@@ -233,10 +254,102 @@ class Foyer_Admin_Scheduler {
         }
         $display_ids = isset( $_POST['display_ids'] ) ? array_map( 'intval', (array) $_POST['display_ids'] ) : array();
         $channel_id  = isset( $_POST['channel_id'] ) ? intval( $_POST['channel_id'] ) : 0;
+        $tzid        = isset( $_POST['tz'] ) ? (string) $_POST['tz'] : wp_timezone_string();
+        $mode        = isset( $_POST['mode'] ) ? strtolower( sanitize_text_field( (string) $_POST['mode'] ) ) : 'single';
+
+        if ( 'recur' === $mode ) {
+            // Create a recurring schedule via RRULE builder fields
+            $display_ids = array_values( array_unique( array_filter( $display_ids ) ) );
+            if ( empty( $display_ids ) ) {
+                wp_send_json_error( array( 'message' => __( 'No displays selected.', 'foyer' ) ) );
+            }
+            if ( $channel_id <= 0 ) {
+                wp_send_json_error( array( 'message' => __( 'Invalid channel.', 'foyer' ) ) );
+            }
+            $dtstart_local = isset( $_POST['dtstart_local'] ) ? trim( (string) $_POST['dtstart_local'] ) : '';
+            $duration      = isset( $_POST['duration'] ) ? intval( $_POST['duration'] ) : 0;
+            if ( '' === $dtstart_local ) {
+                wp_send_json_error( array( 'message' => __( 'Start time required.', 'foyer' ) ) );
+            }
+            if ( $duration <= 0 ) { $duration = HOUR_IN_SECONDS; }
+            try { $tz = new DateTimeZone( $tzid ); } catch ( Exception $e ) { $tz = wp_timezone(); $tzid = wp_timezone_string(); }
+            $start_dt = DateTimeImmutable::createFromFormat( 'Y-m-d H:i:s', str_replace('T',' ', $dtstart_local ), $tz );
+            if ( false === $start_dt ) { try { $start_dt = new DateTimeImmutable( $dtstart_local, $tz ); } catch ( Exception $e ) { $start_dt = false; } }
+            if ( ! ( $start_dt instanceof DateTimeImmutable ) ) {
+                wp_send_json_error( array( 'message' => __( 'Invalid start time.', 'foyer' ) ) );
+            }
+
+            // Build RRULE
+            $rrule = Foyer_Schedules::build_rrule_from_builder_fields( $_POST );
+            if ( '' === $rrule ) {
+                wp_send_json_error( array( 'message' => __( 'Invalid recurrence rule.', 'foyer' ) ) );
+            }
+
+            // Conflict check window
+            $candidate_meta = array(
+                'post_id'       => 0,
+                'channel'       => $channel_id,
+                'displays'      => $display_ids,
+                'tz'            => $tzid,
+                'dtstart_local' => $start_dt->format('Y-m-d H:i:s'),
+                'duration'      => $duration,
+                'rrule'         => $rrule,
+                'rdates'        => array(),
+                'exdates'       => array(),
+                'overrides'     => array(),
+            );
+            $winStart = $start_dt->setTimezone( new DateTimeZone('UTC') )->getTimestamp() - DAY_IN_SECONDS;
+            $winEnd   = $winStart + 365 * DAY_IN_SECONDS;
+            $new_occ  = Foyer_Schedule_Engine::expand_occurrences( $candidate_meta, $winStart, $winEnd );
+
+            foreach ( $display_ids as $did ) {
+                $others = get_posts( array(
+                    'post_type'      => 'foyer_schedule',
+                    'post_status'    => 'publish',
+                    'posts_per_page' => -1,
+                    'meta_query'     => array(
+                        'relation' => 'OR',
+                        array( 'key' => 'foyer_schedule_displays', 'value' => 'i:' . intval($did) . ';', 'compare' => 'LIKE' ),
+                        array( 'key' => 'foyer_schedule_displays', 'value' => '"' . intval($did) . '"', 'compare' => 'LIKE' ),
+                    ),
+                ) );
+                foreach ( $others as $op ) {
+                    $m = Foyer_Schedules::read_meta( $op->ID );
+                    $o_occ = Foyer_Schedule_Engine::expand_occurrences( $m, $winStart, $winEnd );
+                    foreach ( $o_occ as $b ) {
+                        $bs = intval( $b['start_utc'] ); $be = intval( $b['end_utc'] );
+                        foreach ( $new_occ as $a ) {
+                            $as = intval( $a['start_utc'] ); $ae = intval( $a['end_utc'] );
+                            if ( $be > $as && $ae > $bs ) {
+                                $msg = sprintf( __( 'Display "%1$s" conflicts with schedule "%2$s".', 'foyer' ), get_the_title( $did ), get_the_title( $op->ID ) );
+                                wp_send_json_error( array( 'message' => $msg ) );
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Create post
+            $title = sprintf( 'Schedule (recur): %s (%s)', get_the_title( $channel_id ), $start_dt->format('Y-m-d H:i') );
+            $pid = wp_insert_post( array( 'post_title' => $title, 'post_type' => 'foyer_schedule', 'post_status' => 'publish' ) );
+            if ( is_wp_error( $pid ) || ! $pid ) {
+                wp_send_json_error( array( 'message' => __( 'Could not create schedule.', 'foyer' ) ) );
+            }
+            update_post_meta( $pid, 'foyer_schedule_channel', $channel_id );
+            update_post_meta( $pid, 'foyer_schedule_displays', $display_ids );
+            update_post_meta( $pid, 'foyer_schedule_tz', $tzid );
+            update_post_meta( $pid, 'foyer_schedule_dtstart_local', $start_dt->format('Y-m-d H:i:s') );
+            update_post_meta( $pid, 'foyer_schedule_duration', $duration );
+            update_post_meta( $pid, 'foyer_schedule_rrule', $rrule );
+            update_post_meta( $pid, 'foyer_schedule_mode', 'recur' );
+
+            wp_send_json_success( array( 'ok' => true, 'post_id' => intval( $pid ) ) );
+        }
+
+        // Default single-occurrence path
+        $display_ids = array_values( array_unique( array_filter( $display_ids ) ) );
         $start_local = isset( $_POST['start_local'] ) ? trim( (string) $_POST['start_local'] ) : '';
         $end_local   = isset( $_POST['end_local'] ) ? trim( (string) $_POST['end_local'] ) : '';
-        $tzid        = isset( $_POST['tz'] ) ? (string) $_POST['tz'] : wp_timezone_string();
-        $display_ids = array_values( array_unique( array_filter( $display_ids ) ) );
         if ( empty( $display_ids ) ) {
             wp_send_json_error( array( 'message' => __( 'No displays selected.', 'foyer' ) ) );
         }
@@ -396,6 +509,19 @@ class Foyer_Admin_Scheduler {
         }
 
         wp_send_json_success( array( 'ok' => true ) );
+    }
+
+    public static function ajax_get_schedule() {
+        check_ajax_referer( 'foyer_calendar_nonce', 'nonce', true );
+        if ( ! current_user_can( 'edit_posts' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Not allowed', 'foyer' ) ), 403 );
+        }
+        $pid = isset( $_POST['post_id'] ) ? intval( $_POST['post_id'] ) : 0;
+        if ( $pid <= 0 ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid payload', 'foyer' ) ), 400 );
+        }
+        $meta = Foyer_Schedules::read_meta( $pid );
+        wp_send_json_success( array( 'meta' => $meta ) );
     }
 
     public static function ajax_delete_event() {
