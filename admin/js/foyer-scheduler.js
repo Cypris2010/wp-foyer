@@ -7,6 +7,15 @@
 
   var __ovEscHandler = null;
 
+  function getI18nString(key, fallback){
+    return (window.foyerSchedulerI18n && window.foyerSchedulerI18n[key]) || fallback;
+  }
+
+  function formatWithNumber(key, fallback, number){
+    var template = getI18nString(key, fallback);
+    return template && template.indexOf('%d') !== -1 ? template.replace('%d', number) : template;
+  }
+
   function escapeHTML(s){
     return String(s)
       .replace(/&/g,'&amp;')
@@ -150,7 +159,7 @@
           timeGridWeek: { slotDuration: '00:30:00', nowIndicator: true, allDaySlot: false }
         },
         datesSet: function(info){ try { applyMonthStyling(); scheduleRefetch('datesSet', info.start, info.end); scrollToCoreTime(); } catch(e){} },
-        loading: function(isLoading){ try { var dbg=document.getElementById('foyerCalDebug'); if(dbg){ dbg.innerHTML = isLoading ? 'Loading…' : dbg.innerHTML; } } catch(e){} },
+        loading: function(isLoading){ try { var dbg=document.getElementById('foyerCalDebug'); if(dbg){ dbg.innerHTML = isLoading ? getI18nString('loadingLabel','Loading…') : dbg.innerHTML; } } catch(e){} },
         dateClick: handleDateClick,
         select: handleSelect,
         eventClick: handleEventClick,
@@ -173,7 +182,7 @@
               var s = document.createElement('span');
               s.className = 'foyer-display-swatch';
               s.style.background = d.color || '';
-              s.title = d.title || ('Display #' + d.id);
+              s.title = d.title || formatWithNumber('displayNumber', 'Display #%d', d.id);
               sw.appendChild(s);
             });
             head.appendChild(sw);
@@ -206,7 +215,7 @@
       applyMonthStyling();
       setTimeout(scrollToCoreTime, 60);
     } catch(e){
-      if (calEl){ calEl.innerHTML = '<div style="padding:12px;">'+ escapeHTML(e && e.message ? e.message : 'Calendar failed to initialize') +'</div>'; }
+      if (calEl){ calEl.innerHTML = '<div style="padding:12px;">'+ escapeHTML(e && e.message ? e.message : getI18nString('calendarInitError','Calendar failed to initialize')) +'</div>'; }
     }
     return ec;
   }
@@ -275,7 +284,7 @@
     (foyerCalChannels||[]).forEach(function(ch){
       var o = document.createElement('option');
       o.value = String(ch.id);
-      o.textContent = ch && ch.title ? String(ch.title) : ('Channel #'+String(ch.id));
+      o.textContent = ch && ch.title ? String(ch.title) : formatWithNumber('channelNumber', 'Channel #%d', ch.id);
       if (selectedId && String(selectedId) === String(ch.id)) { o.selected = true; }
       sel.appendChild(o);
     });
@@ -307,14 +316,14 @@
 
   function handleDateClick(info){
     var displays = getSelectedDisplays();
-    if (!displays.length){ alert((window.foyerSchedulerI18n && foyerSchedulerI18n.selectDisplay) || 'Please select at least one display.'); return; }
+    if (!displays.length){ alert(getI18nString('selectDisplay','Please select at least one display.')); return; }
     var base = info && info.date ? info.date : new Date();
     foyerOpenOverlayCreate(base);
   }
 
   function handleSelect(info){
     var displays = getSelectedDisplays();
-    if (!displays.length){ alert((window.foyerSchedulerI18n && foyerSchedulerI18n.selectDisplay) || 'Please select at least one display.'); return; }
+    if (!displays.length){ alert(getI18nString('selectDisplay','Please select at least one display.')); return; }
     var start = info && info.start ? info.start : new Date();
     var end = info && info.end ? info.end : new Date(start.getTime()+60*60*1000);
     foyerOpenOverlayCreate(start, end);
@@ -336,7 +345,7 @@
     data.append('apply_to','occurrence');
     fetch(ajaxurl, { method:'POST', credentials:'same-origin', body:data })
       .then(function(r){ return r.json(); })
-      .then(function(resp){ if(!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message)||'Update failed'); } refetch(); })
+      .then(function(resp){ if(!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message)||getI18nString('updateFailed','Update failed')); } refetch(); })
       .catch(function(err){ if (info && typeof info.revert === 'function') info.revert(); alert(err && err.message ? err.message : String(err)); });
   }
   function handleEventResize(info){ handleEventDrop(info); }
@@ -357,7 +366,7 @@
       var s = parseIsoUtc(e.startDate), en = parseIsoUtc(e.endDate);
       var startD = shiftUtcToSite(s);
       var endD = shiftUtcToSite(en);
-      var t = e.title || (e.extendedProps && e.extendedProps.title) || 'Schedule';
+      var t = e.title || (e.extendedProps && e.extendedProps.title) || getI18nString('scheduleFallback','Schedule');
       return {
         id: e.id,
         title: t,
@@ -412,7 +421,7 @@
     fetch(ajaxurl, { method:'POST', credentials:'same-origin', body:data })
       .then(function(r){ return r.json(); })
       .then(function(resp){
-        if (!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message) || 'Fetch failed'); }
+        if (!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message) || getI18nString('fetchFailed','Fetch failed')); }
         var mapped = mapServerEvents(resp.data && resp.data.events ? resp.data.events : []);
         setCalendarEvents(mapped);
         setTimeout(function(){
@@ -423,12 +432,16 @@
           var dbg = document.getElementById('foyerCalDebug');
           if (dbg) {
             var first = mapped[0] ? { id: mapped[0].id, title: mapped[0].title, start: mapped[0].start, end: mapped[0].end } : null;
-            try { dbg.innerHTML = 'Events: ' + mapped.length + '<br/>First: ' + (first ? escapeHTML(JSON.stringify(first)) : '-') + '<br/>Rendered: ' + n; } catch(e) { dbg.textContent = 'Events: ' + mapped.length + ' Rendered: ' + n; }
+            var eventsLabel = getI18nString('eventsLabel','Events');
+            var firstLabel = getI18nString('firstLabel','First');
+            var renderedLabel = getI18nString('renderedLabel','Rendered');
+            try { dbg.innerHTML = escapeHTML(eventsLabel) + ': ' + mapped.length + '<br/>' + escapeHTML(firstLabel) + ': ' + (first ? escapeHTML(JSON.stringify(first)) : '-') + '<br/>' + escapeHTML(renderedLabel) + ': ' + n; }
+            catch(e) { dbg.textContent = eventsLabel + ': ' + mapped.length + ' ' + renderedLabel + ': ' + n; }
           }
           scrollToCoreTime();
         }, 300);
       })
-      .catch(function(err){ var dbg=document.getElementById('foyerCalDebug'); if(dbg){ dbg.textContent = 'Error: ' + (err && err.message ? err.message : String(err)); } });
+      .catch(function(err){ var dbg=document.getElementById('foyerCalDebug'); if(dbg){ var errLabel = getI18nString('errorLabel','Error'); dbg.textContent = errLabel + ': ' + (err && err.message ? err.message : String(err)); } });
   }
 
   // Preselect displays from URL (?display=ID or ?displays=ID,ID2)
@@ -537,37 +550,37 @@
     try { wrap.style.clipPath = 'circle(0px at '+ox+'px '+oy+'px)'; } catch(e){}
     var panel = document.createElement('div'); panel.className='foyer-ov-panel';
     var top = document.createElement('section'); top.className='foyer-ov-top'; top.innerHTML = ''+
-      '<div class="foyer-ov-head"><h2>'+ escapeHTML(titleText || 'Schedule') +'</h2><div><button class="button button-primary" id="ovSave">'+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.save)||'Save'))+'</button><button class="button" id="ovCloseBtn">'+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.cancel)||'Cancel'))+'</button></div></div>'+
+      '<div class="foyer-ov-head"><h2>'+ escapeHTML(titleText || getI18nString('scheduleFallback','Schedule')) +'</h2><div><button class="button button-primary" id="ovSave">'+escapeHTML(getI18nString('save','Save'))+'</button><button class="button" id="ovCloseBtn">'+escapeHTML(getI18nString('cancel','Cancel'))+'</button></div></div>'+
       '<div class="ov-form">'+
         '<div class="ov-form-grid">'+
           '<div class="ov-col-left">'+
             '<div class="ov-form-row ov-datetime-grid">'+
-              '<div class="ov-field"><label>'+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.startLabel)||'Start'))+'</label><input type="text" id="ovStartLocal" class="regular-text" placeholder="YYYY-MM-DD HH:mm:ss"/></div>'+
-              '<div class="ov-field"><label>'+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.endLabel)||'End'))+'</label><input type="text" id="ovEndLocal" class="regular-text" placeholder="YYYY-MM-DD HH:mm:ss"/></div>'+
+              '<div class="ov-field"><label>'+escapeHTML(getI18nString('startLabel','Start'))+'</label><input type="text" id="ovStartLocal" class="regular-text" placeholder="YYYY-MM-DD HH:mm:ss"/></div>'+
+              '<div class="ov-field"><label>'+escapeHTML(getI18nString('endLabel','End'))+'</label><input type="text" id="ovEndLocal" class="regular-text" placeholder="YYYY-MM-DD HH:mm:ss"/></div>'+
             '</div>'+
             '<div class="ov-recur-summary" id="ovRecurSummary" aria-live="polite" style="opacity:.85;"></div>'+
           '</div>'+
           '<div class="ov-col-right">'+
             '<fieldset class="ov-recur" id="ovRecurBox">'+
               '<div class="ov-form-row ov-freq-row">'+
-                '<div class="ov-freq-group" role="radiogroup" aria-label="Häufigkeit">'+
-                  '<label class="ov-chip"><input type="radio" name="ovFreq" value="SINGLE" checked> '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.freqSingle)||'Single'))+'</label>'+
-                  '<label class="ov-chip"><input type="radio" name="ovFreq" value="DAILY"> '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.freqDaily)||'Daily'))+'</label>'+
-                  '<label class="ov-chip"><input type="radio" name="ovFreq" value="WEEKLY"> '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.freqWeekly)||'Weekly'))+'</label>'+
-                  '<label class="ov-chip"><input type="radio" name="ovFreq" value="MONTHLY"> '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.freqMonthly)||'Monthly'))+'</label>'+
+                '<div class="ov-freq-group" role="radiogroup" aria-label="'+escapeHTML(getI18nString('freqGroupLabel','Frequency'))+'">'+
+                  '<label class="ov-chip"><input type="radio" name="ovFreq" value="SINGLE" checked> '+escapeHTML(getI18nString('freqSingle','Single'))+'</label>'+
+                  '<label class="ov-chip"><input type="radio" name="ovFreq" value="DAILY"> '+escapeHTML(getI18nString('freqDaily','Daily'))+'</label>'+
+                  '<label class="ov-chip"><input type="radio" name="ovFreq" value="WEEKLY"> '+escapeHTML(getI18nString('freqWeekly','Weekly'))+'</label>'+
+                  '<label class="ov-chip"><input type="radio" name="ovFreq" value="MONTHLY"> '+escapeHTML(getI18nString('freqMonthly','Monthly'))+'</label>'+
                 '</div>'+
-                '<div id="ovIntervalWrap" style="margin-left:auto;">'+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.every)||'every'))+' <input type="number" id="ovInterval" class="small-text" min="1" value="1"/> <span id="ovIntervalUnit">'+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.unitDay)||'day(s)'))+'</span></div>'+
+                '<div id="ovIntervalWrap" style="margin-left:auto;">'+getI18nString('every','every')+' <input type="number" id="ovInterval" class="small-text" min="1" value="1"/> <span id="ovIntervalUnit">'+getI18nString('unitDay','day(s)')+'</span></div>'+
               '</div>'+
-                            '<div class="ov-form-row ov-weekly ov-hidden" id="ovWeeklyOpts">'+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.weekDaysLabel)||'Days:'))+' '
+                            '<div class="ov-form-row ov-weekly ov-hidden" id="ovWeeklyOpts">'+escapeHTML(getI18nString('weekDaysLabel','Days:'))+' '
                 +['MO','TU','WE','TH','FR','SA','SU'].map(function(d){return '<label style="margin-right:6px;"><input type="checkbox" class="ovByDay" value="'+d+'"/> '+d+'</label>';}).join(' ')
               +'</div>'+
               '<div class="ov-form-row ov-monthly ov-hidden" id="ovMonthlyOpts">'
-                +'<label>'+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.monthDaysLabel)||'Month days (e.g. 1,15,31)'))+' <input type="text" id="ovByMonthDay" class="regular-text" placeholder="1,15,31"/></label>'+
+                +'<label>'+escapeHTML(getI18nString('monthDaysLabel','Month days (e.g. 1,15,31)'))+' <input type="text" id="ovByMonthDay" class="regular-text" placeholder="1,15,31"/></label>'+
               '</div>'+
                           '<div class="ov-form-row ov-end-row">'+
-                '<label class="ov-end-opt"><input type="radio" name="ovEndMode" value="never" checked> '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.endNever)||'Never ends'))+'</label>'+
-                '<label class="ov-end-opt"><input type="radio" name="ovEndMode" value="until"> '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.endUntil)||'Ends at'))+' <input type="text" id="ovUntil" class="regular-text" placeholder="YYYY-MM-DD HH:mm:ss"/></label>'+
-                '<label class="ov-end-opt"><input type="radio" name="ovEndMode" value="count"> '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.endCount)||'Ends after'))+' <input type="number" id="ovCount" class="small-text" min="1"/> '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.termsWord)||'occurrences'))+'</label>'+
+                '<label class="ov-end-opt"><input type="radio" name="ovEndMode" value="never" checked> '+escapeHTML(getI18nString('endNever','Never ends'))+'</label>'+
+                '<label class="ov-end-opt"><input type="radio" name="ovEndMode" value="until"> '+escapeHTML(getI18nString('endUntil','Ends at'))+' <input type="text" id="ovUntil" class="regular-text" placeholder="YYYY-MM-DD HH:mm:ss"/></label>'+
+                '<label class="ov-end-opt"><input type="radio" name="ovEndMode" value="count"> '+escapeHTML(getI18nString('endCount','Ends after'))+' <input type="number" id="ovCount" class="small-text" min="1"/> '+escapeHTML(getI18nString('termsWord','occurrences'))+'</label>'+
               '</div>'+
               '<div class="ov-rrule" id="ovRRulePreview" aria-live="polite"></div>'+
             '</fieldset>'+
@@ -578,11 +591,11 @@
     var channelsWrap = document.createElement('section'); channelsWrap.className='foyer-ov-channelsWrap'; channelsWrap.innerHTML = ''+
       '<div class="foyer-ov-head">'
         +'<div class="ov-chan-title" style="display:flex;gap:8px;align-items:center;">'
-          +'<h2>'+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.channelsHeading)||'Channels'))+'</h2>'
-          +'<input type="search" id="ovChanSearch" class="regular-text" placeholder="'+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.searchPlaceholder)||'Search…'))+'" style="max-width:220px;" />'
+          +'<h2>'+escapeHTML(getI18nString('channelsHeading','Channels'))+'</h2>'
+          +'<input type="search" id="ovChanSearch" class="regular-text" placeholder="'+escapeHTML(getI18nString('searchPlaceholder','Search…'))+'" style="max-width:220px;" />'
         +'</div>'
         +'<div class="ov-chan-toolbar" style="display:flex;gap:12px;align-items:center;">'
-          +'<label>'+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.perPage)||'Per page'))+' '
+          +'<label>'+escapeHTML(getI18nString('perPage','Per page'))+' '
             +'<select id="ovChanPerPage"><option value="12" selected>12</option><option value="24">24</option><option value="48">48</option></select>'
           +'</label>'
           +'<div id="ovChanPager" class="ov-chan-pager" style="display:flex;align-items:center;gap:8px;">'
@@ -593,7 +606,7 @@
         +'</div>'
       +'</div>'
       +'<div class="foyer-ov-channels" id="ovChannels"></div>';
-    var displaysWrap = document.createElement('aside'); displaysWrap.className='foyer-ov-displaysWrap'; displaysWrap.innerHTML = '<div class="foyer-ov-head"><h2>'+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.displaysHeading)||'Displays'))+'</h2></div><div class="foyer-ov-displays" id="ovDisplays"></div>';
+    var displaysWrap = document.createElement('aside'); displaysWrap.className='foyer-ov-displaysWrap'; displaysWrap.innerHTML = '<div class="foyer-ov-head"><h2>'+escapeHTML(getI18nString('displaysHeading','Displays'))+'</h2></div><div class="foyer-ov-displays" id="ovDisplays"></div>';
     bottom.appendChild(channelsWrap); bottom.appendChild(displaysWrap);
     panel.appendChild(top); panel.appendChild(bottom); wrap.appendChild(panel); document.body.appendChild(wrap);
     // animate open (expand from origin)
@@ -616,7 +629,7 @@
       window.__ovEscHandler = escHandler;
       document.addEventListener('keydown', escHandler);
     } catch(e){}
-        // Recur UI ohne Checkbox
+        // Recur UI without checkbox
     var boxRecur = document.getElementById('ovRecurBox');
     var weekly = document.getElementById('ovWeeklyOpts'); var monthly = document.getElementById('ovMonthlyOpts');
     var endRow = document.querySelector('.ov-end-row');
@@ -634,7 +647,16 @@
     }
     document.getElementById('ovRecurBox').addEventListener('change', function(e){ if (e.target && e.target.name==='ovFreq'){ updateFreq(); }});
 
-    function setIntervalUnit(){ try { var u=document.getElementById('ovIntervalUnit'); if(!u) return; var f=getCheckedFreq(); u.textContent = (f==='WEEKLY') ? (((window.foyerSchedulerI18n&&foyerSchedulerI18n.unitWeek)||'week(s)')) : (f==='MONTHLY' ? (((window.foyerSchedulerI18n&&foyerSchedulerI18n.unitMonth)||'month(s)')) : (f==='DAILY' ? (((window.foyerSchedulerI18n&&foyerSchedulerI18n.unitDay)||'day(s)')) : '')); } catch(e){} }
+    function setIntervalUnit(){
+      try {
+        var u=document.getElementById('ovIntervalUnit'); if(!u) return;
+        var f=getCheckedFreq();
+        if(f==='WEEKLY'){ u.textContent = getI18nString('unitWeek','week(s)'); }
+        else if(f==='MONTHLY'){ u.textContent = getI18nString('unitMonth','month(s)'); }
+        else if(f==='DAILY'){ u.textContent = getI18nString('unitDay','day(s)'); }
+        else { u.textContent = ''; }
+      } catch(e){}
+    }
     function setActiveFreqChips(){ try { var chips=document.querySelectorAll('.ov-freq-group .ov-chip'); var f=getCheckedFreq(); chips.forEach(function(lbl){ var inp=lbl.querySelector('input'); lbl.classList.toggle('is-active', inp && inp.value===f && inp.checked); }); } catch(e){} }
     function setActiveWeekdayChips(){ try { document.querySelectorAll('#ovWeeklyOpts label').forEach(function(lbl){ var inp=lbl.querySelector('input'); lbl.classList.toggle('is-active', !!(inp && inp.checked)); }); } catch(e){} }
     function ensureWeeklyDefaultDay(){ try { var any=document.querySelector('#ovWeeklyOpts .ovByDay:checked'); if(any) return; var s=document.getElementById('ovStartLocal'); if(!s||!s.value) return; var d=parseLocalDateTime(s.value); if(!d) return; var map=['SU','MO','TU','WE','TH','FR','SA']; var code=map[d.getDay()]; var n=document.querySelector('#ovWeeklyOpts .ovByDay[value="'+code+'"]'); if(n){ n.checked=true; setActiveWeekdayChips(); } } catch(e){} }
@@ -721,19 +743,62 @@
     }
     function formatTimeRange(){ try { var s=document.getElementById('ovStartLocal').value.trim(); var e=document.getElementById('ovEndLocal').value.trim(); var out=''; var st=s.split(' ')[1]||''; var et=e.split(' ')[1]||''; if(st||et){ out = (st||'..')+'–'+(et||'..'); try { var sd=parseLocalDateTime(s), ed=parseLocalDateTime(e); if(sd && ed && ed.getTime()<sd.getTime()){ out += ' (+1)'; } } catch(err){} } return out; } catch(e){ return ''; } }
     function updateSummary(){ try {
-      var sum=document.getElementById('ovRecurSummary'); if(!sum) return; var f=getCheckedFreq(); if(f==='SINGLE'){ sum.textContent = (((window.foyerSchedulerI18n&&foyerSchedulerI18n.freqSingle)||'Single'))+' '+ formatTimeRange(); updateRRulePreview(); return; }
-      var inter=parseInt(document.getElementById('ovInterval').value,10)||1; var range=formatTimeRange(); var parts=[];
-      if(f==='DAILY'){ parts.push(inter>1? ((((window.foyerSchedulerI18n&&foyerSchedulerI18n.every)||'every'))+' '+inter+' '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.unitDay)||'day(s)'))) : (((window.foyerSchedulerI18n&&foyerSchedulerI18n.freqDaily)||'Daily'))); }
-      else if(f==='WEEKLY'){ var days=[]; document.querySelectorAll('#ovWeeklyOpts .ovByDay:checked').forEach(function(i){ days.push(i.value); }); if(days.length===0){ ensureWeeklyDefaultDay(); document.querySelectorAll('#ovWeeklyOpts .ovByDay:checked').forEach(function(i){ days.push(i.value); }); }
-        parts.push((inter>1? ((((window.foyerSchedulerI18n&&foyerSchedulerI18n.every)||'every'))+' '+inter+' '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.unitWeek)||'week(s)'))) : (((window.foyerSchedulerI18n&&foyerSchedulerI18n.freqWeekly)||'Weekly')) ) + (days.length? (' on '+days.join(', ')) : '')); }
-      else if(f==='MONTHLY'){ parts.push(inter>1? ((((window.foyerSchedulerI18n&&foyerSchedulerI18n.every)||'every'))+' '+inter+' '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.unitMonth)||'month(s)'))) : (((window.foyerSchedulerI18n&&foyerSchedulerI18n.freqMonthly)||'Monthly'))); var md=(document.getElementById('ovByMonthDay').value||'').trim(); if(md){ parts.push(' on day(s) '+md); } }
-      var endMode=getEndMode(); if(endMode==='until'){ var until=(document.getElementById('ovUntil').value||'').trim(); if(until){ parts.push(' '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.endUntil)||'Ends at'))+' '+until); } }
-      else if(endMode==='count'){ var cnt=parseInt((document.getElementById('ovCount').value||'').trim(),10); if(cnt>0){ parts.push(' '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.endCount)||'Ends after'))+' '+cnt+' '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.termsWord)||'occurrences'))) } }
+      var sum=document.getElementById('ovRecurSummary'); if(!sum) return;
+      var freqSingleLabel = getI18nString('freqSingle','Single');
+      var freqDailyLabel = getI18nString('freqDaily','Daily');
+      var freqWeeklyLabel = getI18nString('freqWeekly','Weekly');
+      var freqMonthlyLabel = getI18nString('freqMonthly','Monthly');
+      var everyLabel = getI18nString('every','every');
+      var unitDay = getI18nString('unitDay','day(s)');
+      var unitWeek = getI18nString('unitWeek','week(s)');
+      var unitMonth = getI18nString('unitMonth','month(s)');
+      var onWord = getI18nString('onWord','on');
+      var onDaysWord = getI18nString('onDaysWord','on day(s)');
+      var endUntilLabel = getI18nString('endUntil','Ends at');
+      var endCountLabel = getI18nString('endCount','Ends after');
+      var termsWord = getI18nString('termsWord','occurrences');
+
+      var f=getCheckedFreq();
+      var inter=parseInt(document.getElementById('ovInterval').value,10)||1;
+      var range=formatTimeRange();
+
+      if(f==='SINGLE'){
+        sum.textContent = freqSingleLabel + ' ' + range;
+        updateRRulePreview();
+        return;
+      }
+
+      var parts=[];
+      if(f==='DAILY'){
+        parts.push(inter>1 ? everyLabel+' '+inter+' '+unitDay : freqDailyLabel);
+      } else if(f==='WEEKLY'){
+        var days=[];
+        document.querySelectorAll('#ovWeeklyOpts .ovByDay:checked').forEach(function(i){ days.push(i.value); });
+        if(days.length===0){ ensureWeeklyDefaultDay(); document.querySelectorAll('#ovWeeklyOpts .ovByDay:checked').forEach(function(i){ days.push(i.value); }); }
+        var weeklyText = inter>1 ? everyLabel+' '+inter+' '+unitWeek : freqWeeklyLabel;
+        if(days.length){ weeklyText += ' ' + onWord + ' ' + days.join(', '); }
+        parts.push(weeklyText);
+      } else if(f==='MONTHLY'){
+        parts.push(inter>1 ? everyLabel+' '+inter+' '+unitMonth : freqMonthlyLabel);
+        var md=(document.getElementById('ovByMonthDay').value||'').trim();
+        if(md){ parts.push(onDaysWord+' '+md); }
+      }
+
+      var endMode=getEndMode();
+      if(endMode==='until'){
+        var until=(document.getElementById('ovUntil').value||'').trim();
+        if(until){ parts.push(endUntilLabel+' '+until); }
+      } else if(endMode==='count'){
+        var cnt=parseInt((document.getElementById('ovCount').value||'').trim(),10);
+        if(cnt>0){ parts.push(endCountLabel+' '+cnt+' '+termsWord); }
+      }
+
       if(range){ parts.push(range); }
-      sum.textContent = parts.join(' • '); updateRRulePreview();
+      sum.textContent = parts.join(' • ');
+      updateRRulePreview();
     } catch(e){} }
 
-    // Events für Chips/Inputs
+    // Events for chips/inputs
     document.getElementById('ovRecurBox').addEventListener('change', function(e){ if(e.target && e.target.classList && e.target.classList.contains('ovByDay')){ setActiveWeekdayChips(); updateSummary(); }});
     var iv=document.getElementById('ovInterval'); if(iv){ iv.addEventListener('input', updateSummary); }
     var md=document.getElementById('ovByMonthDay'); if(md){ md.addEventListener('input', updateSummary); }
@@ -742,7 +807,7 @@
     var u=document.getElementById('ovUntil'); if(u){ u.addEventListener('input', updateSummary); }
     var c=document.getElementById('ovCount'); if(c){ c.addEventListener('input', updateSummary); }
 
-    // Initialzustand setzen
+    // Initialize default state
     try { updateFreq(); setActiveWeekdayChips(); updateEndModeUI(); updateSummary(); } catch(e){}
     return wrap;
   }
@@ -802,13 +867,13 @@
     var selAllRow = document.createElement('div'); selAllRow.className='ov-display-item ov-select-all'; selAllRow.id='ovSelectAllRow'; selAllRow.setAttribute('data-color','hsl(210, 20%, 85%)'); selAllRow.tabIndex = 0;
     var selAll = document.createElement('input'); selAll.type='checkbox'; selAll.id='ovSelectAll';
     var selAllSw = document.createElement('span'); selAllSw.className='ov-display-swatch';
-    var selAllLabel = document.createElement('span'); selAllLabel.className='foyer-display-title'; selAllLabel.textContent = (window.foyerSchedulerI18n && foyerSchedulerI18n.selectAll) || 'Select all';
+    var selAllLabel = document.createElement('span'); selAllLabel.className='foyer-display-title'; selAllLabel.textContent = getI18nString('selectAll','Select all');
     selAllRow.appendChild(selAllSw); selAllRow.appendChild(selAllLabel); selAllRow.appendChild(selAll); host.appendChild(selAllRow);
 
     var srcList = document.querySelectorAll('#foyerCalDisplays .foyer-display-item');
     srcList.forEach(function(item){
       var id = parseInt(item.getAttribute('data-id'),10);
-      var title = String(item.querySelector('.foyer-display-title') ? item.querySelector('.foyer-display-title').textContent : 'Display #'+id);
+      var title = String(item.querySelector('.foyer-display-title') ? item.querySelector('.foyer-display-title').textContent : formatWithNumber('displayNumber', 'Display #%d', id));
       var checked = !!(item.querySelector('.foyerCalDisplay') && item.querySelector('.foyerCalDisplay').checked);
       var color = String(item.getAttribute('data-color')||'');
       var row = document.createElement('div'); row.className='ov-display-item'; row.setAttribute('data-id', String(id)); if(color) row.setAttribute('data-color', color); row.tabIndex = 0;
@@ -848,7 +913,7 @@
   var __ovSelectedChannelId = null;
   function foyerOverlayRenderChannels(){
     var host = document.getElementById('ovChannels'); if(!host) return;
-    // State für Suche/Pagination
+    // State for search/pagination
     if (!window.__ovChanState) { window.__ovChanState = { query: '', page: 1, perPage: 12, sorted: null }; }
     var state = window.__ovChanState;
 
@@ -856,10 +921,10 @@
       var arr = Array.isArray(foyerCalChannels) ? foyerCalChannels.slice() : [];
       arr.sort(function(a,b){
         var fa = (a && a.favorite) ? 1 : 0; var fb = (b && b.favorite) ? 1 : 0;
-        if (fa !== fb) return fb - fa; // Favoriten zuerst
+        if (fa !== fb) return fb - fa; // Favorites first
         var ca = parseInt(a && a.created_ts ? a.created_ts : 0, 10);
         var cb = parseInt(b && b.created_ts ? b.created_ts : 0, 10);
-        if (cb !== ca) return cb - ca; // neueste zuerst
+        if (cb !== ca) return cb - ca; // Newest first
         var ta = String(a && a.title ? a.title : '').toLowerCase();
         var tb = String(b && b.title ? b.title : '').toLowerCase();
         if (ta < tb) return -1; if (ta > tb) return 1; return 0;
@@ -881,7 +946,7 @@
       return { items: arr.slice(start,end), page: p, pages: pages, total: total };
     }
     function updatePager(p){
-      var info = document.getElementById('ovChanPageInfo'); if (info) { info.textContent = (((window.foyerSchedulerI18n&&foyerSchedulerI18n.pageWord)||'Page'))+' '+p.page+' / '+p.pages+' ('+p.total+' '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.hitsWord)||'hits'))+')'; }
+      var info = document.getElementById('ovChanPageInfo'); if (info) { info.textContent = getI18nString('pageWord','Page')+' '+p.page+' / '+p.pages+' ('+p.total+' '+getI18nString('hitsWord','hits')+')'; }
       var prev = document.getElementById('ovChanPrev'); if (prev) { prev.disabled = (p.page<=1); }
       var next = document.getElementById('ovChanNext'); if (next) { next.disabled = (p.page>=p.pages); }
     }
@@ -892,8 +957,8 @@
         var prev = document.createElement('div'); prev.className='foyer-channel-card__preview';
         var iframe = document.createElement('iframe'); iframe.src = ch.preview_url || ''; prev.appendChild(iframe);
         var meta = document.createElement('div'); meta.className='foyer-channel-card__meta';
-        var title = document.createElement('div'); title.className='foyer-channel-card__title'; title.textContent = ((ch && ch.favorite) ? '★ ' : '') + (ch.title || ('Channel #'+ch.id));
-        var info = document.createElement('div'); info.className='foyer-channel-card__info'; info.textContent = (ch.slides_count||0)+' Slides • '+(ch.author_name||'');
+        var title = document.createElement('div'); title.className='foyer-channel-card__title'; title.textContent = ((ch && ch.favorite) ? '★ ' : '') + (ch.title || formatWithNumber('channelNumber', 'Channel #%d', ch.id));
+        var info = document.createElement('div'); info.className='foyer-channel-card__info'; info.textContent = (ch.slides_count||0)+' '+getI18nString('slidesWord','Slides')+' • '+(ch.author_name||'');
         meta.appendChild(title); meta.appendChild(info);
         card.appendChild(prev); card.appendChild(meta);
         card.addEventListener('click', function(){ __ovSelectedChannelId = ch.id; updateSelectionStyles(); });
@@ -940,8 +1005,8 @@
   function foyerOverlayBindSaveCreate(){
     var save = document.getElementById('ovSave'); if(!save) return;
     save.addEventListener('click', function(e){ e.preventDefault();
-      var displays = foyerOverlayGetSelectedDisplayIds(); if(!displays.length){ alert((window.foyerSchedulerI18n && foyerSchedulerI18n.selectDisplay) || 'Please select at least one display.'); return; }
-      var ch = __ovSelectedChannelId; if(!ch){ alert((window.foyerSchedulerI18n && foyerSchedulerI18n.selectChannel) || 'Please select a channel.'); return; }
+      var displays = foyerOverlayGetSelectedDisplayIds(); if(!displays.length){ alert(getI18nString('selectDisplay','Please select at least one display.')); return; }
+      var ch = __ovSelectedChannelId; if(!ch){ alert(getI18nString('selectChannel','Please select a channel.')); return; }
       var data = new FormData(); data.append('action','foyer_schedules_create_event'); data.append('nonce', nonce); data.append('channel_id', String(ch)); data.append('tz', siteTz);
       displays.forEach(function(id){ data.append('display_ids[]', String(id)); });
       var fSel = (function(){ var r=document.querySelector('#ovRecurBox input[name="ovFreq"]:checked'); return r? r.value : 'SINGLE'; })();
@@ -949,7 +1014,7 @@
         data.append('mode','recur');
         var sVal = document.getElementById('ovStartLocal').value.trim();
         var eVal = document.getElementById('ovEndLocal').value.trim();
-        if(!sVal){ alert((window.foyerSchedulerI18n && foyerSchedulerI18n.startRequired) || 'Start is required.'); return; }
+        if(!sVal){ alert(getI18nString('startRequired','Start is required.')); return; }
         data.append('dtstart_local', sVal);
         var durSec = 3600;
         try {
@@ -977,12 +1042,12 @@
         }
       } else {
         var s = document.getElementById('ovStartLocal').value.trim(); var en = document.getElementById('ovEndLocal').value.trim();
-        if(!s){ alert((window.foyerSchedulerI18n && foyerSchedulerI18n.startRequired) || 'Start is required.'); return; }
+        if(!s){ alert(getI18nString('startRequired','Start is required.')); return; }
         data.append('start_local', s); if(en){ data.append('end_local', en); }
       }
       fetch(ajaxurl, { method:'POST', credentials:'same-origin', body:data })
         .then(function(r){ return r.json(); })
-        .then(function(resp){ if(!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message) || 'Save failed'); }
+        .then(function(resp){ if(!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message) || getI18nString('saveFailed','Save failed')); }
           try {
             // Ensure sidebar filter includes the displays used for this new schedule
             (displays||[]).forEach(function(id){
@@ -999,7 +1064,7 @@
   }
 
   function foyerOpenOverlayCreate(startDate, endDateOpt){
-    var wrap = foyerOverlayCreateStructure(getLastCalPointer(), (window.foyerSchedulerI18n && foyerSchedulerI18n.createTitle) || 'Create new Schedule');
+    var wrap = foyerOverlayCreateStructure(getLastCalPointer(), getI18nString('createTitle','Create new Schedule'));
     foyerOverlayRenderDisplays();
     foyerOverlayRenderChannels();
     foyerOverlayFillDefaultsForCreate(startDate, endDateOpt);
@@ -1010,7 +1075,7 @@
 
   function foyerOpenOverlayEdit(eventObj){
     // For now, reuse single-occurrence edit inside overlay; series editing remains basic (apply_to radios)
-    var wrap = foyerOverlayCreateStructure(getLastCalPointer(), (window.foyerSchedulerI18n && foyerSchedulerI18n.editTitle) || 'Edit Schedule');
+    var wrap = foyerOverlayCreateStructure(getLastCalPointer(), getI18nString('editTitle','Edit Schedule'));
     var evtMeta = (eventObj && eventObj.extendedProps) ? eventObj.extendedProps : {};
 
     // Preselect channel before rendering grid so the correct card is highlighted
@@ -1065,7 +1130,7 @@
     var save = document.getElementById('ovSave'); if(save){
       save.addEventListener('click', function(ev){ ev.preventDefault();
         var displays = foyerOverlayGetSelectedDisplayIds();
-        if (!displays.length){ alert((window.foyerSchedulerI18n && foyerSchedulerI18n.selectDisplay) || 'Please select at least one display.'); return; }
+        if (!displays.length){ alert(getI18nString('selectDisplay','Please select at least one display.')); return; }
         var ch = __ovSelectedChannelId || '';
         var data = new FormData(); data.append('action','foyer_schedules_update_event'); data.append('nonce', nonce);
         data.append('schedule_post_id', String(evtMeta.schedule_post_id||'')); data.append('occ_id', String(evtMeta.occ_id||''));
@@ -1074,7 +1139,7 @@
         displays.forEach(function(id){ data.append('display_ids[]', String(id)); });
         fetch(ajaxurl, { method:'POST', credentials:'same-origin', body:data })
           .then(function(r){ return r.json(); })
-          .then(function(resp){ if(!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message) || 'Update failed'); } foyerOverlayClose(); try{ scheduleRefetch('update'); }catch(e){} })
+          .then(function(resp){ if(!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message) || getI18nString('updateFailed','Update failed')); } foyerOverlayClose(); try{ scheduleRefetch('update'); }catch(e){} })
           .catch(function(err){ alert(err && err.message ? err.message : String(err)); });
       });
     }

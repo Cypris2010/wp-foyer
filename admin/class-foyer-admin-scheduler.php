@@ -139,6 +139,8 @@ class Foyer_Admin_Scheduler {
             'freqDaily'        => __( 'Daily', 'foyer' ),
             'freqWeekly'       => __( 'Weekly', 'foyer' ),
             'freqMonthly'      => __( 'Monthly', 'foyer' ),
+            'freqGroupLabel'   => __( 'Frequency', 'foyer' ),
+            'every'            => __( 'every', 'foyer' ),
             'unitDay'          => __( 'day(s)', 'foyer' ),
             'unitWeek'         => __( 'week(s)', 'foyer' ),
             'unitMonth'        => __( 'month(s)', 'foyer' ),
@@ -148,9 +150,24 @@ class Foyer_Admin_Scheduler {
             'endUntil'         => __( 'Ends at', 'foyer' ),
             'endCount'         => __( 'Ends after', 'foyer' ),
             'termsWord'        => __( 'occurrences', 'foyer' ),
+            'onWord'           => __( 'on', 'foyer' ),
+            'onDaysWord'       => __( 'on day(s)', 'foyer' ),
             'perPage'          => __( 'Per page', 'foyer' ),
             'pageWord'         => __( 'Page', 'foyer' ),
             'hitsWord'         => __( 'hits', 'foyer' ),
+            'slidesWord'       => __( 'Slides', 'foyer' ),
+            'loadingLabel'     => __( 'Loading…', 'foyer' ),
+            'calendarInitError'=> __( 'Calendar failed to initialize', 'foyer' ),
+            'updateFailed'     => __( 'Update failed', 'foyer' ),
+            'fetchFailed'      => __( 'Fetch failed', 'foyer' ),
+            'saveFailed'       => __( 'Save failed', 'foyer' ),
+            'scheduleFallback' => __( 'Schedule', 'foyer' ),
+            'displayNumber'    => __( 'Display #%d', 'foyer' ),
+            'channelNumber'    => __( 'Channel #%d', 'foyer' ),
+            'eventsLabel'      => __( 'Events', 'foyer' ),
+            'firstLabel'       => __( 'First', 'foyer' ),
+            'renderedLabel'    => __( 'Rendered', 'foyer' ),
+            'errorLabel'       => __( 'Error', 'foyer' ),
         );
         wp_localize_script( 'foyer-scheduler', 'foyerSchedulerI18n', $i18n );
 
@@ -390,7 +407,7 @@ class Foyer_Admin_Scheduler {
             }
 
             // Create post
-            $title = sprintf( 'Schedule (recur): %s (%s)', get_the_title( $channel_id ), $start_dt->format('Y-m-d H:i') );
+            $title = sprintf( __( 'Schedule (recur): %1$s (%2$s)', 'foyer' ), get_the_title( $channel_id ), $start_dt->format( 'Y-m-d H:i' ) );
             $pid = wp_insert_post( array( 'post_title' => $title, 'post_type' => 'foyer_schedule', 'post_status' => 'publish' ) );
             if ( is_wp_error( $pid ) || ! $pid ) {
                 wp_send_json_error( array( 'message' => __( 'Could not create schedule.', 'foyer' ) ) );
@@ -466,7 +483,7 @@ class Foyer_Admin_Scheduler {
         }
 
         // Create new foyer_schedule post
-        $title = sprintf( 'Schedule: %s (%s)', get_the_title( $channel_id ), wp_date( 'Y-m-d H:i', $s, wp_timezone() ) );
+        $title = sprintf( __( 'Schedule: %1$s (%2$s)', 'foyer' ), get_the_title( $channel_id ), wp_date( 'Y-m-d H:i', $s, wp_timezone() ) );
         $pid = wp_insert_post( array( 'post_title' => $title, 'post_type' => 'foyer_schedule', 'post_status' => 'publish' ) );
         if ( is_wp_error( $pid ) || ! $pid ) {
             wp_send_json_error( array( 'message' => __( 'Could not create schedule.', 'foyer' ) ) );
@@ -942,12 +959,12 @@ class Foyer_Admin_Scheduler {
         echo '<div id="foyerCalDebug" style="margin-top:8px; font-size:12px; color:#666;"></div>';
                 echo '</div>';
         echo '<div id="foyer-cal-sidebar" class="postbox" style="width:320px;">';
-        echo '<h2 class="hndle" style="padding:8px 12px; margin:0;">' . esc_html__( 'Display-Selektor', 'foyer' ) . '</h2>';
+        echo '<h2 class="hndle" style="padding:8px 12px; margin:0;">' . esc_html__( 'Display selector', 'foyer' ) . '</h2>';
         echo '<div class="inside" style="padding:8px 12px;">';
         echo '<div id="foyerCalSelectAllRow" class="foyer-display-item foyer-select-all" role="button" tabindex="0" data-color="hsl(210, 20%, 72%)">'
     . '<input type="checkbox" id="foyerCalSelectAll" />'
     . '<span class="foyer-display-swatch foyer-swatch-all"></span>'
-    . '<span class="foyer-display-title">' . esc_html__( 'Alle Displays auswählen', 'foyer' ) . '</span>'
+    . '<span class="foyer-display-title">' . esc_html__( 'Select all displays', 'foyer' ) . '</span>'
     . '</div>';
         if ( empty( $displays_data ) ) {
             echo '<em>' . esc_html__( 'No displays found.', 'foyer' ) . '</em>';
