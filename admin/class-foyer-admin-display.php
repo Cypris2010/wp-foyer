@@ -1121,8 +1121,8 @@ class Foyer_Admin_Display {
 		.foyer-display-card__body{padding:10px 12px 12px}
 		.foyer-display-card__title{font-weight:600;margin:0 0 6px;font-size:14px}
 		.foyer-display-card__meta{margin:0; font-size:12px; color:#555}
-		.foyer-display-card__actions{margin-top:8px}
-		.foyer-display-card__actions a{margin-right:8px;text-decoration:none}
+		.foyer-display-card__actions{margin-top:8px; display:flex; gap:6px; flex-wrap:wrap}
+		.foyer-display-card__actions a{text-decoration:none}
 		.foyer_card_preview_iframe_container{position:relative;width:100%;height:180px;overflow:hidden}
 		.foyer_card_preview_iframe_container .preview-viewport{position:relative;width:100%;height:100%;}
 		.foyer_card_preview_iframe_container iframe{position:absolute;left:0;top:0;border:0;background:#000;transform-origin:top left}
@@ -1160,15 +1160,40 @@ class Foyer_Admin_Display {
 				$active_html = $active_id ? '<a href="' . esc_url( get_edit_post_link( $active_id ) ) . '">' . esc_html( get_the_title( $active_id ) ) . '</a>' . $active_suffix : esc_html__( 'None', 'foyer' );
 				$default_html = $default_id ? '<a href="' . esc_url( get_edit_post_link( $default_id ) ) . '">' . esc_html( get_the_title( $default_id ) ) . '</a>' : esc_html__( 'None', 'foyer' );
 
+				// Determine next upcoming scheduled channel (future start)
+				$next_html = esc_html__( 'None', 'foyer' );
+				$schedules = $display_obj->get_schedule();
+				if ( ! empty( $schedules ) && is_array( $schedules ) ) {
+					$now_utc = current_time( 'timestamp', true );
+					$upcoming = array();
+					foreach ( $schedules as $sch ) {
+						$st  = isset( $sch['start'] ) ? intval( $sch['start'] ) : null;
+						$cid = isset( $sch['channel'] ) ? intval( $sch['channel'] ) : 0;
+						if ( ! is_null( $st ) && $st > $now_utc && $cid > 0 ) { $upcoming[] = $sch; }
+					}
+					if ( ! empty( $upcoming ) ) {
+						usort( $upcoming, function( $a, $b ) { return ( intval($a['start']) <=> intval($b['start']) ); } );
+						$next = $upcoming[0];
+						$next_cid = isset( $next['channel'] ) ? intval( $next['channel'] ) : 0;
+						if ( $next_cid > 0 ) {
+							$fmt = Foyer_Admin_Display::get_channel_scheduler_defaults()['datetime_format'];
+							$when_str = Foyer_Admin_Display::format_schedule_display( intval( $next['start'] ), $fmt );
+							$next_html = '<a href="' . esc_url( get_edit_post_link( $next_cid ) ) . '">' . esc_html( get_the_title( $next_cid ) ) . '</a>' . ' (' . esc_html( $when_str ) . ')';
+						}
+					}
+				}
+
 				echo '<div class="foyer-display-card">';
 					echo '<div class="foyer-display-card__preview">' . self::get_display_preview_html( $disp->ID, array( 'ratio' => '16x9' ) ) . '</div>';
 					echo '<div class="foyer-display-card__body">';
 						echo '<div class="foyer-display-card__title"><a href="' . esc_url( get_edit_post_link( $disp->ID ) ) . '">' . esc_html( get_the_title( $disp->ID ) ) . '</a></div>';
-						echo '<p class="foyer-display-card__meta">' . esc_html__( 'Active channel', 'foyer' ) . ': ' . $active_html . '</p>';
 						echo '<p class="foyer-display-card__meta">' . esc_html__( 'Default channel', 'foyer' ) . ': ' . $default_html . '</p>';
+						echo '<p class="foyer-display-card__meta">' . esc_html__( 'Active channel', 'foyer' ) . ': ' . $active_html . '</p>';
+						echo '<p class="foyer-display-card__meta">' . esc_html__( 'Next channel', 'foyer' ) . ': ' . $next_html . '</p>';
 						echo '<div class="foyer-display-card__actions">'
 							. '<a class="button button-small" href="' . esc_url( get_edit_post_link( $disp->ID ) ) . '">' . esc_html__( 'Edit', 'foyer' ) . '</a>'
 							. '<a class="button button-small" target="_blank" href="' . esc_url( add_query_arg( 'foyer-preview', 1, get_permalink( $disp->ID ) ) ) . '">' . esc_html__( 'Preview', 'foyer' ) . '</a>'
+							. '<a class="button button-small" href="' . esc_url( add_query_arg( array( 'page' => 'foyer_scheduler', 'displays' => (string) $disp->ID ), admin_url( 'admin.php' ) ) ) . '">' . esc_html__( 'Scheduler', 'foyer' ) . '</a>'
 						. '</div>';
 					echo '</div>';
 				echo '</div>';

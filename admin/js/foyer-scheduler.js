@@ -557,6 +557,36 @@
       .catch(function(err){ var dbg=document.getElementById('foyerCalDebug'); if(dbg){ dbg.textContent = 'Error: ' + (err && err.message ? err.message : String(err)); } });
   }
 
+  // Preselect displays from URL (?display=ID or ?displays=ID,ID2)
+  function parsePreselectedDisplays(){
+    try {
+      var params = new URLSearchParams(window.location.search);
+      var ids = [];
+      if (params.has('display')) {
+        var v = parseInt(params.get('display'), 10);
+        if (!isNaN(v) && v > 0) ids.push(v);
+      }
+      if (params.has('displays')) {
+        String(params.get('displays')||'').split(',').forEach(function(s){
+          var v = parseInt(s, 10);
+          if (!isNaN(v) && v > 0) ids.push(v);
+        });
+      }
+      var seen = {};
+      return ids.filter(function(x){ if(seen[x]) return false; seen[x]=true; return true; });
+    } catch(e){ return []; }
+  }
+  function preselectDisplays(ids){
+    if (!Array.isArray(ids) || !ids.length) return;
+    ids.forEach(function(id){
+      var cb = document.querySelector('#foyerCalDisplays .foyerCalDisplay[value="'+id+'"]');
+      if (cb) { cb.checked = true; }
+    });
+    updateDisplaySelectionStyles();
+  }
+  var __pre = parsePreselectedDisplays();
+  if (__pre && __pre.length) { preselectDisplays(__pre); }
+
   ensureCalendar();
   updateDisplaySelectionStyles();
   scheduleRefetch('init');
