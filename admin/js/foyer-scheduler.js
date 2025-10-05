@@ -307,167 +307,22 @@
 
   function handleDateClick(info){
     var displays = getSelectedDisplays();
-    if (!displays.length){ alert('Bitte mindestens ein Display auswählen.'); return; }
+    if (!displays.length){ alert((window.foyerSchedulerI18n && foyerSchedulerI18n.selectDisplay) || 'Please select at least one display.'); return; }
     var base = info && info.date ? info.date : new Date();
-    var startLocal = toSiteLocalString(base);
-    var endLocal = toSiteLocalString(new Date(base.getTime()+60*60*1000));
-
-    var box = document.createElement('div');
-    var h3 = document.createElement('h3'); h3.textContent = 'Neuen geplanten Channel erstellen'; box.appendChild(h3);
-    var select = buildChannelSelect('');
-    var startInput = document.createElement('input'); startInput.type='text'; startInput.id='foyerCalStartLocal'; startInput.value=startLocal;
-    var endInput   = document.createElement('input'); endInput.type='text'; endInput.id='foyerCalEndLocal'; endInput.value=endLocal;
-    box.appendChild(buildFormRow('Channel:', select));
-    box.appendChild(buildFormRow('Start (Site-TZ):', startInput));
-    box.appendChild(buildFormRow('Ende (Site-TZ):', endInput));
-    var btnRow = document.createElement('div'); btnRow.style.display='flex'; btnRow.style.gap='8px'; btnRow.style.justifyContent='flex-end';
-    var cancelBtn=document.createElement('button'); cancelBtn.className='button'; cancelBtn.id='foyerCalCancel'; cancelBtn.textContent='Cancel';
-    var saveBtn=document.createElement('button'); saveBtn.className='button button-primary'; saveBtn.id='foyerCalSave'; saveBtn.textContent='Save';
-    btnRow.appendChild(cancelBtn); btnRow.appendChild(saveBtn); box.appendChild(btnRow);
-    var modal = openModal(box);
-
-    modal.addEventListener('click', function(e){ if(e.target && e.target.id==='foyerCalCancel'){ e.preventDefault(); closeModal(); }});
-    modal.addEventListener('click', function(e){ if(e.target && e.target.id==='foyerCalSave'){ e.preventDefault();
-      var ch = select.value;
-      var s  = startInput.value;
-      var en = endInput.value;
-      if (!ch){ alert('Bitte Channel auswählen.'); return; }
-      var data = new FormData();
-      data.append('action','foyer_schedules_create_event');
-      data.append('nonce', nonce);
-      data.append('channel_id', ch);
-      data.append('start_local', s);
-      data.append('end_local', en);
-      data.append('tz', siteTz);
-      displays.forEach(function(id){ data.append('display_ids[]', String(id)); });
-      fetch(ajaxurl, { method:'POST', credentials:'same-origin', body:data })
-        .then(function(r){ return r.json(); })
-        .then(function(resp){ if(!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message)||'Save failed'); } closeModal(); refetch(); })
-        .catch(function(err){ alert(err && err.message ? err.message : String(err)); });
-    }});
+    foyerOpenOverlayCreate(base);
   }
 
   function handleSelect(info){
     var displays = getSelectedDisplays();
-    if (!displays.length){ alert('Bitte mindestens ein Display auswählen.'); return; }
-    var startLocal = toSiteLocalString(info.start);
-    var endLocal = toSiteLocalString(info.end || new Date(info.start.getTime()+60*60*1000));
-
-    var box = document.createElement('div');
-    var h3 = document.createElement('h3'); h3.textContent = 'Neuen geplanten Channel erstellen'; box.appendChild(h3);
-    var select = buildChannelSelect('');
-    var startInput = document.createElement('input'); startInput.type='text'; startInput.id='foyerCalStartLocal'; startInput.value=startLocal;
-    var endInput   = document.createElement('input'); endInput.type='text'; endInput.id='foyerCalEndLocal'; endInput.value=endLocal;
-    box.appendChild(buildFormRow('Channel:', select));
-    box.appendChild(buildFormRow('Start (Site-TZ):', startInput));
-    box.appendChild(buildFormRow('Ende (Site-TZ):', endInput));
-    var btnRow = document.createElement('div'); btnRow.style.display='flex'; btnRow.style.gap='8px'; btnRow.style.justifyContent='flex-end';
-    var cancelBtn=document.createElement('button'); cancelBtn.className='button'; cancelBtn.id='foyerCalCancel'; cancelBtn.textContent='Cancel';
-    var saveBtn=document.createElement('button'); saveBtn.className='button button-primary'; saveBtn.id='foyerCalSave'; saveBtn.textContent='Save';
-    btnRow.appendChild(cancelBtn); btnRow.appendChild(saveBtn); box.appendChild(btnRow);
-    var modal = openModal(box);
-
-    modal.addEventListener('click', function(e){ if(e.target && e.target.id==='foyerCalCancel'){ e.preventDefault(); closeModal(); }});
-    modal.addEventListener('click', function(e){ if(e.target && e.target.id==='foyerCalSave'){ e.preventDefault();
-      var ch = select.value;
-      var s  = startInput.value;
-      var en = endInput.value;
-      if (!ch){ alert('Bitte Channel auswählen.'); return; }
-      var data = new FormData();
-      data.append('action','foyer_schedules_create_event');
-      data.append('nonce', nonce);
-      data.append('channel_id', ch);
-      data.append('start_local', s);
-      data.append('end_local', en);
-      data.append('tz', siteTz);
-      displays.forEach(function(id){ data.append('display_ids[]', String(id)); });
-      fetch(ajaxurl, { method:'POST', credentials:'same-origin', body:data })
-        .then(function(r){ return r.json(); })
-        .then(function(resp){ if(!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message)||'Save failed'); } closeModal(); refetch(); })
-        .catch(function(err){ alert(err && err.message ? err.message : String(err)); });
-    }});
+    if (!displays.length){ alert((window.foyerSchedulerI18n && foyerSchedulerI18n.selectDisplay) || 'Please select at least one display.'); return; }
+    var start = info && info.start ? info.start : new Date();
+    var end = info && info.end ? info.end : new Date(start.getTime()+60*60*1000);
+    foyerOpenOverlayCreate(start, end);
   }
 
   function handleEventClick(info){
-    var ev = info.event; var xp = ev && ev.extendedProps ? ev.extendedProps : {};
-    var title = ev && ev.text ? ev.text : (ev && ev.title ? ev.title : '');
-    var sLocal = toSiteLocalString(ev.start); var eLocal = toSiteLocalString(ev.end);
-
-    var box = document.createElement('div');
-    var h3 = document.createElement('h3'); h3.textContent = 'Geplanten Channel bearbeiten'; box.appendChild(h3);
-    var pTitle = document.createElement('p'); var strong=document.createElement('strong'); strong.textContent = String(title||''); pTitle.appendChild(strong); box.appendChild(pTitle);
-    var select = buildChannelSelect(xp.channel_id||'');
-    var startInput = document.createElement('input'); startInput.type='text'; startInput.id='foyerCalStartLocal'; startInput.value=sLocal;
-    var endInput   = document.createElement('input'); endInput.type='text'; endInput.id='foyerCalEndLocal'; endInput.value=eLocal;
-    box.appendChild(buildFormRow('Channel:', select));
-    box.appendChild(buildFormRow('Start (Site-TZ):', startInput));
-    box.appendChild(buildFormRow('Ende (Site-TZ):', endInput));
-    if (xp.source && xp.source!=='SINGLE'){
-      var pRad = document.createElement('p');
-      var r1 = document.createElement('input'); r1.type='radio'; r1.name='foyer_apply_to'; r1.value='occurrence'; r1.checked=true; var l1=document.createElement('label'); l1.textContent=' Nur diesen Termin'; l1.prepend(r1);
-      var r2 = document.createElement('input'); r2.type='radio'; r2.name='foyer_apply_to'; r2.value='series'; var l2=document.createElement('label'); l2.style.marginLeft='12px'; l2.textContent=' Serie'; l2.prepend(r2);
-      pRad.appendChild(l1); pRad.appendChild(l2); box.appendChild(pRad);
-    }
-    var controlsRow = document.createElement('div'); controlsRow.style.display='flex'; controlsRow.style.gap='8px'; controlsRow.style.justifyContent='space-between';
-    var left = document.createElement('div'); var right=document.createElement('div');
-    if (xp.source && xp.source!=='SINGLE'){
-      var delOcc = document.createElement('button'); delOcc.className='button'; delOcc.id='foyerCalDeleteOcc'; delOcc.textContent='Nur diesen Termin löschen'; left.appendChild(delOcc);
-    }
-    var cancelBtn=document.createElement('button'); cancelBtn.className='button'; cancelBtn.id='foyerCalCancel'; cancelBtn.textContent='Cancel';
-    var saveBtn=document.createElement('button'); saveBtn.className='button button-primary'; saveBtn.id='foyerCalSave'; saveBtn.textContent='Save';
-    var delBtn=document.createElement('button'); delBtn.className='button button-secondary'; delBtn.id='foyerCalDelete'; delBtn.textContent='Delete schedule';
-    right.appendChild(cancelBtn); right.appendChild(saveBtn); right.appendChild(delBtn);
-    controlsRow.appendChild(left); controlsRow.appendChild(right); box.appendChild(controlsRow);
-
-    var modal = openModal(box);
-    modal.addEventListener('click', function(e){ if(e.target && e.target.id==='foyerCalCancel'){ e.preventDefault(); closeModal(); }});
-    modal.addEventListener('click', function(e){ if(e.target && e.target.id==='foyerCalSave'){ e.preventDefault();
-      var ch = select.value || '';
-      var s  = startInput.value;
-      var en = endInput.value;
-      var applyTo = (document.querySelector('input[name="foyer_apply_to"]:checked')||{}).value || 'occurrence';
-      var data = new FormData();
-      data.append('action','foyer_schedules_update_event');
-      data.append('nonce', nonce);
-      data.append('schedule_post_id', xp.schedule_post_id);
-      // no display_id needed; updates apply to all displays of this schedule
-      data.append('occ_id', xp.occ_id);
-      data.append('new_start_local', s);
-      data.append('new_end_local', en);
-      data.append('apply_to', applyTo);
-      if (ch) { data.append('channel_id', ch); }
-      fetch(ajaxurl, { method:'POST', credentials:'same-origin', body:data })
-        .then(function(r){ return r.json(); })
-        .then(function(resp){ if(!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message)||'Save failed'); } closeModal(); refetch(); })
-        .catch(function(err){ alert(err && err.message ? err.message : String(err)); });
-    }});
-    modal.addEventListener('click', function(e){ if(e.target && e.target.id==='foyerCalDelete'){ e.preventDefault();
-      if(!confirm('Gesamten Schedule löschen? Dies betrifft alle Displays.')) return;
-      var data = new FormData();
-      data.append('action','foyer_schedules_delete_event');
-      data.append('nonce', nonce);
-      data.append('schedule_post_id', xp.schedule_post_id);
-      data.append('delete_mode','all');
-      fetch(ajaxurl, { method:'POST', credentials:'same-origin', body:data })
-        .then(function(r){ return r.json(); })
-        .then(function(resp){ if(!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message)||'Delete failed'); } closeModal(); refetch(); })
-        .catch(function(err){ alert(err && err.message ? err.message : String(err)); });
-    }});
-    modal.addEventListener('click', function(e){ if(e.target && e.target.id==='foyerCalDeleteOcc'){ e.preventDefault();
-      if(!confirm('Diesen einzelnen Termin (Serie) löschen? Dies betrifft alle Displays dieses Schedules.')) return;
-      var data = new FormData();
-      data.append('action','foyer_schedules_delete_event');
-      data.append('nonce', nonce);
-      data.append('schedule_post_id', xp.schedule_post_id);
-      data.append('occ_id', xp.occ_id);
-      data.append('delete_mode','occurrence');
-      fetch(ajaxurl, { method:'POST', credentials:'same-origin', body:data })
-        .then(function(r){ return r.json(); })
-        .then(function(resp){ if(!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message)||'Delete failed'); } closeModal(); refetch(); })
-        .catch(function(err){ alert(err && err.message ? err.message : String(err)); });
-    }});
+    try { foyerOpenOverlayEdit(info && info.event ? info.event : null); } catch(e){}
   }
-
   function handleEventDrop(info){
     var ev = info.event; var xp = ev.extendedProps||{};
     var data = new FormData();
@@ -682,13 +537,13 @@
     try { wrap.style.clipPath = 'circle(0px at '+ox+'px '+oy+'px)'; } catch(e){}
     var panel = document.createElement('div'); panel.className='foyer-ov-panel';
     var top = document.createElement('section'); top.className='foyer-ov-top'; top.innerHTML = ''+
-      '<div class="foyer-ov-head"><h2>'+ escapeHTML(titleText || 'Schedule') +'</h2><div><button class="button button-primary" id="ovSave">Speichern</button><button class="button" id="ovCloseBtn">Schließen</button></div></div>'+
+      '<div class="foyer-ov-head"><h2>'+ escapeHTML(titleText || 'Schedule') +'</h2><div><button class="button button-primary" id="ovSave">'+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.save)||'Save'))+'</button><button class="button" id="ovCloseBtn">'+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.cancel)||'Cancel'))+'</button></div></div>'+
       '<div class="ov-form">'+
         '<div class="ov-form-grid">'+
           '<div class="ov-col-left">'+
             '<div class="ov-form-row ov-datetime-grid">'+
-              '<div class="ov-field"><label>Start</label><input type="text" id="ovStartLocal" class="regular-text" placeholder="YYYY-MM-DD HH:mm:ss"/></div>'+
-              '<div class="ov-field"><label>Ende</label><input type="text" id="ovEndLocal" class="regular-text" placeholder="YYYY-MM-DD HH:mm:ss"/></div>'+
+              '<div class="ov-field"><label>'+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.startLabel)||'Start'))+'</label><input type="text" id="ovStartLocal" class="regular-text" placeholder="YYYY-MM-DD HH:mm:ss"/></div>'+
+              '<div class="ov-field"><label>'+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.endLabel)||'End'))+'</label><input type="text" id="ovEndLocal" class="regular-text" placeholder="YYYY-MM-DD HH:mm:ss"/></div>'+
             '</div>'+
             '<div class="ov-recur-summary" id="ovRecurSummary" aria-live="polite" style="opacity:.85;"></div>'+
           '</div>'+
@@ -696,23 +551,23 @@
             '<fieldset class="ov-recur" id="ovRecurBox">'+
               '<div class="ov-form-row ov-freq-row">'+
                 '<div class="ov-freq-group" role="radiogroup" aria-label="Häufigkeit">'+
-                  '<label class="ov-chip"><input type="radio" name="ovFreq" value="SINGLE" checked> Einmalig</label>'+
-                  '<label class="ov-chip"><input type="radio" name="ovFreq" value="DAILY"> Täglich</label>'+
-                  '<label class="ov-chip"><input type="radio" name="ovFreq" value="WEEKLY"> Wöchentlich</label>'+
-                  '<label class="ov-chip"><input type="radio" name="ovFreq" value="MONTHLY"> Monatlich</label>'+
+                  '<label class="ov-chip"><input type="radio" name="ovFreq" value="SINGLE" checked> '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.freqSingle)||'Single'))+'</label>'+
+                  '<label class="ov-chip"><input type="radio" name="ovFreq" value="DAILY"> '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.freqDaily)||'Daily'))+'</label>'+
+                  '<label class="ov-chip"><input type="radio" name="ovFreq" value="WEEKLY"> '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.freqWeekly)||'Weekly'))+'</label>'+
+                  '<label class="ov-chip"><input type="radio" name="ovFreq" value="MONTHLY"> '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.freqMonthly)||'Monthly'))+'</label>'+
                 '</div>'+
-                '<div id="ovIntervalWrap" style="margin-left:auto;">alle <input type="number" id="ovInterval" class="small-text" min="1" value="1"/> <span id="ovIntervalUnit">Tag(e)</span></div>'+
+                '<div id="ovIntervalWrap" style="margin-left:auto;">'+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.every)||'every'))+' <input type="number" id="ovInterval" class="small-text" min="1" value="1"/> <span id="ovIntervalUnit">'+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.unitDay)||'day(s)'))+'</span></div>'+
               '</div>'+
-                            '<div class="ov-form-row ov-weekly ov-hidden" id="ovWeeklyOpts">Tage: '
+                            '<div class="ov-form-row ov-weekly ov-hidden" id="ovWeeklyOpts">'+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.weekDaysLabel)||'Days:'))+' '
                 +['MO','TU','WE','TH','FR','SA','SU'].map(function(d){return '<label style="margin-right:6px;"><input type="checkbox" class="ovByDay" value="'+d+'"/> '+d+'</label>';}).join(' ')
               +'</div>'+
               '<div class="ov-form-row ov-monthly ov-hidden" id="ovMonthlyOpts">'
-                +'<label>Monats-Tage (z.B. 1,15,31) <input type="text" id="ovByMonthDay" class="regular-text" placeholder="1,15,31"/></label>'+
+                +'<label>'+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.monthDaysLabel)||'Month days (e.g. 1,15,31)'))+' <input type="text" id="ovByMonthDay" class="regular-text" placeholder="1,15,31"/></label>'+
               '</div>'+
                           '<div class="ov-form-row ov-end-row">'+
-                '<label class="ov-end-opt"><input type="radio" name="ovEndMode" value="never" checked> Endet nie</label>'+
-                '<label class="ov-end-opt"><input type="radio" name="ovEndMode" value="until"> Endet am <input type="text" id="ovUntil" class="regular-text" placeholder="YYYY-MM-DD HH:mm:ss"/></label>'+
-                '<label class="ov-end-opt"><input type="radio" name="ovEndMode" value="count"> Endet nach <input type="number" id="ovCount" class="small-text" min="1"/> Terminen</label>'+
+                '<label class="ov-end-opt"><input type="radio" name="ovEndMode" value="never" checked> '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.endNever)||'Never ends'))+'</label>'+
+                '<label class="ov-end-opt"><input type="radio" name="ovEndMode" value="until"> '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.endUntil)||'Ends at'))+' <input type="text" id="ovUntil" class="regular-text" placeholder="YYYY-MM-DD HH:mm:ss"/></label>'+
+                '<label class="ov-end-opt"><input type="radio" name="ovEndMode" value="count"> '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.endCount)||'Ends after'))+' <input type="number" id="ovCount" class="small-text" min="1"/> '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.termsWord)||'occurrences'))+'</label>'+
               '</div>'+
               '<div class="ov-rrule" id="ovRRulePreview" aria-live="polite"></div>'+
             '</fieldset>'+
@@ -723,11 +578,11 @@
     var channelsWrap = document.createElement('section'); channelsWrap.className='foyer-ov-channelsWrap'; channelsWrap.innerHTML = ''+
       '<div class="foyer-ov-head">'
         +'<div class="ov-chan-title" style="display:flex;gap:8px;align-items:center;">'
-          +'<h2>Channels</h2>'
-          +'<input type="search" id="ovChanSearch" class="regular-text" placeholder="Suchen…" style="max-width:220px;" />'
+          +'<h2>'+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.channelsHeading)||'Channels'))+'</h2>'
+          +'<input type="search" id="ovChanSearch" class="regular-text" placeholder="'+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.searchPlaceholder)||'Search…'))+'" style="max-width:220px;" />'
         +'</div>'
         +'<div class="ov-chan-toolbar" style="display:flex;gap:12px;align-items:center;">'
-          +'<label>Pro Seite '
+          +'<label>'+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.perPage)||'Per page'))+' '
             +'<select id="ovChanPerPage"><option value="12" selected>12</option><option value="24">24</option><option value="48">48</option></select>'
           +'</label>'
           +'<div id="ovChanPager" class="ov-chan-pager" style="display:flex;align-items:center;gap:8px;">'
@@ -738,7 +593,7 @@
         +'</div>'
       +'</div>'
       +'<div class="foyer-ov-channels" id="ovChannels"></div>';
-    var displaysWrap = document.createElement('aside'); displaysWrap.className='foyer-ov-displaysWrap'; displaysWrap.innerHTML = '<div class="foyer-ov-head"><h2>Displays</h2></div><div class="foyer-ov-displays" id="ovDisplays"></div>';
+    var displaysWrap = document.createElement('aside'); displaysWrap.className='foyer-ov-displaysWrap'; displaysWrap.innerHTML = '<div class="foyer-ov-head"><h2>'+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.displaysHeading)||'Displays'))+'</h2></div><div class="foyer-ov-displays" id="ovDisplays"></div>';
     bottom.appendChild(channelsWrap); bottom.appendChild(displaysWrap);
     panel.appendChild(top); panel.appendChild(bottom); wrap.appendChild(panel); document.body.appendChild(wrap);
     // animate open (expand from origin)
@@ -779,7 +634,7 @@
     }
     document.getElementById('ovRecurBox').addEventListener('change', function(e){ if (e.target && e.target.name==='ovFreq'){ updateFreq(); }});
 
-    function setIntervalUnit(){ try { var u=document.getElementById('ovIntervalUnit'); if(!u) return; var f=getCheckedFreq(); u.textContent = (f==='WEEKLY') ? 'Woche(n)' : (f==='MONTHLY' ? 'Monat(e)' : (f==='DAILY' ? 'Tag(e)' : '')); } catch(e){} }
+    function setIntervalUnit(){ try { var u=document.getElementById('ovIntervalUnit'); if(!u) return; var f=getCheckedFreq(); u.textContent = (f==='WEEKLY') ? (((window.foyerSchedulerI18n&&foyerSchedulerI18n.unitWeek)||'week(s)')) : (f==='MONTHLY' ? (((window.foyerSchedulerI18n&&foyerSchedulerI18n.unitMonth)||'month(s)')) : (f==='DAILY' ? (((window.foyerSchedulerI18n&&foyerSchedulerI18n.unitDay)||'day(s)')) : '')); } catch(e){} }
     function setActiveFreqChips(){ try { var chips=document.querySelectorAll('.ov-freq-group .ov-chip'); var f=getCheckedFreq(); chips.forEach(function(lbl){ var inp=lbl.querySelector('input'); lbl.classList.toggle('is-active', inp && inp.value===f && inp.checked); }); } catch(e){} }
     function setActiveWeekdayChips(){ try { document.querySelectorAll('#ovWeeklyOpts label').forEach(function(lbl){ var inp=lbl.querySelector('input'); lbl.classList.toggle('is-active', !!(inp && inp.checked)); }); } catch(e){} }
     function ensureWeeklyDefaultDay(){ try { var any=document.querySelector('#ovWeeklyOpts .ovByDay:checked'); if(any) return; var s=document.getElementById('ovStartLocal'); if(!s||!s.value) return; var d=parseLocalDateTime(s.value); if(!d) return; var map=['SU','MO','TU','WE','TH','FR','SA']; var code=map[d.getDay()]; var n=document.querySelector('#ovWeeklyOpts .ovByDay[value="'+code+'"]'); if(n){ n.checked=true; setActiveWeekdayChips(); } } catch(e){} }
@@ -866,14 +721,14 @@
     }
     function formatTimeRange(){ try { var s=document.getElementById('ovStartLocal').value.trim(); var e=document.getElementById('ovEndLocal').value.trim(); var out=''; var st=s.split(' ')[1]||''; var et=e.split(' ')[1]||''; if(st||et){ out = (st||'..')+'–'+(et||'..'); try { var sd=parseLocalDateTime(s), ed=parseLocalDateTime(e); if(sd && ed && ed.getTime()<sd.getTime()){ out += ' (+1)'; } } catch(err){} } return out; } catch(e){ return ''; } }
     function updateSummary(){ try {
-      var sum=document.getElementById('ovRecurSummary'); if(!sum) return; var f=getCheckedFreq(); if(f==='SINGLE'){ sum.textContent = 'Einmalig '+ formatTimeRange(); updateRRulePreview(); return; }
+      var sum=document.getElementById('ovRecurSummary'); if(!sum) return; var f=getCheckedFreq(); if(f==='SINGLE'){ sum.textContent = (((window.foyerSchedulerI18n&&foyerSchedulerI18n.freqSingle)||'Single'))+' '+ formatTimeRange(); updateRRulePreview(); return; }
       var inter=parseInt(document.getElementById('ovInterval').value,10)||1; var range=formatTimeRange(); var parts=[];
-      if(f==='DAILY'){ parts.push(inter>1? ('Alle '+inter+' Tage') : 'Täglich'); }
-      else if(f==='WEEKLY'){ var days=[]; document.querySelectorAll('#ovWeeklyOpts .ovByDay:checked').forEach(function(i){ var map={MO:'Mo',TU:'Di',WE:'Mi',TH:'Do',FR:'Fr',SA:'Sa',SU:'So'}; days.push(map[i.value]||i.value); }); if(days.length===0){ ensureWeeklyDefaultDay(); document.querySelectorAll('#ovWeeklyOpts .ovByDay:checked').forEach(function(i){ var map={MO:'Mo',TU:'Di',WE:'Mi',TH:'Do',FR:'Fr',SA:'Sa',SU:'So'}; days.push(map[i.value]||i.value); }); }
-        parts.push((inter>1? ('Alle '+inter+' Wochen') : 'Wöchentlich') + (days.length? (' am '+days.join(', ')) : '')); }
-      else if(f==='MONTHLY'){ parts.push(inter>1? ('Alle '+inter+' Monate') : 'Monatlich'); var md=(document.getElementById('ovByMonthDay').value||'').trim(); if(md){ parts.push(' an Tag(en) '+md); } }
-      var endMode=getEndMode(); if(endMode==='until'){ var until=(document.getElementById('ovUntil').value||'').trim(); if(until){ parts.push(' endet am '+until); } }
-      else if(endMode==='count'){ var cnt=parseInt((document.getElementById('ovCount').value||'').trim(),10); if(cnt>0){ parts.push(' endet nach '+cnt+' Terminen'); } }
+      if(f==='DAILY'){ parts.push(inter>1? ((((window.foyerSchedulerI18n&&foyerSchedulerI18n.every)||'every'))+' '+inter+' '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.unitDay)||'day(s)'))) : (((window.foyerSchedulerI18n&&foyerSchedulerI18n.freqDaily)||'Daily'))); }
+      else if(f==='WEEKLY'){ var days=[]; document.querySelectorAll('#ovWeeklyOpts .ovByDay:checked').forEach(function(i){ days.push(i.value); }); if(days.length===0){ ensureWeeklyDefaultDay(); document.querySelectorAll('#ovWeeklyOpts .ovByDay:checked').forEach(function(i){ days.push(i.value); }); }
+        parts.push((inter>1? ((((window.foyerSchedulerI18n&&foyerSchedulerI18n.every)||'every'))+' '+inter+' '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.unitWeek)||'week(s)'))) : (((window.foyerSchedulerI18n&&foyerSchedulerI18n.freqWeekly)||'Weekly')) ) + (days.length? (' on '+days.join(', ')) : '')); }
+      else if(f==='MONTHLY'){ parts.push(inter>1? ((((window.foyerSchedulerI18n&&foyerSchedulerI18n.every)||'every'))+' '+inter+' '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.unitMonth)||'month(s)'))) : (((window.foyerSchedulerI18n&&foyerSchedulerI18n.freqMonthly)||'Monthly'))); var md=(document.getElementById('ovByMonthDay').value||'').trim(); if(md){ parts.push(' on day(s) '+md); } }
+      var endMode=getEndMode(); if(endMode==='until'){ var until=(document.getElementById('ovUntil').value||'').trim(); if(until){ parts.push(' '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.endUntil)||'Ends at'))+' '+until); } }
+      else if(endMode==='count'){ var cnt=parseInt((document.getElementById('ovCount').value||'').trim(),10); if(cnt>0){ parts.push(' '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.endCount)||'Ends after'))+' '+cnt+' '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.termsWord)||'occurrences'))) } }
       if(range){ parts.push(range); }
       sum.textContent = parts.join(' • '); updateRRulePreview();
     } catch(e){} }
@@ -899,7 +754,8 @@
     var cleaned = false;
     function cleanup(){ if(cleaned) return; cleaned=true; try{ if (window.__ovEscHandler) { document.removeEventListener('keydown', window.__ovEscHandler); window.__ovEscHandler = null; } }catch(e){} if(w && w.parentNode){ w.parentNode.removeChild(w); } document.body.style.overflow=''; }
     try {
-      w.addEventListener('transitionend', function(ev){ if(ev && ev.propertyName && ev.propertyName.indexOf('clip-path')===-1 && ev.propertyName.indexOf('webkit-clip-path')===-1) return; cleanup(); }, { once:true });
+      var __onceTransition = function(ev){ if(ev && ev.propertyName && ev.propertyName.indexOf('clip-path')===-1 && ev.propertyName.indexOf('webkit-clip-path')===-1) return; cleanup(); try{ w.removeEventListener('transitionend', __onceTransition); }catch(e){} };
+      w.addEventListener('transitionend', __onceTransition);
       setTimeout(cleanup, 420);
       w.style.webkitClipPath = 'circle(0px at '+ox+'px '+oy+'px)';
       w.style.clipPath = 'circle(0px at '+ox+'px '+oy+'px)';
@@ -946,7 +802,7 @@
     var selAllRow = document.createElement('div'); selAllRow.className='ov-display-item ov-select-all'; selAllRow.id='ovSelectAllRow'; selAllRow.setAttribute('data-color','hsl(210, 20%, 85%)'); selAllRow.tabIndex = 0;
     var selAll = document.createElement('input'); selAll.type='checkbox'; selAll.id='ovSelectAll';
     var selAllSw = document.createElement('span'); selAllSw.className='ov-display-swatch';
-    var selAllLabel = document.createElement('span'); selAllLabel.className='foyer-display-title'; selAllLabel.textContent = 'Alle auswählen';
+    var selAllLabel = document.createElement('span'); selAllLabel.className='foyer-display-title'; selAllLabel.textContent = (window.foyerSchedulerI18n && foyerSchedulerI18n.selectAll) || 'Select all';
     selAllRow.appendChild(selAllSw); selAllRow.appendChild(selAllLabel); selAllRow.appendChild(selAll); host.appendChild(selAllRow);
 
     var srcList = document.querySelectorAll('#foyerCalDisplays .foyer-display-item');
@@ -1025,7 +881,7 @@
       return { items: arr.slice(start,end), page: p, pages: pages, total: total };
     }
     function updatePager(p){
-      var info = document.getElementById('ovChanPageInfo'); if (info) { info.textContent = 'Seite '+p.page+' / '+p.pages+' ('+p.total+' Treffer)'; }
+      var info = document.getElementById('ovChanPageInfo'); if (info) { info.textContent = (((window.foyerSchedulerI18n&&foyerSchedulerI18n.pageWord)||'Page'))+' '+p.page+' / '+p.pages+' ('+p.total+' '+(((window.foyerSchedulerI18n&&foyerSchedulerI18n.hitsWord)||'hits'))+')'; }
       var prev = document.getElementById('ovChanPrev'); if (prev) { prev.disabled = (p.page<=1); }
       var next = document.getElementById('ovChanNext'); if (next) { next.disabled = (p.page>=p.pages); }
     }
@@ -1084,8 +940,8 @@
   function foyerOverlayBindSaveCreate(){
     var save = document.getElementById('ovSave'); if(!save) return;
     save.addEventListener('click', function(e){ e.preventDefault();
-      var displays = foyerOverlayGetSelectedDisplayIds(); if(!displays.length){ alert('Bitte mindestens ein Display auswählen.'); return; }
-      var ch = __ovSelectedChannelId; if(!ch){ alert('Bitte einen Channel auswählen.'); return; }
+      var displays = foyerOverlayGetSelectedDisplayIds(); if(!displays.length){ alert((window.foyerSchedulerI18n && foyerSchedulerI18n.selectDisplay) || 'Please select at least one display.'); return; }
+      var ch = __ovSelectedChannelId; if(!ch){ alert((window.foyerSchedulerI18n && foyerSchedulerI18n.selectChannel) || 'Please select a channel.'); return; }
       var data = new FormData(); data.append('action','foyer_schedules_create_event'); data.append('nonce', nonce); data.append('channel_id', String(ch)); data.append('tz', siteTz);
       displays.forEach(function(id){ data.append('display_ids[]', String(id)); });
       var fSel = (function(){ var r=document.querySelector('#ovRecurBox input[name="ovFreq"]:checked'); return r? r.value : 'SINGLE'; })();
@@ -1093,7 +949,7 @@
         data.append('mode','recur');
         var sVal = document.getElementById('ovStartLocal').value.trim();
         var eVal = document.getElementById('ovEndLocal').value.trim();
-        if(!sVal){ alert('Start ist erforderlich.'); return; }
+        if(!sVal){ alert((window.foyerSchedulerI18n && foyerSchedulerI18n.startRequired) || 'Start is required.'); return; }
         data.append('dtstart_local', sVal);
         var durSec = 3600;
         try {
@@ -1121,7 +977,7 @@
         }
       } else {
         var s = document.getElementById('ovStartLocal').value.trim(); var en = document.getElementById('ovEndLocal').value.trim();
-        if(!s){ alert('Start ist erforderlich.'); return; }
+        if(!s){ alert((window.foyerSchedulerI18n && foyerSchedulerI18n.startRequired) || 'Start is required.'); return; }
         data.append('start_local', s); if(en){ data.append('end_local', en); }
       }
       fetch(ajaxurl, { method:'POST', credentials:'same-origin', body:data })
@@ -1143,7 +999,7 @@
   }
 
   function foyerOpenOverlayCreate(startDate, endDateOpt){
-    var wrap = foyerOverlayCreateStructure(getLastCalPointer(), 'Create new Schedule');
+    var wrap = foyerOverlayCreateStructure(getLastCalPointer(), (window.foyerSchedulerI18n && foyerSchedulerI18n.createTitle) || 'Create new Schedule');
     foyerOverlayRenderDisplays();
     foyerOverlayRenderChannels();
     foyerOverlayFillDefaultsForCreate(startDate, endDateOpt);
@@ -1154,7 +1010,7 @@
 
   function foyerOpenOverlayEdit(eventObj){
     // For now, reuse single-occurrence edit inside overlay; series editing remains basic (apply_to radios)
-    var wrap = foyerOverlayCreateStructure(getLastCalPointer(), 'Edit Schedule');
+    var wrap = foyerOverlayCreateStructure(getLastCalPointer(), (window.foyerSchedulerI18n && foyerSchedulerI18n.editTitle) || 'Edit Schedule');
     var evtMeta = (eventObj && eventObj.extendedProps) ? eventObj.extendedProps : {};
 
     // Preselect channel before rendering grid so the correct card is highlighted
@@ -1209,7 +1065,7 @@
     var save = document.getElementById('ovSave'); if(save){
       save.addEventListener('click', function(ev){ ev.preventDefault();
         var displays = foyerOverlayGetSelectedDisplayIds();
-        if (!displays.length){ alert('Bitte mindestens ein Display auswählen.'); return; }
+        if (!displays.length){ alert((window.foyerSchedulerI18n && foyerSchedulerI18n.selectDisplay) || 'Please select at least one display.'); return; }
         var ch = __ovSelectedChannelId || '';
         var data = new FormData(); data.append('action','foyer_schedules_update_event'); data.append('nonce', nonce);
         data.append('schedule_post_id', String(evtMeta.schedule_post_id||'')); data.append('occ_id', String(evtMeta.occ_id||''));
@@ -1225,11 +1081,7 @@
     return wrap;
   }
 
-  // Override click/select handlers to open overlay instead of small modals
-  function handleDateClick(info){ try { foyerOpenOverlayCreate(info && info.date ? info.date : new Date(), null); } catch(e){} }
-  function handleSelect(info){ try { foyerOpenOverlayCreate(info.start, (info && info.end) ? info.end : null); } catch(e){} }
-  function handleEventClick(info){ try { if(info && info.event){ foyerOpenOverlayEdit(info.event); } } catch(e){} }
-
+  // Initialization
   ensureCalendar();
   updateDisplaySelectionStyles();
   scheduleRefetch('init');

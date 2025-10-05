@@ -48,21 +48,22 @@ class Foyer_Admin_Scheduler {
             return;
         }
 
-        // EventCalendar from CDN
-        wp_enqueue_style(
-            'foyer-event-calendar',
-            'https://cdn.jsdelivr.net/npm/@event-calendar/build@4.6.0/dist/event-calendar.min.css',
-            array(),
-            '4.6.0'
-        );
-        wp_enqueue_script(
-            'foyer-event-calendar',
-            'https://cdn.jsdelivr.net/npm/@event-calendar/build@4.6.0/dist/event-calendar.min.js',
-            array(),
-            '4.6.0',
-            true
-        );
+        // EventCalendar: ensure local hosting; download once if missing
+        $__base_url  = plugin_dir_url( __FILE__ );
+        $__base_path = plugin_dir_path( __FILE__ );
+        $ev_dir_rel  = 'vendor/event-calendar/';
+        $ev_local_css = $ev_dir_rel . 'event-calendar.min.css';
+        $ev_local_js  = $ev_dir_rel . 'event-calendar.min.js';
+        $ev_local_js_map  = $ev_dir_rel . 'event-calendar.min.js.map';
+        $ev_css_abs   = $__base_path . $ev_local_css;
+        $ev_js_abs    = $__base_path . $ev_local_js;
+        $ev_js_map_abs    = $__base_path . $ev_local_js_map;
 
+        
+        wp_enqueue_style( 'foyer-event-calendar', $__base_url . $ev_local_css, array(), '4.6.0' );
+        wp_enqueue_script( 'foyer-event-calendar', $__base_url . $ev_local_js, array(), '4.6.0', true );
+
+        
         $base_url  = plugin_dir_url( __FILE__ );
         $base_path = plugin_dir_path( __FILE__ );
         $css_rel = 'css/foyer-scheduler.css';
@@ -113,6 +114,46 @@ class Foyer_Admin_Scheduler {
             'channels'=> $channels_data,
         );
         wp_localize_script( 'foyer-scheduler', 'foyerSchedulerData', $data );
+
+        // Provide translatable UI strings to JS
+        $i18n = array(
+            'selectDisplay'    => __( 'Please select at least one display.', 'foyer' ),
+            'selectChannel'    => __( 'Please select a channel.', 'foyer' ),
+            'createTitle'      => __( 'Create new Schedule', 'foyer' ),
+            'editTitle'        => __( 'Edit Schedule', 'foyer' ),
+            'startRequired'    => __( 'Start is required.', 'foyer' ),
+            'cancel'           => __( 'Cancel', 'foyer' ),
+            'save'             => __( 'Save', 'foyer' ),
+            'deleteSchedule'   => __( 'Delete schedule', 'foyer' ),
+            'deleteOccurrence' => __( 'Delete only this occurrence', 'foyer' ),
+            'confirmDelete'    => __( 'Delete entire schedule? This affects all displays.', 'foyer' ),
+            'confirmDeleteOcc' => __( 'Delete this single occurrence? This affects all displays of this schedule.', 'foyer' ),
+            'channelsHeading'  => __( 'Channels', 'foyer' ),
+            'displaysHeading'  => __( 'Displays', 'foyer' ),
+            'selectAll'        => __( 'Select all', 'foyer' ),
+            'searchPlaceholder'=> __( 'Search…', 'foyer' ),
+            // Extended i18n for overlay UI
+            'startLabel'       => __( 'Start', 'foyer' ),
+            'endLabel'         => __( 'End', 'foyer' ),
+            'freqSingle'       => __( 'Single', 'foyer' ),
+            'freqDaily'        => __( 'Daily', 'foyer' ),
+            'freqWeekly'       => __( 'Weekly', 'foyer' ),
+            'freqMonthly'      => __( 'Monthly', 'foyer' ),
+            'unitDay'          => __( 'day(s)', 'foyer' ),
+            'unitWeek'         => __( 'week(s)', 'foyer' ),
+            'unitMonth'        => __( 'month(s)', 'foyer' ),
+            'weekDaysLabel'    => __( 'Days:', 'foyer' ),
+            'monthDaysLabel'   => __( 'Month days (e.g. 1,15,31)', 'foyer' ),
+            'endNever'         => __( 'Never ends', 'foyer' ),
+            'endUntil'         => __( 'Ends at', 'foyer' ),
+            'endCount'         => __( 'Ends after', 'foyer' ),
+            'termsWord'        => __( 'occurrences', 'foyer' ),
+            'perPage'          => __( 'Per page', 'foyer' ),
+            'pageWord'         => __( 'Page', 'foyer' ),
+            'hitsWord'         => __( 'hits', 'foyer' ),
+        );
+        wp_localize_script( 'foyer-scheduler', 'foyerSchedulerI18n', $i18n );
+
         wp_enqueue_script( 'foyer-scheduler' );
     }
 
@@ -154,6 +195,9 @@ class Foyer_Admin_Scheduler {
             wp_send_json_success( array( 'events' => array() ) );
         }
 
+        // Simple cache per schedule post to avoid repeated expand across displays
+        $occ_cache = array();
+
         // Group events by schedule occurrence (schedule_post_id + occ_id)
         $groups = array();
         foreach ( $display_ids as $did ) {
@@ -180,8 +224,14 @@ class Foyer_Admin_Scheduler {
             if ( empty( $posts ) ) { continue; }
 
             foreach ( $posts as $p ) {
-                $meta = Foyer_Schedules::read_meta( $p->ID );
-                $occ  = Foyer_Schedule_Engine::expand_occurrences( $meta, $start_ts, $end_ts );
+                if ( isset( $occ_cache[ $p->ID ] ) ) {
+                    $meta = $occ_cache[ $p->ID ]['meta'];
+                    $occ  = $occ_cache[ $p->ID ]['occ'];
+                } else {
+                    $meta = Foyer_Schedules::read_meta( $p->ID );
+                    $occ  = Foyer_Schedule_Engine::expand_occurrences( $meta, $start_ts, $end_ts );
+                    $occ_cache[ $p->ID ] = array( 'meta' => $meta, 'occ' => $occ );
+                }
                 if ( empty( $occ ) ) { continue; }
                 foreach ( $occ as $o ) {
                     $start_utc = intval( $o['start_utc'] );
@@ -256,6 +306,16 @@ class Foyer_Admin_Scheduler {
         $channel_id  = isset( $_POST['channel_id'] ) ? intval( $_POST['channel_id'] ) : 0;
         $tzid        = isset( $_POST['tz'] ) ? (string) $_POST['tz'] : wp_timezone_string();
         $mode        = isset( $_POST['mode'] ) ? strtolower( sanitize_text_field( (string) $_POST['mode'] ) ) : 'single';
+
+        // Validate permissions for all selected displays
+        if ( ! empty( $display_ids ) ) {
+            $display_ids = array_values( array_unique( array_filter( $display_ids ) ) );
+            foreach ( $display_ids as $did_check ) {
+                if ( ! current_user_can( 'edit_post', $did_check ) ) {
+                    wp_send_json_error( array( 'message' => __( 'You are not allowed to edit this display.', 'foyer' ) ), 403 );
+                }
+            }
+        }
 
         if ( 'recur' === $mode ) {
             // Create a recurring schedule via RRULE builder fields
@@ -341,7 +401,7 @@ class Foyer_Admin_Scheduler {
             update_post_meta( $pid, 'foyer_schedule_dtstart_local', $start_dt->format('Y-m-d H:i:s') );
             update_post_meta( $pid, 'foyer_schedule_duration', $duration );
             update_post_meta( $pid, 'foyer_schedule_rrule', $rrule );
-            update_post_meta( $pid, 'foyer_schedule_mode', 'recur' );
+            update_post_meta( $pid, 'foyer_schedule_mode', 'recurring' );
 
             wp_send_json_success( array( 'ok' => true, 'post_id' => intval( $pid ) ) );
         }
@@ -436,9 +496,19 @@ class Foyer_Admin_Scheduler {
         $channel_id = isset( $_POST['channel_id'] ) ? intval( $_POST['channel_id'] ) : 0;
         // Optional: update displays for this schedule (series-level)
         $display_ids = isset( $_POST['display_ids'] ) ? array_values( array_unique( array_map( 'intval', (array) $_POST['display_ids'] ) ) ) : array();
+        if ( ! empty( $display_ids ) ) {
+            foreach ( $display_ids as $did_check ) {
+                if ( ! current_user_can( 'edit_post', $did_check ) ) {
+                    wp_send_json_error( array( 'message' => __( 'You are not allowed to edit this display.', 'foyer' ) ), 403 );
+                }
+            }
+        }
 
         if ( $pid <= 0 || '' === $occ_id ) {
             wp_send_json_error( array( 'message' => __( 'Invalid payload', 'foyer' ) ), 400 );
+        }
+        if ( ! current_user_can( 'edit_post', $pid ) ) {
+            wp_send_json_error( array( 'message' => __( 'You are not allowed to edit this schedule.', 'foyer' ) ), 403 );
         }
         $meta = Foyer_Schedules::read_meta( $pid );
         $tzid = isset( $meta['tz'] ) && $meta['tz'] ? (string) $meta['tz'] : wp_timezone_string();
@@ -528,6 +598,9 @@ class Foyer_Admin_Scheduler {
         if ( $pid <= 0 ) {
             wp_send_json_error( array( 'message' => __( 'Invalid payload', 'foyer' ) ), 400 );
         }
+        if ( ! current_user_can( 'edit_post', $pid ) ) {
+            wp_send_json_error( array( 'message' => __( 'You are not allowed to edit this schedule.', 'foyer' ) ), 403 );
+        }
         $meta = Foyer_Schedules::read_meta( $pid );
         wp_send_json_success( array( 'meta' => $meta ) );
     }
@@ -541,6 +614,9 @@ class Foyer_Admin_Scheduler {
         $occ_id = isset( $_POST['occ_id'] ) ? (string) $_POST['occ_id'] : '';
         $delete_mode = isset( $_POST['delete_mode'] ) ? (string) $_POST['delete_mode'] : 'all';
         if ( $pid <= 0 ) { wp_send_json_error( array( 'message' => __( 'Invalid payload', 'foyer' ) ), 400 ); }
+        if ( ! current_user_can( 'edit_post', $pid ) ) {
+            wp_send_json_error( array( 'message' => __( 'You are not allowed to delete this schedule.', 'foyer' ) ), 403 );
+        }
 
         if ( 'all' === strtolower( $delete_mode ) ) {
             $del = wp_delete_post( $pid, true );
@@ -894,8 +970,7 @@ class Foyer_Admin_Scheduler {
         // Load EventCalendar (CDN) and bootstrap minimal fetch wiring; full CRUD follows in next step
         // We keep times strictly in Site-TZ by shifting render times
         ?>
-                        <script>
-        (function(){ return;
+                        <!-- Removed dead inline script block (redundant to external JS)
             var ajaxurl = window.ajaxurl || '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>';
             var nonce = '<?php echo esc_js( $nonce ); ?>';
             var siteTz = '<?php echo esc_js( $site_tz ); ?>';
@@ -1385,6 +1460,7 @@ class Foyer_Admin_Scheduler {
             scheduleRefetch('init');
         })();
         </script>
+        -->
         <?php
         echo '</div>';
         return;
