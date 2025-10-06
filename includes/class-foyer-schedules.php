@@ -97,6 +97,17 @@ if ( ! class_exists( 'Foyer_Schedules' ) ) {
 			if ( $duration <= 0 ) { $duration = HOUR_IN_SECONDS; }
 
 			$rrule   = get_post_meta( $post_id, 'foyer_schedule_rrule', true );
+			if ( is_string( $rrule ) ) {
+				$rrule = trim( $rrule );
+				if ( '' !== $rrule ) {
+					if ( preg_match( '/^RRULE[^:]*:/i', $rrule ) ) {
+						$rrule = preg_replace( '/^RRULE[^:]*:/i', '', $rrule );
+					} elseif ( preg_match( '/^RRULE\s+/i', $rrule ) ) {
+						$rrule = preg_replace( '/^RRULE\s+/i', '', $rrule );
+					}
+					$rrule = trim( $rrule );
+				}
+			}
 			$rdates  = get_post_meta( $post_id, 'foyer_schedule_rdates', true );
 			if ( ! is_array( $rdates ) ) { $rdates = array(); }
 			$exdates = get_post_meta( $post_id, 'foyer_schedule_exdates', true );

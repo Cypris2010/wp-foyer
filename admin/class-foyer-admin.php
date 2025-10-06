@@ -47,6 +47,7 @@ class Foyer_Admin {
 		add_action( 'wp_ajax_foyer_validate_schedule', array( 'Foyer_Admin_Display', 'validate_schedule_over_ajax' ) );
 		// Calendar scheduler AJAX endpoints
 		add_action( 'wp_ajax_foyer_schedules_get_events', array( 'Foyer_Admin_Scheduler', 'ajax_get_events' ) );
+		add_action( 'wp_ajax_foyer_schedules_get_schedule', array( 'Foyer_Admin_Scheduler', 'ajax_get_schedule' ) );
 		add_action( 'wp_ajax_foyer_schedules_create_event', array( 'Foyer_Admin_Scheduler', 'ajax_create_event' ) );
 		add_action( 'wp_ajax_foyer_schedules_update_event', array( 'Foyer_Admin_Scheduler', 'ajax_update_event' ) );
 		add_action( 'wp_ajax_foyer_schedules_delete_event', array( 'Foyer_Admin_Scheduler', 'ajax_delete_event' ) );

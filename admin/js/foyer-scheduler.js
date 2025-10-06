@@ -53,6 +53,44 @@
     } catch(e){ return null; }
   }
 
+  function parseRRuleString(rrule){
+    try{
+      var out={ FREQ:'', INTERVAL:1, BYDAY:[], BYMONTHDAY:[], UNTIL:'', COUNT:null };
+      if(!rrule || typeof rrule!=='string'){ return out; }
+      var normalized = String(rrule).trim();
+      if(!normalized){ return out; }
+      var prefixMatch = normalized.match(/^RRULE[^:]*:/i);
+      if(prefixMatch){
+        normalized = normalized.slice(prefixMatch[0].length).trim();
+      } else if(/^RRULE\b/i.test(normalized)){
+        normalized = normalized.replace(/^RRULE\s*/i, '').trim();
+      }
+      if(!normalized){ return out; }
+      normalized = normalized.replace(/\r?\n\s*/g, '');
+      if(!normalized){ return out; }
+      var parts = normalized.toUpperCase().split(/[;]+/);
+      parts.forEach(function(p){
+        var kv = p.split('='); if(kv.length<2) return; var k=kv[0].trim(); var v=kv.slice(1).join('=').trim();
+        if(k==='FREQ'){ out.FREQ=v; }
+        else if(k==='INTERVAL'){ var n=parseInt(v,10); out.INTERVAL = isNaN(n)?1:Math.max(1,n); }
+        else if(k==='BYDAY'){ out.BYDAY = v? v.split(',').map(function(x){return x.trim();}).filter(Boolean):[]; }
+        else if(k==='BYMONTHDAY'){ out.BYMONTHDAY = v? v.split(',').map(function(x){ var n=parseInt(x.trim(),10); return (n>=1&&n<=31)?n:null; }).filter(function(x){return x!==null;}):[]; }
+        else if(k==='UNTIL'){ out.UNTIL = v; }
+        else if(k==='COUNT'){ var c=parseInt(v,10); out.COUNT = isNaN(c)?null:Math.max(1,c); }
+      });
+      if(!out.FREQ){
+        var freqMatch = /FREQ=([A-Z]+)/.exec(normalized.toUpperCase());
+        if(freqMatch && freqMatch[1]){ out.FREQ = freqMatch[1]; }
+      }
+      try { console.log('[Foyer Scheduler] parseRRuleString', { input: rrule, normalized: normalized, result: out }); } catch(logErr) {}
+      return out;
+    } catch(e){
+      try { console.error('[Foyer Scheduler] parseRRuleString error', e, rrule); } catch(logErr) {}
+      return { FREQ:'', INTERVAL:1, BYDAY:[], BYMONTHDAY:[], UNTIL:'', COUNT:null };
+    }
+  }
+  try { window.foyerParseRRule = parseRRuleString; } catch(e){}
+
   function getSelectedDisplays(){
     var out=[]; document.querySelectorAll('#foyerCalDisplays .foyerCalDisplay:checked').forEach(function(i){ out.push(parseInt(i.value,10)); });
     return out;
@@ -688,23 +726,6 @@
     function updateRRulePreview(){
       try{ var el=document.getElementById('ovRRulePreview'); if(!el) return; var s=buildRRuleStringFromUI(); el.textContent = s ? ('RRULE: '+s) : 'RRULE: —'; } catch(e){}
     }
-    function parseRRuleString(rrule){
-      try{
-        var out={ FREQ:'', INTERVAL:1, BYDAY:[], BYMONTHDAY:[], UNTIL:'', COUNT:null };
-        if(!rrule || typeof rrule!=='string'){ return out; }
-        var parts = rrule.toUpperCase().split(';');
-        parts.forEach(function(p){
-          var kv = p.split('='); if(kv.length<2) return; var k=kv[0].trim(); var v=kv.slice(1).join('=').trim();
-          if(k==='FREQ'){ out.FREQ=v; }
-          else if(k==='INTERVAL'){ var n=parseInt(v,10); out.INTERVAL = isNaN(n)?1:Math.max(1,n); }
-          else if(k==='BYDAY'){ out.BYDAY = v? v.split(',').map(function(x){return x.trim();}).filter(Boolean):[]; }
-          else if(k==='BYMONTHDAY'){ out.BYMONTHDAY = v? v.split(',').map(function(x){ var n=parseInt(x.trim(),10); return (n>=1&&n<=31)?n:null; }).filter(function(x){return x!==null;}):[]; }
-          else if(k==='UNTIL'){ out.UNTIL = v; }
-          else if(k==='COUNT'){ var c=parseInt(v,10); out.COUNT = isNaN(c)?null:Math.max(1,c); }
-        });
-        return out;
-      } catch(e){ return { FREQ:'', INTERVAL:1, BYDAY:[], BYMONTHDAY:[], UNTIL:'', COUNT:null }; }
-    }
     function parseRRuleUntilToDate(val){
       try{
         if(!val||typeof val!=='string') return null;
@@ -741,6 +762,7 @@
         updateEndModeUI(); updateSummary();
       } catch(e){}
     }
+    try { window.foyerSchedulerApplyRRuleToUI = applyRRuleToUI; } catch(e){}
     function formatTimeRange(){ try { var s=document.getElementById('ovStartLocal').value.trim(); var e=document.getElementById('ovEndLocal').value.trim(); var out=''; var st=s.split(' ')[1]||''; var et=e.split(' ')[1]||''; if(st||et){ out = (st||'..')+'–'+(et||'..'); try { var sd=parseLocalDateTime(s), ed=parseLocalDateTime(e); if(sd && ed && ed.getTime()<sd.getTime()){ out += ' (+1)'; } } catch(err){} } return out; } catch(e){ return ''; } }
     function updateSummary(){ try {
       var sum=document.getElementById('ovRecurSummary'); if(!sum) return;
@@ -1073,10 +1095,11 @@
     return wrap;
   }
 
-  function foyerOpenOverlayEdit(eventObj){
-    // For now, reuse single-occurrence edit inside overlay; series editing remains basic (apply_to radios)
-    var wrap = foyerOverlayCreateStructure(getLastCalPointer(), getI18nString('editTitle','Edit Schedule'));
-    var evtMeta = (eventObj && eventObj.extendedProps) ? eventObj.extendedProps : {};
+    function foyerOpenOverlayEdit(eventObj){
+      // For now, reuse single-occurrence edit inside overlay; series editing remains basic (apply_to radios)
+      var wrap = foyerOverlayCreateStructure(getLastCalPointer(), getI18nString('editTitle','Edit Schedule'));
+      var evtMeta = (eventObj && eventObj.extendedProps) ? eventObj.extendedProps : {};
+      try { console.log('[Foyer Scheduler] openOverlayEdit meta', evtMeta); } catch(logErr) {}
 
     // Preselect channel before rendering grid so the correct card is highlighted
     try { __ovSelectedChannelId = evtMeta.channel_id ? evtMeta.channel_id : null; } catch(e) { __ovSelectedChannelId = null; }
@@ -1111,17 +1134,36 @@
     try {
       var pid = parseInt(evtMeta.schedule_post_id,10);
       if(pid>0){
-        var fd=new FormData(); fd.append('action','foyer_schedules_get_schedule'); fd.append('nonce', nonce); fd.append('post_id', String(pid));
+        try { console.log('[Foyer Scheduler] fetching schedule meta for', pid); } catch(logErr) {}
+        var fd=new FormData();
+        fd.append('action','foyer_schedules_get_schedule');
+        fd.append('nonce', nonce);
+        fd.append('post_id', String(pid));
+        try { console.log('[Foyer Scheduler] schedule meta request payload', Array.from(fd.entries())); } catch(logErr) {}
         fetch(ajaxurl, { method:'POST', credentials:'same-origin', body: fd })
           .then(function(r){ return r.json(); })
           .then(function(resp){ try {
+            try { console.log('[Foyer Scheduler] schedule meta raw response', resp); } catch(logErr) {}
             if(resp && resp.success && resp.data && resp.data.meta){
               var meta = resp.data.meta || {}; var rr = meta.rrule || '';
-              if(rr){ var rule=parseRRuleString(rr); applyRRuleToUI(rule); }
+              try { console.log('[Foyer Scheduler] schedule meta response', meta); } catch(logErr) {}
+              if(rr){
+                try { console.log('[Foyer Scheduler] raw RRULE string', rr); } catch(logErr) {}
+                var rule=parseRRuleString(rr);
+                try { console.log('[Foyer Scheduler] parsed rule', rule); } catch(logErr) {}
+                if (typeof window.foyerSchedulerApplyRRuleToUI === 'function') {
+                  window.foyerSchedulerApplyRRuleToUI(rule);
+                } else if (typeof applyRRuleToUI === 'function') {
+                  applyRRuleToUI(rule);
+                }
+              }
               else { var singleInp=document.querySelector('#ovRecurBox input[name="ovFreq"][value="SINGLE"]'); if(singleInp){ singleInp.checked=true; } updateFreq(); updateSummary(); }
             }
-          } catch(e){} })
-          .catch(function(e){});
+            else if(resp && resp.data && resp.data.message){ try { console.warn('[Foyer Scheduler] schedule meta error', resp.data.message); } catch(logErr) {} }
+          } catch(e){
+            try { console.error('[Foyer Scheduler] schedule meta processing error', e); } catch(logErr) {}
+          } })
+          .catch(function(e){ try { console.error('[Foyer Scheduler] fetch schedule error', e); } catch(logErr) {} });
       }
     } catch(e){}
     // Force non-recur UI for edit for now
