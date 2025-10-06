@@ -44,6 +44,8 @@ class Foyer_Admin {
 		/* Foyer_Admin_Display */
 		add_action( 'admin_enqueue_scripts', array( 'Foyer_Admin_Display', 'localize_scripts' ) );
 		add_action( 'admin_notices', array( 'Foyer_Admin_Display', 'render_notices' ) );
+		add_action( 'load-edit.php', array( 'Foyer_Admin_Display', 'maybe_render_displays_screen' ) );
+		add_filter( 'set-screen-option', array( 'Foyer_Admin_Display', 'handle_screen_option' ), 10, 3 );
 		add_action( 'wp_ajax_foyer_validate_schedule', array( 'Foyer_Admin_Display', 'validate_schedule_over_ajax' ) );
 		// Calendar scheduler AJAX endpoints
 		add_action( 'wp_ajax_foyer_schedules_get_events', array( 'Foyer_Admin_Scheduler', 'ajax_get_events' ) );
@@ -58,7 +60,6 @@ class Foyer_Admin {
 		// Default sort Displays list by title ASC
 		add_action( 'pre_get_posts', array( 'Foyer_Admin_Display', 'set_default_admin_order' ) );
 		add_action( 'save_post', array( 'Foyer_Admin_Display', 'save_display' ) );
-		add_filter( 'edit_foyer_display_per_page', array( 'Foyer_Admin_Display', 'set_displays_per_page' ) );
 		add_filter( 'manage_'.Foyer_Display::post_type_name.'_posts_columns', array( 'Foyer_Admin_Display', 'add_channel_columns' ) );
 		add_action( 'manage_'.Foyer_Display::post_type_name.'_posts_custom_column', array( 'Foyer_Admin_Display', 'do_channel_columns' ), 10, 2 );
 		/* Foyer_Admin_Channel */
