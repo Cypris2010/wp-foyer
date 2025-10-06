@@ -31,6 +31,11 @@ class Foyer_Admin_Settings {
 	const OPTION_PICKER_FORMAT = 'foyer_picker_datetime_format';
 
 	/**
+	 * Option name used to enable scheduler debugging output.
+	 */
+	const OPTION_SCHEDULER_DEBUG = 'foyer_scheduler_enable_debug';
+
+	/**
 	 * Settings API option group identifier.
 	 */
 	const OPTION_GROUP = 'foyer_settings';
@@ -79,6 +84,16 @@ class Foyer_Admin_Settings {
 			)
 		);
 
+		register_setting(
+			self::OPTION_GROUP,
+			self::OPTION_SCHEDULER_DEBUG,
+			array(
+				'type' => 'boolean',
+				'sanitize_callback' => array( __CLASS__, 'sanitize_checkbox' ),
+				'default' => 0,
+			)
+		);
+
 		add_settings_section(
 			'foyer_settings_general',
 			__( 'General', 'foyer' ),
@@ -98,6 +113,14 @@ class Foyer_Admin_Settings {
 			self::OPTION_PICKER_FORMAT,
 			__( 'Admin datetime picker format', 'foyer' ),
 			array( __CLASS__, 'render_picker_format_field' ),
+			self::SETTINGS_PAGE,
+			'foyer_settings_general'
+		);
+
+		add_settings_field(
+			self::OPTION_SCHEDULER_DEBUG,
+			__( 'Enable scheduler debug logs', 'foyer' ),
+			array( __CLASS__, 'render_scheduler_debug_field' ),
 			self::SETTINGS_PAGE,
 			'foyer_settings_general'
 		);
@@ -160,6 +183,24 @@ class Foyer_Admin_Settings {
 		</label>
 		<p class="description">
 			<?php esc_html_e( 'You can still override this per slide when editing a slide background.', 'foyer' ); ?>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Renders the scheduler debug checkbox field.
+	 *
+	 * @return void
+	 */
+	public static function render_scheduler_debug_field() {
+		$enabled = (bool) get_option( self::OPTION_SCHEDULER_DEBUG, 0 );
+		?>
+		<label>
+			<input type="checkbox" name="<?php echo esc_attr( self::OPTION_SCHEDULER_DEBUG ); ?>" value="1" <?php checked( $enabled ); ?> />
+			<?php esc_html_e( 'Output additional scheduler debug information to the browser console.', 'foyer' ); ?>
+		</label>
+		<p class="description">
+			<?php esc_html_e( 'Enable only while troubleshooting the scheduler overlay.', 'foyer' ); ?>
 		</p>
 		<?php
 	}

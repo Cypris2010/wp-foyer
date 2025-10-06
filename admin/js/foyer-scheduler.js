@@ -4,6 +4,11 @@
   var nonce = String(foyerSchedulerData.nonce||'');
   var siteTz = String(foyerSchedulerData.siteTz||'UTC');
   var foyerCalChannels = Array.isArray(foyerSchedulerData.channels) ? foyerSchedulerData.channels : [];
+  var debugEnabled = !!(foyerSchedulerData && foyerSchedulerData.debug);
+
+  function debugLog(){ if(!debugEnabled) return; try { console.log.apply(console, arguments); } catch(e){} }
+  function debugWarn(){ if(!debugEnabled) return; try { console.warn.apply(console, arguments); } catch(e){} }
+  function debugError(){ if(!debugEnabled) return; try { console.error.apply(console, arguments); } catch(e){} }
 
   var __ovEscHandler = null;
 
@@ -84,8 +89,12 @@
       }
       return out;
     } catch(e){
+      debugError('[Foyer Scheduler] parseRRuleString error', e, rrule);
       return { FREQ:'', INTERVAL:1, BYDAY:[], BYMONTHDAY:[], UNTIL:'', COUNT:null };
     }
+  }
+  if (debugEnabled) {
+    try { window.foyerParseRRule = parseRRuleString; } catch(e){}
   }
 
   function getSelectedDisplays(){
@@ -1097,6 +1106,7 @@
       var wrap = foyerOverlayCreateStructure(getLastCalPointer(), getI18nString('editTitle','Edit Schedule'));
       var evtMeta = (eventObj && eventObj.extendedProps) ? eventObj.extendedProps : {};
       var currentSeriesMeta = null;
+      debugLog('[Foyer Scheduler] openOverlayEdit meta', evtMeta);
 
     // Preselect channel before rendering grid so the correct card is highlighted
     try { __ovSelectedChannelId = evtMeta.channel_id ? evtMeta.channel_id : null; } catch(e) { __ovSelectedChannelId = null; }
@@ -1135,13 +1145,16 @@
         fd.append('action','foyer_schedules_get_schedule');
         fd.append('nonce', nonce);
         fd.append('post_id', String(pid));
+        debugLog('[Foyer Scheduler] schedule meta request', Array.from(fd.entries()));
         fetch(ajaxurl, { method:'POST', credentials:'same-origin', body: fd })
           .then(function(r){ return r.json(); })
           .then(function(resp){ try {
             if(resp && resp.success && resp.data && resp.data.meta){
               var meta = resp.data.meta || {}; var rr = meta.rrule || '';
+              debugLog('[Foyer Scheduler] schedule meta response', meta);
               if(rr){
                 var rule=parseRRuleString(rr);
+                debugLog('[Foyer Scheduler] parsed rule', rule);
                 if (typeof window.foyerSchedulerApplyRRuleToUI === 'function') {
                   window.foyerSchedulerApplyRRuleToUI(rule);
                 } else if (typeof applyRRuleToUI === 'function') {
@@ -1174,10 +1187,10 @@
               } catch(metaErr){}
             }
             else if(resp && resp.data && resp.data.message){
-              // keep silent when backend returns error structure; UI will handle below
+              debugWarn('[Foyer Scheduler] schedule meta error', resp.data.message);
             }
-          } catch(e){} })
-          .catch(function(e){});
+          } catch(e){ debugError('[Foyer Scheduler] schedule meta processing error', e); } })
+          .catch(function(e){ debugError('[Foyer Scheduler] fetch schedule error', e); });
       }
     } catch(e){}
     // Force non-recur UI for edit for now
@@ -1245,10 +1258,11 @@
           if (endValue){ data.append('new_end_local', endValue); }
           data.append('apply_to', 'occurrence');
         }
+        debugLog('[Foyer Scheduler] update payload', Array.from(data.entries()));
         fetch(ajaxurl, { method:'POST', credentials:'same-origin', body:data })
           .then(function(r){ return r.json(); })
           .then(function(resp){ if(!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message) || getI18nString('updateFailed','Update failed')); } foyerOverlayClose(); try{ scheduleRefetch('update'); }catch(e){} })
-          .catch(function(err){ alert(err && err.message ? err.message : String(err)); });
+          .catch(function(err){ alert(err && err.message ? err.message : String(err)); debugError('[Foyer Scheduler] update error', err); });
       });
     }
     return wrap;

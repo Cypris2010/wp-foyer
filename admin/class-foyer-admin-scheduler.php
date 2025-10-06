@@ -107,11 +107,17 @@ class Foyer_Admin_Scheduler {
             }
         }
 
+        $debug_enabled = false;
+        if ( class_exists( 'Foyer_Admin_Settings' ) ) {
+            $debug_enabled = (bool) get_option( Foyer_Admin_Settings::OPTION_SCHEDULER_DEBUG, 0 );
+        }
+
         $data = array(
             'ajaxurl' => admin_url( 'admin-ajax.php' ),
             'nonce'   => self::get_calendar_nonce(),
             'siteTz'  => wp_timezone_string(),
             'channels'=> $channels_data,
+            'debug'   => $debug_enabled,
         );
         wp_localize_script( 'foyer-scheduler', 'foyerSchedulerData', $data );
 
