@@ -118,18 +118,33 @@ class Foyer_Admin_Display {
      * @return void
      */
     static function set_default_admin_order( $query ) {
-        if ( ! is_admin() ) { return; }
-        if ( ! $query->is_main_query() ) { return; }
+        if ( ! is_admin() || ! $query->is_main_query() ) {
+            return;
+        }
 
-        // Only affect the Displays list table query, and only when no explicit ordering is set.
-        $post_type = $query->get( 'post_type' );
-        $orderby   = $query->get( 'orderby' );
-
-        if ( $post_type === Foyer_Display::post_type_name && empty( $orderby ) ) {
-            $query->set( 'orderby', 'title' );
-            $query->set( 'order', 'ASC' );
+        // Only affect the main query on the Displays list table.
+        $screen = get_current_screen();
+        if ( $screen && 'edit-foyer_display' === $screen->id && $query->get( 'post_type' ) === Foyer_Display::post_type_name ) {
+            // Set order if not set by user.
+            if ( empty( $query->get( 'orderby' ) ) ) {
+                $query->set( 'orderby', 'title' );
+                $query->set( 'order', 'ASC' );
+            }
+            // Show all relevant post statuses for the grid view.
+            $query->set( 'post_status', array( 'publish', 'draft', 'pending', 'private' ) );
         }
     }
+
+	/**
+	 * Sets the number of displays to show per page on the admin grid view.
+	 *
+	 * @since 1.8.0
+	 * @return int
+	 */
+	static function set_displays_per_page() {
+		$per_page = isset( $_GET['displays_per_page'] ) ? intval( $_GET['displays_per_page'] ) : 12;
+		return $per_page;
+	}
 
     /**
      * Outputs the multi-entry scheduler.
@@ -1100,20 +1115,15 @@ class Foyer_Admin_Display {
 			return;
 		}
 
-		$args = apply_filters( 'foyer/admin/displays/grid_query_args', array(
-			'post_type'      => Foyer_Display::post_type_name,
-			'posts_per_page' => -1,
-			'post_status'    => array( 'publish', 'draft', 'pending', 'private' ),
-			'orderby'        => 'title',
-			'order'          => 'ASC',
-		) );
-		$displays = get_posts( $args );
+		global $wp_query;
+		$displays = $wp_query->posts;
 
 		// Basic styles for the grid/cards and preview iframe scaling
 		echo '<style>
 		/* Grid wrapper clears header floats (Screen Options) and uses full row width */
 		.foyer-display-grid-wrap{clear:both;margin:6px 0 18px; padding:0 20px 0 0; width:auto; box-sizing:border-box;}
-		.foyer-display-search-slot{clear:both;margin:6px 0 8px; padding:0 20px 0 0; width:auto; box-sizing:border-box;}
+		.foyer-grid-controls{margin:6px 20px 8px 0;}
+		.foyer-grid-per-page-selector{display:inline-block;vertical-align:middle;margin-right:1em;}
 		/* Responsive grid that fills available width */
 		.foyer-display-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;}
 		.foyer-display-card{background:#fff;border:1px solid #e2e2e2;border-radius:4px;box-shadow:0 1px 2px rgba(0,0,0,.04);overflow:hidden;}
@@ -1128,7 +1138,18 @@ class Foyer_Admin_Display {
 		.foyer_card_preview_iframe_container iframe{position:absolute;left:0;top:0;border:0;background:#000;transform-origin:top left}
 		</style>';
 
-		echo '<div id="foyer-displays-search-slot" class="foyer-display-search-slot"></div><div id="foyer-displays-grid-wrap" class="foyer-display-grid-wrap"><div class="foyer-display-grid" aria-label="Display previews">';
+		$per_page = self::set_displays_per_page();
+		$options  = array( 3, 6, 12, 24, 36, 48 );
+
+		// This will be moved into the tablenav by JS.
+		$selector_html = '<div id="foyer-per-page-selector-container" style="display: none;"><span class="foyer-grid-per-page-selector"><label for="foyer-displays-per-page">' . esc_html__( 'Displays per page:', 'foyer' ) . '</label> <select id="foyer-displays-per-page" name="foyer_displays_per_page">';
+		foreach ( $options as $opt ) {
+			$selector_html .= '<option value="' . intval( $opt ) . '" ' . selected( $per_page, $opt, false ) . '>' . intval( $opt ) . '</option>';
+		}
+		$selector_html .= '</select></span></div>';
+		echo $selector_html;
+
+		echo '<div id="foyer-grid-controls"></div><div id="foyer-displays-grid-wrap" class="foyer-display-grid-wrap"><div class="foyer-display-grid" aria-label="Display previews">';
 		if ( empty( $displays ) ) {
 			echo '<div class="foyer-display-card"><div class="foyer-display-card__body">' . esc_html__( 'No displays found.', 'foyer' ) . '</div></div>';
 		} else {
@@ -1203,8 +1224,8 @@ class Foyer_Admin_Display {
 
 		// Script to scale iframes to the card width while keeping 16:9 or 9:16 aspect
 		$script = <<<'JS'
-<script>(function($){function placeHeaderAndSearch(){var $wrap=$(".wrap");if(!$wrap.length)return;var $slot=$("#foyer-displays-search-slot");var $grid=$("#foyer-displays-grid-wrap");var $after=$wrap.find(".wp-header-end").first();if(!$after.length){$after=$wrap.find("h1.wp-heading-inline, h1").first();}if($after.length){$slot.insertAfter($after);$grid.insertAfter($slot);} else {$grid.before($slot);} } function adoptSearchBox(){var $wrap=$(".wrap");var $slot=$("#foyer-displays-search-slot");if(!$wrap.length||!$slot.length)return;var $sb=$wrap.find(".tablenav.top .search-box").first();if($sb.length){var $clone=$sb.clone(true,true);$clone.addClass("foyer-grid-search");$slot.empty().append($clone);$sb.hide();} } function getQueryParam(name){var m=new RegExp("[?&]"+name+"=([^&]*)").exec(window.location.search);return m?decodeURIComponent(m[1].replace(/\+/g,' ')):'';} function applyGridSearch(q){q=(q||'').toLowerCase();var $cards=$(".foyer-display-grid .foyer-display-card");if(!$cards.length)return;$cards.each(function(){var $c=$(this);var t=$c.find('.foyer-display-card__title').text().toLowerCase();var show=(!q||t.indexOf(q)!==-1);$c.toggle(show);});} function bindSearchLive(){var $slot=$("#foyer-displays-search-slot");var $input=$slot.find("input[name='s']").first();if(!$input.length)return;$input.on('input',function(){applyGridSearch($(this).val());});} function scalePreviews(){ $(".foyer-display-grid .preview-viewport").each(function(){ var $v=$(this); var fw=parseInt($v.attr("data-fw"),10)||1920; var fh=parseInt($v.attr("data-fh"),10)||1080; var w=$v.width(); if(!w){return;} var s=w/fw; var h=Math.round(fh*s); $v.closest(".foyer_card_preview_iframe_container").css({height:h+"px"}); var $if=$v.find("iframe"); $if.css({width:fw+"px",height:fh+"px",transform:"scale("+s+")"}); }); } $(function(){ placeHeaderAndSearch(); adoptSearchBox(); bindSearchLive(); });
-$(window).on("load", function(){ placeHeaderAndSearch(); adoptSearchBox(); scalePreviews(); var q=getQueryParam('s'); if(q){var $slot=$("#foyer-displays-search-slot"); var $input=$slot.find("input[name='s']").first(); if($input.length){$input.val(q);} applyGridSearch(q);} bindSearchLive(); }); $(window).on("resize", function(){ clearTimeout(window.__foyerGridT||0); window.__foyerGridT=setTimeout(scalePreviews,120); }); })(jQuery);</script>
+<script>(function($){function placeControlsAndGrid(){var $wrap=$(".wrap");if(!$wrap.length)return;var $controls=$("#foyer-grid-controls");var $grid=$("#foyer-displays-grid-wrap");var $headerEnd=$wrap.find(".wp-header-end").first();if($headerEnd.length){$controls.insertAfter($headerEnd);$grid.insertAfter($controls);}else{var $h1=$wrap.find("h1.wp-heading-inline, h1").first();if($h1.length){$controls.insertAfter($h1);$grid.insertAfter($controls);}}} function adoptControls(){var $wrap=$(".wrap");var $controls=$("#foyer-grid-controls");if(!$wrap.length||!$controls.length)return;var $nav=$wrap.find(".tablenav.top").first();if($nav.length){$controls.append($nav);var $selectorContainer=$("#foyer-per-page-selector-container");var $tablenavPages=$nav.find(".tablenav-pages");if($selectorContainer.length&&$tablenavPages.length){$tablenavPages.prepend($selectorContainer.children());}$selectorContainer.remove();$wrap.find("form > .tablenav.bottom, form > table.wp-list-table").remove();$wrap.find("ul.subsubsub").remove();}} function getQueryParam(name){var m=new RegExp("[?&]"+name+"=([^&]*)").exec(window.location.search);return m?decodeURIComponent(m[1].replace(/\+/g,' ')):'';} function handlePerPageChange(){var $sel=$("#foyer-displays-per-page");if(!$sel.length)return;$sel.on("change",function(){var url=new URL(window.location.href);url.searchParams.set("displays_per_page",$(this).val());url.searchParams.set("paged",1);window.location.href=url.toString();});} function scalePreviews(){ $(".foyer-display-grid .preview-viewport").each(function(){ var $v=$(this); var fw=parseInt($v.attr("data-fw"),10)||1920; var fh=parseInt($v.attr("data-fh"),10)||1080; var w=$v.width(); if(!w){return;} var s=w/fw; var h=Math.round(fh*s); $v.closest(".foyer_card_preview_iframe_container").css({height:h+"px"}); var $if=$v.find("iframe"); $if.css({width:fw+"px",height:fh+"px",transform:"scale("+s+")"}); }); } $(function(){ placeControlsAndGrid(); adoptControls(); handlePerPageChange(); });
+$(window).on("load", function(){ placeControlsAndGrid(); adoptControls(); scalePreviews(); var q=getQueryParam('s'); if(q){var $input=$("#foyer-grid-controls input[name='s']").first();if($input.length){$input.val(q);}} }); $(window).on("resize", function(){ clearTimeout(window.__foyerGridT||0); window.__foyerGridT=setTimeout(scalePreviews,120); }); })(jQuery);</script>
 JS;
 		echo $script;
 	}

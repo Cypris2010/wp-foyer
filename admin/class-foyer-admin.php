@@ -58,6 +58,7 @@ class Foyer_Admin {
 		// Default sort Displays list by title ASC
 		add_action( 'pre_get_posts', array( 'Foyer_Admin_Display', 'set_default_admin_order' ) );
 		add_action( 'save_post', array( 'Foyer_Admin_Display', 'save_display' ) );
+		add_filter( 'edit_foyer_display_per_page', array( 'Foyer_Admin_Display', 'set_displays_per_page' ) );
 		add_filter( 'manage_'.Foyer_Display::post_type_name.'_posts_columns', array( 'Foyer_Admin_Display', 'add_channel_columns' ) );
 		add_action( 'manage_'.Foyer_Display::post_type_name.'_posts_custom_column', array( 'Foyer_Admin_Display', 'do_channel_columns' ), 10, 2 );
 		/* Foyer_Admin_Channel */
