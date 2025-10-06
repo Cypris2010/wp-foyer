@@ -530,7 +530,12 @@
       '#foyerSchedulerOverlay .foyer-ov-channelsWrap{overflow:auto;padding-right:8px;}'+
       '#foyerSchedulerOverlay .foyer-ov-displaysWrap{overflow:auto;padding-left:8px;}'+
       '#foyerSchedulerOverlay .foyer-ov-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}'+
-      '#foyerSchedulerOverlay .foyer-ov-head > div{display:flex;gap:8px;}'+
+      '#foyerSchedulerOverlay .foyer-ov-head-actions{display:flex;gap:8px;align-items:center;}'+
+      '#foyerSchedulerOverlay .ov-delete-btn{display:none;align-items:center;gap:4px;border:1px solid #d63638;background:transparent;color:#d63638;transition:background-color .15s ease,color .15s ease,border-color .15s ease;}'+
+      '#foyerSchedulerOverlay .ov-delete-btn .dashicons{margin-top:2px;}'+
+      '#foyerSchedulerOverlay .ov-delete-btn.is-visible{display:inline-flex;}'+
+      '#foyerSchedulerOverlay .ov-delete-btn:hover,#foyerSchedulerOverlay .ov-delete-btn:focus{background:#d63638;color:#fff;border-color:#d63638;}'+
+      '#foyerSchedulerOverlay .ov-delete-btn:hover .dashicons,#foyerSchedulerOverlay .ov-delete-btn:focus .dashicons{color:#fff;}'+
       '#foyerSchedulerOverlay h2{margin:0 0 8px 0;}' +
       '#foyerSchedulerOverlay .ov-form-row{margin:8px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}' +
       '#foyerSchedulerOverlay .ov-actions{position:sticky;bottom:0;display:flex;gap:8px;justify-content:flex-end;padding-top:8px;margin-top:12px;background:#fff;}' +
@@ -594,7 +599,7 @@
     try { wrap.style.clipPath = 'circle(0px at '+ox+'px '+oy+'px)'; } catch(e){}
     var panel = document.createElement('div'); panel.className='foyer-ov-panel';
     var top = document.createElement('section'); top.className='foyer-ov-top'; top.innerHTML = ''+
-      '<div class="foyer-ov-head"><h2>'+ escapeHTML(titleText || getI18nString('scheduleFallback','Schedule')) +'</h2><div><button class="button button-primary" id="ovSave">'+escapeHTML(getI18nString('save','Save'))+'</button><button class="button" id="ovCloseBtn">'+escapeHTML(getI18nString('cancel','Cancel'))+'</button></div></div>'+
+      '<div class="foyer-ov-head"><h2>'+ escapeHTML(titleText || getI18nString('scheduleFallback','Schedule')) +'</h2><div class="foyer-ov-head-actions"><button type="button" class="button ov-delete-btn" id="ovDelete"><span class="dashicons dashicons-trash" aria-hidden="true"></span></button><button class="button" id="ovCloseBtn">'+escapeHTML(getI18nString('cancel','Cancel'))+'</button><button class="button button-primary" id="ovSave">'+escapeHTML(getI18nString('save','Save'))+'</button></div></div>'+
       '<div class="ov-form">'+
         '<div class="ov-form-grid">'+
           '<div class="ov-col-left">'+
@@ -667,6 +672,13 @@
     document.body.style.overflow='hidden';
     wrap.addEventListener('click', function(e){ if(e.target && e.target.id==='foyerSchedulerOverlay'){ foyerOverlayClose(); }});
     document.getElementById('ovCloseBtn').addEventListener('click', function(e){ e.preventDefault(); foyerOverlayClose(); });
+    var deleteButton = document.getElementById('ovDelete');
+    if (deleteButton) {
+      deleteButton.classList.remove('is-visible');
+      deleteButton.disabled = true;
+      deleteButton.setAttribute('aria-hidden','true');
+      delete deleteButton.dataset.boundDelete;
+    }
     // ESC key to close overlay without saving
     try {
       var escHandler = function(e){ if ((e.key === 'Escape') || (e.key === 'Esc') || (e.keyCode === 27)) { e.preventDefault(); foyerOverlayClose(); } };
@@ -1096,6 +1108,10 @@
     foyerOverlayRenderDisplays();
     foyerOverlayRenderChannels();
     foyerOverlayFillDefaultsForCreate(startDate, endDateOpt);
+    try {
+      var del = document.getElementById('ovDelete');
+      if (del){ del.classList.remove('is-visible'); del.disabled = true; del.setAttribute('aria-hidden','true'); delete del.dataset.boundDelete; }
+    } catch(e){}
     try { var s=document.getElementById('ovStartLocal'); if(s){ s.dispatchEvent(new Event('input', { bubbles:true })); } } catch(e){}
     foyerOverlayBindSaveCreate();
     return wrap;
@@ -1107,6 +1123,45 @@
       var evtMeta = (eventObj && eventObj.extendedProps) ? eventObj.extendedProps : {};
       var currentSeriesMeta = null;
       debugLog('[Foyer Scheduler] openOverlayEdit meta', evtMeta);
+      try {
+        var delBtn = document.getElementById('ovDelete');
+        if (delBtn) {
+          var scheduleId = evtMeta && evtMeta.schedule_post_id ? String(evtMeta.schedule_post_id) : '';
+          if (scheduleId) {
+            delBtn.disabled = false;
+            delBtn.classList.add('is-visible');
+            delBtn.setAttribute('aria-hidden','false');
+            delBtn.setAttribute('aria-label', getI18nString('deleteSchedule','Delete schedule'));
+            if (!delBtn.dataset.boundDelete) {
+              delBtn.addEventListener('click', function(ev){
+                ev.preventDefault();
+                if (delBtn.disabled) { return; }
+                if (!window.confirm(getI18nString('confirmDelete','Delete entire schedule? This affects all displays.'))) { return; }
+                delBtn.disabled = true;
+                var delData = new FormData();
+                delData.append('action','foyer_schedules_delete_event');
+                delData.append('nonce', nonce);
+                delData.append('schedule_post_id', scheduleId);
+                delData.append('delete_mode', 'all');
+                debugLog('[Foyer Scheduler] delete payload', Array.from(delData.entries()));
+                fetch(ajaxurl, { method:'POST', credentials:'same-origin', body: delData })
+                  .then(function(r){ return r.json(); })
+                  .then(function(resp){
+                    if(!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message) || getI18nString('deleteFailed','Delete failed')); }
+                    foyerOverlayClose();
+                    try { scheduleRefetch('delete'); } catch(e){}
+                  })
+                  .catch(function(err){
+                    alert(err && err.message ? err.message : getI18nString('deleteFailed','Delete failed'));
+                    debugError('[Foyer Scheduler] delete error', err);
+                    delBtn.disabled = false;
+                  });
+              });
+              delBtn.dataset.boundDelete = '1';
+            }
+          }
+        }
+      } catch(e){}
 
     // Preselect channel before rendering grid so the correct card is highlighted
     try { __ovSelectedChannelId = evtMeta.channel_id ? evtMeta.channel_id : null; } catch(e) { __ovSelectedChannelId = null; }
