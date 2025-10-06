@@ -575,9 +575,59 @@ class Foyer_Admin_Scheduler {
             }
         }
 
+        $apply_to_lower = strtolower( $apply_to );
+
         // Determine single or recurring
         $is_single = ( ! empty( $meta['start_utc'] ) && ! empty( $meta['end_utc'] ) );
         $has_recur = ( ! empty( $meta['rrule'] ) && ! empty( $meta['dtstart_local'] ) );
+
+        $rrule_freq = isset( $_POST['foyer_rrule_freq'] ) ? strtoupper( trim( (string) $_POST['foyer_rrule_freq'] ) ) : '';
+        $series_rrule_update = ( $has_recur && 'series' === $apply_to_lower && $rrule_freq );
+
+        if ( $series_rrule_update ) {
+            $tzid = isset( $meta['tz'] ) && $meta['tz'] ? (string) $meta['tz'] : wp_timezone_string();
+            try { $tz = new DateTimeZone( $tzid ); } catch ( Exception $e ) { $tz = wp_timezone(); $tzid = wp_timezone_string(); }
+
+            $dtstart_local_in = isset( $_POST['dtstart_local'] ) ? trim( (string) $_POST['dtstart_local'] ) : '';
+            if ( '' === $dtstart_local_in && ! empty( $meta['dtstart_local'] ) ) {
+                $dtstart_local_in = (string) $meta['dtstart_local'];
+            }
+            if ( '' === $dtstart_local_in ) {
+                wp_send_json_error( array( 'message' => __( 'Start time required.', 'foyer' ) ) );
+            }
+            $dtstart_local_obj = DateTimeImmutable::createFromFormat( 'Y-m-d H:i:s', str_replace( 'T', ' ', $dtstart_local_in ), $tz );
+            if ( false === $dtstart_local_obj ) {
+                try { $dtstart_local_obj = new DateTimeImmutable( $dtstart_local_in, $tz ); } catch ( Exception $e ) { $dtstart_local_obj = false; }
+            }
+            if ( ! ( $dtstart_local_obj instanceof DateTimeImmutable ) ) {
+                wp_send_json_error( array( 'message' => __( 'Invalid start time.', 'foyer' ) ) );
+            }
+
+            $duration_in = isset( $_POST['duration'] ) ? intval( $_POST['duration'] ) : 0;
+            if ( $duration_in <= 0 && ! empty( $meta['duration'] ) ) {
+                $duration_in = intval( $meta['duration'] );
+            }
+            if ( $duration_in <= 0 ) { $duration_in = HOUR_IN_SECONDS; }
+
+            $rrule_new = Foyer_Schedules::build_rrule_from_builder_fields( $_POST );
+            if ( '' === $rrule_new ) {
+                wp_send_json_error( array( 'message' => __( 'Invalid recurrence rule.', 'foyer' ) ) );
+            }
+
+            update_post_meta( $pid, 'foyer_schedule_dtstart_local', $dtstart_local_obj->format( 'Y-m-d H:i:s' ) );
+            update_post_meta( $pid, 'foyer_schedule_duration', $duration_in );
+            update_post_meta( $pid, 'foyer_schedule_rrule', $rrule_new );
+            update_post_meta( $pid, 'foyer_schedule_mode', 'recurring' );
+            delete_post_meta( $pid, 'foyer_schedule_start_utc' );
+            delete_post_meta( $pid, 'foyer_schedule_end_utc' );
+            if ( $channel_id > 0 ) { update_post_meta( $pid, 'foyer_schedule_channel', $channel_id ); }
+
+            if ( ! empty( $display_ids ) ) {
+                update_post_meta( $pid, 'foyer_schedule_displays', $display_ids );
+            }
+
+            wp_send_json_success( array( 'ok' => true ) );
+        }
 
         if ( $is_single || ! $has_recur ) {
             // Update single occurrence schedule
@@ -586,7 +636,7 @@ class Foyer_Admin_Scheduler {
             if ( $channel_id > 0 ) { update_post_meta( $pid, 'foyer_schedule_channel', $channel_id ); }
         } else {
             // Recurrence: occurrence override and/or series-level channel change
-            if ( 'series' === strtolower( $apply_to ) ) {
+            if ( 'series' === $apply_to_lower ) {
                 if ( $channel_id > 0 ) { update_post_meta( $pid, 'foyer_schedule_channel', $channel_id ); }
             }
             $duration = max( 1, intval( $e - $s ) );

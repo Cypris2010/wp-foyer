@@ -82,14 +82,11 @@
         var freqMatch = /FREQ=([A-Z]+)/.exec(normalized.toUpperCase());
         if(freqMatch && freqMatch[1]){ out.FREQ = freqMatch[1]; }
       }
-      try { console.log('[Foyer Scheduler] parseRRuleString', { input: rrule, normalized: normalized, result: out }); } catch(logErr) {}
       return out;
     } catch(e){
-      try { console.error('[Foyer Scheduler] parseRRuleString error', e, rrule); } catch(logErr) {}
       return { FREQ:'', INTERVAL:1, BYDAY:[], BYMONTHDAY:[], UNTIL:'', COUNT:null };
     }
   }
-  try { window.foyerParseRRule = parseRRuleString; } catch(e){}
 
   function getSelectedDisplays(){
     var out=[]; document.querySelectorAll('#foyerCalDisplays .foyerCalDisplay:checked').forEach(function(i){ out.push(parseInt(i.value,10)); });
@@ -1099,7 +1096,7 @@
       // For now, reuse single-occurrence edit inside overlay; series editing remains basic (apply_to radios)
       var wrap = foyerOverlayCreateStructure(getLastCalPointer(), getI18nString('editTitle','Edit Schedule'));
       var evtMeta = (eventObj && eventObj.extendedProps) ? eventObj.extendedProps : {};
-      try { console.log('[Foyer Scheduler] openOverlayEdit meta', evtMeta); } catch(logErr) {}
+      var currentSeriesMeta = null;
 
     // Preselect channel before rendering grid so the correct card is highlighted
     try { __ovSelectedChannelId = evtMeta.channel_id ? evtMeta.channel_id : null; } catch(e) { __ovSelectedChannelId = null; }
@@ -1134,23 +1131,17 @@
     try {
       var pid = parseInt(evtMeta.schedule_post_id,10);
       if(pid>0){
-        try { console.log('[Foyer Scheduler] fetching schedule meta for', pid); } catch(logErr) {}
         var fd=new FormData();
         fd.append('action','foyer_schedules_get_schedule');
         fd.append('nonce', nonce);
         fd.append('post_id', String(pid));
-        try { console.log('[Foyer Scheduler] schedule meta request payload', Array.from(fd.entries())); } catch(logErr) {}
         fetch(ajaxurl, { method:'POST', credentials:'same-origin', body: fd })
           .then(function(r){ return r.json(); })
           .then(function(resp){ try {
-            try { console.log('[Foyer Scheduler] schedule meta raw response', resp); } catch(logErr) {}
             if(resp && resp.success && resp.data && resp.data.meta){
               var meta = resp.data.meta || {}; var rr = meta.rrule || '';
-              try { console.log('[Foyer Scheduler] schedule meta response', meta); } catch(logErr) {}
               if(rr){
-                try { console.log('[Foyer Scheduler] raw RRULE string', rr); } catch(logErr) {}
                 var rule=parseRRuleString(rr);
-                try { console.log('[Foyer Scheduler] parsed rule', rule); } catch(logErr) {}
                 if (typeof window.foyerSchedulerApplyRRuleToUI === 'function') {
                   window.foyerSchedulerApplyRRuleToUI(rule);
                 } else if (typeof applyRRuleToUI === 'function') {
@@ -1158,12 +1149,35 @@
                 }
               }
               else { var singleInp=document.querySelector('#ovRecurBox input[name="ovFreq"][value="SINGLE"]'); if(singleInp){ singleInp.checked=true; } updateFreq(); updateSummary(); }
+              currentSeriesMeta = meta;
+              try { evtMeta.__seriesMeta = meta; } catch(assignErr){}
+              try {
+                var startField = document.getElementById('ovStartLocal');
+                if (startField && meta && meta.dtstart_local) {
+                  var baseStart = parseLocalDateTime(meta.dtstart_local);
+                  if (baseStart) { startField.value = toSiteLocalString(baseStart); }
+                }
+                var endField = document.getElementById('ovEndLocal');
+                if (endField) {
+                  var durationSeconds = meta && meta.duration ? parseInt(meta.duration, 10) : 0;
+                  if (durationSeconds <= 0 && currentSeriesMeta && currentSeriesMeta.duration) {
+                    durationSeconds = parseInt(currentSeriesMeta.duration, 10);
+                  }
+                  if (durationSeconds <= 0) { durationSeconds = 3600; }
+                  var baseForEnd = parseLocalDateTime((startField && startField.value) ? startField.value : (meta ? meta.dtstart_local : ''));
+                  if (baseForEnd) {
+                    var endDate = new Date(baseForEnd.getTime() + durationSeconds * 1000);
+                    endField.value = toSiteLocalString(endDate);
+                  }
+                }
+                updateSummary();
+              } catch(metaErr){}
             }
-            else if(resp && resp.data && resp.data.message){ try { console.warn('[Foyer Scheduler] schedule meta error', resp.data.message); } catch(logErr) {} }
-          } catch(e){
-            try { console.error('[Foyer Scheduler] schedule meta processing error', e); } catch(logErr) {}
-          } })
-          .catch(function(e){ try { console.error('[Foyer Scheduler] fetch schedule error', e); } catch(logErr) {} });
+            else if(resp && resp.data && resp.data.message){
+              // keep silent when backend returns error structure; UI will handle below
+            }
+          } catch(e){} })
+          .catch(function(e){});
       }
     } catch(e){}
     // Force non-recur UI for edit for now
@@ -1176,9 +1190,61 @@
         var ch = __ovSelectedChannelId || '';
         var data = new FormData(); data.append('action','foyer_schedules_update_event'); data.append('nonce', nonce);
         data.append('schedule_post_id', String(evtMeta.schedule_post_id||'')); data.append('occ_id', String(evtMeta.occ_id||''));
-        data.append('new_start_local', document.getElementById('ovStartLocal').value.trim()); data.append('new_end_local', document.getElementById('ovEndLocal').value.trim());
-        data.append('apply_to', (evtMeta.source && evtMeta.source!=='SINGLE') ? 'occurrence' : 'occurrence'); if(ch){ data.append('channel_id', String(ch)); }
+        if(ch){ data.append('channel_id', String(ch)); }
         displays.forEach(function(id){ data.append('display_ids[]', String(id)); });
+
+        var startValue = (document.getElementById('ovStartLocal').value || '').trim();
+        var endValue = (document.getElementById('ovEndLocal').value || '').trim();
+        var freqRadio = document.querySelector('#ovRecurBox input[name="ovFreq"]:checked');
+        var freqValue = freqRadio ? String(freqRadio.value || '') : 'SINGLE';
+        var isSeriesEvent = !!(evtMeta && evtMeta.source && String(evtMeta.source).toUpperCase() !== 'SINGLE');
+        var wantsRecurring = freqValue && freqValue !== 'SINGLE';
+
+        if (isSeriesEvent && wantsRecurring) {
+          data.append('apply_to', 'series');
+          if (!startValue){ alert(getI18nString('startRequired','Start is required.')); return; }
+          data.append('dtstart_local', startValue);
+          var durationSeconds = 3600;
+          try {
+            var startDate = parseLocalDateTime(startValue);
+            var endDate = parseLocalDateTime(endValue);
+            if (startDate && endDate) {
+              var diff = Math.round((endDate.getTime() - startDate.getTime()) / 1000);
+              if (diff >= 60) { durationSeconds = diff; }
+            }
+          } catch(calcErr){}
+          if ((!durationSeconds || durationSeconds <= 0) && currentSeriesMeta && currentSeriesMeta.duration) {
+            durationSeconds = parseInt(currentSeriesMeta.duration, 10) || 3600;
+          }
+          if (!durationSeconds || durationSeconds <= 0) { durationSeconds = 3600; }
+          data.append('duration', String(durationSeconds));
+          data.append('foyer_rrule_freq', freqValue);
+          var intervalField = document.getElementById('ovInterval');
+          var intervalVal = intervalField ? parseInt(intervalField.value, 10) : 1;
+          if (isNaN(intervalVal) || intervalVal < 1) { intervalVal = 1; }
+          data.append('foyer_rrule_interval', String(intervalVal));
+          if (freqValue === 'WEEKLY'){
+            document.querySelectorAll('#ovWeeklyOpts .ovByDay:checked').forEach(function(i){ data.append('foyer_rrule_byday[]', i.value); });
+          }
+          if (freqValue === 'MONTHLY'){
+            var mdVal = (document.getElementById('ovByMonthDay').value || '').trim(); if(mdVal){ data.append('foyer_rrule_bymonthday', mdVal); }
+          }
+          var endModeRadio = document.querySelector('input[name="ovEndMode"]:checked');
+          var endModeVal = endModeRadio ? String(endModeRadio.value || 'never') : 'never';
+          if (endModeVal === 'until') {
+            var untilVal = (document.getElementById('ovUntil').value || '').trim();
+            if (untilVal) { data.append('foyer_rrule_until', untilVal); }
+          } else if (endModeVal === 'count') {
+            var countVal = parseInt((document.getElementById('ovCount').value || '').trim(), 10);
+            if (countVal > 0) { data.append('foyer_rrule_count', String(countVal)); }
+          }
+          data.append('mode', 'recur');
+        } else {
+          if (!startValue){ alert(getI18nString('startRequired','Start is required.')); return; }
+          data.append('new_start_local', startValue);
+          if (endValue){ data.append('new_end_local', endValue); }
+          data.append('apply_to', 'occurrence');
+        }
         fetch(ajaxurl, { method:'POST', credentials:'same-origin', body:data })
           .then(function(r){ return r.json(); })
           .then(function(resp){ if(!resp || !resp.success){ throw new Error((resp && resp.data && resp.data.message) || getI18nString('updateFailed','Update failed')); } foyerOverlayClose(); try{ scheduleRefetch('update'); }catch(e){} })
