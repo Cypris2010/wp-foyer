@@ -58,6 +58,190 @@
     } catch(e){ return null; }
   }
 
+  function normalizeLocaleTag(value){
+    try {
+      if (typeof value !== 'string' || !value) { return 'en-US'; }
+      return value.replace(/_/g, '-');
+    } catch(e){ return 'en-US'; }
+  }
+
+  function clampWeekStart(value){
+    var n = parseInt(value, 10);
+    if (isNaN(n) || n < 0 || n > 6) { return 0; }
+    return n;
+  }
+
+  function buildAirDatepickerLocale(localeCode, weekStartsOn){
+    var fallbackDays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    var fallbackDaysShort = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    var fallbackDaysMin = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+    var fallbackMonths = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    var fallbackMonthsShort = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var cfg = {
+      days: fallbackDays.slice(),
+      daysShort: fallbackDaysShort.slice(),
+      daysMin: fallbackDaysMin.slice(),
+      months: fallbackMonths.slice(),
+      monthsShort: fallbackMonthsShort.slice(),
+      today: getI18nString('todayLabel','Today'),
+      clear: getI18nString('clearLabel','Clear'),
+      timepicker: getI18nString('timeLabel','Time'),
+      firstDay: clampWeekStart(weekStartsOn)
+    };
+    var tag = normalizeLocaleTag(localeCode);
+    try {
+      if (typeof Intl !== 'undefined') {
+        var sunday = new Date(Date.UTC(2021, 0, 3)); // Sunday
+        var fmtLong = new Intl.DateTimeFormat(tag, { weekday: 'long' });
+        var fmtShort = new Intl.DateTimeFormat(tag, { weekday: 'short' });
+        var fmtNarrow = new Intl.DateTimeFormat(tag, { weekday: 'narrow' });
+        for (var i = 0; i < 7; i++) {
+          var d = new Date(sunday.getTime() + i * 86400000);
+          cfg.days[i] = fmtLong.format(d);
+          cfg.daysShort[i] = fmtShort.format(d);
+          cfg.daysMin[i] = fmtNarrow.format(d);
+        }
+        var fmtMonthLong = new Intl.DateTimeFormat(tag, { month: 'long' });
+        var fmtMonthShort = new Intl.DateTimeFormat(tag, { month: 'short' });
+        for (var m = 0; m < 12; m++) {
+          var md = new Date(Date.UTC(2021, m, 1));
+          cfg.months[m] = fmtMonthLong.format(md);
+          cfg.monthsShort[m] = fmtMonthShort.format(md);
+        }
+      }
+    } catch(err){
+      debugWarn('[Foyer Scheduler] AirDatepicker locale fallback', err);
+    }
+    return cfg;
+  }
+
+  var schedulerLocaleTag = normalizeLocaleTag((foyerSchedulerData && foyerSchedulerData.locale) ? foyerSchedulerData.locale : (navigator.language || 'en-US'));
+  var schedulerWeekStart = clampWeekStart((foyerSchedulerData && foyerSchedulerData.weekStartsOn !== undefined) ? foyerSchedulerData.weekStartsOn : 0);
+  var airDatepickerLocaleConfigCache = null;
+
+  function getAirDatepickerLocaleConfig(){
+    if (!airDatepickerLocaleConfigCache) {
+      airDatepickerLocaleConfigCache = buildAirDatepickerLocale(schedulerLocaleTag, schedulerWeekStart);
+    }
+    return airDatepickerLocaleConfigCache;
+  }
+
+  var overlayDatePickers = [];
+
+  function destroyOverlayDatePickers(){
+    overlayDatePickers.forEach(function(entry){
+      try {
+        if (entry && entry.cleanup) { entry.cleanup(); }
+      } catch(e){}
+      try {
+        if (entry && entry.picker && typeof entry.picker.destroy === 'function') {
+          entry.picker.destroy();
+        }
+      } catch(e){}
+    });
+    overlayDatePickers = [];
+  }
+
+  function formatDateForField(date){
+    try {
+      var pad = function(n){ return (n < 10 ? '0' : '') + n; };
+      return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds());
+    } catch(e) {
+      return '';
+    }
+  }
+
+  function syncOverlayPicker(entry){
+    if (!entry || !entry.input || !entry.picker) { return; }
+    if (entry.isSyncing) { return; }
+    var value = String(entry.input.value || '').trim();
+    if (!value) {
+      try { entry.isSyncing = true; entry.picker.clear(); } catch(e){} finally { entry.isSyncing = false; }
+      return;
+    }
+    var date = parseLocalDateTime(value);
+    if (!date || isNaN(date.getTime())) {
+      try { entry.isSyncing = true; entry.picker.clear(); } catch(e){} finally { entry.isSyncing = false; }
+      return;
+    }
+    try {
+      entry.isSyncing = true;
+      var alreadySelected = (entry.picker.selectedDates && entry.picker.selectedDates[0]) ? entry.picker.selectedDates[0] : null;
+      var sameSelection = !!(alreadySelected && Math.abs(alreadySelected.getTime() - date.getTime()) < 1000);
+      if (!sameSelection) {
+        entry.picker.selectDate(date);
+      }
+    } catch(e) {
+      debugWarn('[Foyer Scheduler] AirDatepicker sync error', e);
+    } finally {
+      entry.isSyncing = false;
+    }
+  }
+
+  function overlaySyncDatePickersFromFields(){ overlayDatePickers.forEach(function(entry){ syncOverlayPicker(entry); }); }
+
+  function initOverlayDatePickers(){
+    destroyOverlayDatePickers();
+    if (typeof window.AirDatepicker === 'undefined') {
+      debugWarn('[Foyer Scheduler] AirDatepicker not available');
+      return;
+    }
+    var inputs = [ document.getElementById('ovStartLocal'), document.getElementById('ovEndLocal') ];
+    inputs.forEach(function(input){
+      if (!input) { return; }
+      var entry = { input: input, picker: null, isSyncing: false, cleanup: null };
+      var syncFromField = function(){ syncOverlayPicker(entry); };
+      var originalValue = input.value;
+      var picker = new window.AirDatepicker(input, {
+        timepicker: true,
+        minutesStep: 1,
+        secondsStep: 1,
+        autoClose: false,
+        dateFormat: 'yyyy-MM-dd',
+        timeFormat: 'HH:mm:ss',
+        dateTimeSeparator: ' ',
+        position: 'bottom left',
+        locale: getAirDatepickerLocaleConfig(),
+        onShow: function(){ syncOverlayPicker(entry); },
+        onSelect: function(params){
+          if (entry.isSyncing) { return; }
+          var selectedDate = null;
+          if (params) {
+            if (params.date instanceof Date) {
+              selectedDate = params.date;
+            } else if (Array.isArray(params.date) && params.date.length && params.date[0] instanceof Date) {
+              selectedDate = params.date[0];
+            }
+          }
+          entry.isSyncing = true;
+          try {
+            var value = selectedDate ? formatDateForField(selectedDate) : '';
+            if (!value && params && typeof params.formattedDate === 'string') {
+              value = params.formattedDate;
+            }
+            input.value = value;
+          } finally {
+            entry.isSyncing = false;
+          }
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      });
+      entry.picker = picker;
+      if (originalValue){
+        try { input.value = originalValue; } catch(e){}
+      }
+      input.addEventListener('change', syncFromField);
+      input.addEventListener('input', syncFromField);
+      entry.cleanup = function(){
+        input.removeEventListener('change', syncFromField);
+        input.removeEventListener('input', syncFromField);
+      };
+      overlayDatePickers.push(entry);
+    });
+    overlaySyncDatePickersFromFields();
+  }
+
   function parseRRuleString(rrule){
     try{
       var out={ FREQ:'', INTERVAL:1, BYDAY:[], BYMONTHDAY:[], UNTIL:'', COUNT:null };
@@ -486,11 +670,14 @@
     if (document.getElementById('foyerSchedulerOverlayStyle')) return;
     var css = ''+
       '#foyerSchedulerOverlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100001;display:flex;align-items:stretch;justify-content:center;will-change:clip-path;-webkit-clip-path:circle(150% at 50% 50%);clip-path:circle(150% at 50% 50%);transition:clip-path .32s ease-in-out,-webkit-clip-path .32s ease-in-out;}'+
+      '.air-datepicker{z-index:100010;}'+
       '#foyerSchedulerOverlay .foyer-ov-panel{background:#fff;width:96vw;height:90vh;margin:auto;box-shadow:0 4px 24px rgba(0,0,0,.3);display:grid;grid-template-rows:auto 1fr;grid-template-columns:1fr;gap:16px;padding:16px;box-sizing:border-box;}'+
       '#foyerSchedulerOverlay .foyer-ov-top{overflow:auto;padding:0 8px;}'+
       '#foyerSchedulerOverlay .foyer-ov-bottom{display:grid;grid-template-columns:4fr 1fr;gap:16px;height:100%;overflow:hidden;}'+
       '#foyerSchedulerOverlay .foyer-ov-channelsWrap{overflow:auto;padding-right:8px;}'+
       '#foyerSchedulerOverlay .foyer-ov-displaysWrap{overflow:auto;padding-left:8px;}'+
+      '#foyerSchedulerOverlay .ov-datetime-grid .ov-field{flex:1 1 260px;min-width:240px;}'+
+      '#foyerSchedulerOverlay .ov-datetime-grid .ov-field input{width:100%;max-width:360px;}'+
       '#foyerSchedulerOverlay .foyer-ov-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}'+
       '#foyerSchedulerOverlay .foyer-ov-head-actions{display:flex;gap:8px;align-items:center;}'+
       '#foyerSchedulerOverlay .ov-delete-btn{display:none;align-items:center;gap:4px;border:1px solid #d63638;background:transparent;color:#d63638;transition:background-color .15s ease,color .15s ease,border-color .15s ease;}'+
@@ -526,7 +713,7 @@
       '@media(min-width:700px){#foyerSchedulerOverlay .ov-datetime-grid{grid-template-columns:1fr;}}' +
       '#foyerSchedulerOverlay .ov-field label{display:block;margin-bottom:4px;font-weight:600;}' +
       '#foyerSchedulerOverlay .ov-field input{width:100%;}' +
-      '#foyerSchedulerOverlay #ovStartLocal, #foyerSchedulerOverlay #ovEndLocal{width:50%;}' +
+      '#foyerSchedulerOverlay #ovStartLocal, #foyerSchedulerOverlay #ovEndLocal{width:250px;}' +
       '#foyerSchedulerOverlay #ovUntil{width:70%;}' +
       '#foyerSchedulerOverlay .ov-end-row .ov-end-opt{display:inline-flex;align-items:center;white-space:nowrap;}' +
       '#foyerSchedulerOverlay .ov-end-row .ov-end-opt input[type=text]{margin-left:6px;}' +
@@ -809,6 +996,8 @@
     var u=document.getElementById('ovUntil'); if(u){ u.addEventListener('input', updateSummary); }
     var c=document.getElementById('ovCount'); if(c){ c.addEventListener('input', updateSummary); }
 
+    try { initOverlayDatePickers(); } catch(e){ debugWarn('[Foyer Scheduler] AirDatepicker init failed', e); }
+
     // Initialize default state
     try { updateFreq(); setActiveWeekdayChips(); updateEndModeUI(); updateSummary(); } catch(e){}
     return wrap;
@@ -819,7 +1008,14 @@
     var ox = parseInt(w.dataset.originX||'',10); if (isNaN(ox)) ox = Math.round(window.innerWidth/2);
     var oy = parseInt(w.dataset.originY||'',10); if (isNaN(oy)) oy = Math.round(window.innerHeight/2);
     var cleaned = false;
-    function cleanup(){ if(cleaned) return; cleaned=true; try{ if (window.__ovEscHandler) { document.removeEventListener('keydown', window.__ovEscHandler); window.__ovEscHandler = null; } }catch(e){} if(w && w.parentNode){ w.parentNode.removeChild(w); } document.body.style.overflow=''; }
+    function cleanup(){
+      if(cleaned) return;
+      cleaned=true;
+      try{ if (window.__ovEscHandler) { document.removeEventListener('keydown', window.__ovEscHandler); window.__ovEscHandler = null; } }catch(e){}
+      try { destroyOverlayDatePickers(); } catch(e){}
+      if(w && w.parentNode){ w.parentNode.removeChild(w); }
+      document.body.style.overflow='';
+    }
     try {
       var __onceTransition = function(ev){ if(ev && ev.propertyName && ev.propertyName.indexOf('clip-path')===-1 && ev.propertyName.indexOf('webkit-clip-path')===-1) return; cleanup(); try{ w.removeEventListener('transitionend', __onceTransition); }catch(e){} };
       w.addEventListener('transitionend', __onceTransition);
@@ -1002,6 +1198,7 @@
     var startLocal = toSiteLocalString(startDate);
     var endLocal = toSiteLocalString(endDateOpt ? endDateOpt : new Date(startDate.getTime()+60*60*1000));
     var s = document.getElementById('ovStartLocal'); var e = document.getElementById('ovEndLocal'); if(s) s.value=startLocal; if(e) e.value=endLocal;
+    try { overlaySyncDatePickersFromFields(); } catch(e){}
   }
 
   function foyerOverlayBindSaveCreate(){
@@ -1146,6 +1343,7 @@
     // Fill singles by default
     var sLocal = toSiteLocalString(eventObj.start); var eLocal = toSiteLocalString(eventObj.end);
     var s = document.getElementById('ovStartLocal'); var e = document.getElementById('ovEndLocal'); if(s) s.value=sLocal; if(e) e.value=eLocal;
+    try { overlaySyncDatePickersFromFields(); } catch(e){}
     try { if(s){ s.dispatchEvent(new Event('input', { bubbles:true })); } } catch(err){}
     // Pre-mark as recurring while loading, if event source indicates recurrence
     try {
@@ -1201,6 +1399,7 @@
                   }
                 }
                 updateSummary();
+                try { overlaySyncDatePickersFromFields(); } catch(syncErr){}
               } catch(metaErr){}
             }
             else if(resp && resp.data && resp.data.message){

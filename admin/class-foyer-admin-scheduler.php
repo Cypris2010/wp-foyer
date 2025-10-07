@@ -63,6 +63,18 @@ class Foyer_Admin_Scheduler {
         wp_enqueue_style( 'foyer-event-calendar', $__base_url . $ev_local_css, array(), '4.6.0' );
         wp_enqueue_script( 'foyer-event-calendar', $__base_url . $ev_local_js, array(), '4.6.0', true );
 
+        // Air Datepicker assets for scheduler overlay inputs
+        $ad_dir_rel = 'vendor/air-datepicker/';
+        $ad_css_rel = $ad_dir_rel . 'air-datepicker.min.css';
+        $ad_js_rel  = $ad_dir_rel . 'air-datepicker.min.js';
+        $ad_css_abs = $__base_path . $ad_css_rel;
+        $ad_js_abs  = $__base_path . $ad_js_rel;
+        $ad_ver_css = file_exists( $ad_css_abs ) ? filemtime( $ad_css_abs ) : null;
+        $ad_ver_js  = file_exists( $ad_js_abs ) ? filemtime( $ad_js_abs ) : null;
+
+        wp_enqueue_style( 'foyer-air-datepicker', $__base_url . $ad_css_rel, array(), $ad_ver_css );
+        wp_enqueue_script( 'foyer-air-datepicker', $__base_url . $ad_js_rel, array(), $ad_ver_js, true );
+
         
         $base_url  = plugin_dir_url( __FILE__ );
         $base_path = plugin_dir_path( __FILE__ );
@@ -73,7 +85,7 @@ class Foyer_Admin_Scheduler {
 
         // Our scheduler assets
         wp_enqueue_style( 'foyer-scheduler', $base_url . $css_rel, array(), $css_ver );
-        wp_register_script( 'foyer-scheduler', $base_url . $js_rel, array( 'foyer-event-calendar' ), $js_ver, true );
+        wp_register_script( 'foyer-scheduler', $base_url . $js_rel, array( 'foyer-event-calendar', 'foyer-air-datepicker' ), $js_ver, true );
 
         // Localized data for JS (nonce, AJAX url, site TZ, channels)
         $channels = Foyer_Channels::get_posts();
@@ -116,6 +128,8 @@ class Foyer_Admin_Scheduler {
             'ajaxurl' => admin_url( 'admin-ajax.php' ),
             'nonce'   => self::get_calendar_nonce(),
             'siteTz'  => wp_timezone_string(),
+            'locale'  => str_replace( '_', '-', get_user_locale() ),
+            'weekStartsOn' => (int) get_option( 'start_of_week', 0 ),
             'channels'=> $channels_data,
             'debug'   => $debug_enabled,
         );
@@ -175,6 +189,9 @@ class Foyer_Admin_Scheduler {
             'firstLabel'       => __( 'First', 'foyer' ),
             'renderedLabel'    => __( 'Rendered', 'foyer' ),
             'errorLabel'       => __( 'Error', 'foyer' ),
+            'todayLabel'       => __( 'Today', 'foyer' ),
+            'clearLabel'       => __( 'Clear', 'foyer' ),
+            'timeLabel'        => __( 'Time', 'foyer' ),
         );
         wp_localize_script( 'foyer-scheduler', 'foyerSchedulerI18n', $i18n );
 
