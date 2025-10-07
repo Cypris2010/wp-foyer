@@ -203,7 +203,7 @@
           timeGridWeek: { slotDuration: '00:30:00', nowIndicator: true, allDaySlot: false, slotMinTime: '00:00:00', scrollTime: '07:00:00' }
         },
         datesSet: function(info){ try { applyMonthStyling(); scheduleRefetch('datesSet', info.start, info.end); } catch(e){} },
-        loading: function(isLoading){ try { var dbg=document.getElementById('foyerCalDebug'); if(dbg){ dbg.innerHTML = isLoading ? getI18nString('loadingLabel','Loading…') : dbg.innerHTML; } } catch(e){} },
+        loading: function(isLoading){ debugLog('[Foyer Scheduler] loading state', { isLoading: !!isLoading }); },
         dateClick: handleDateClick,
         select: handleSelect,
         eventClick: handleEventClick,
@@ -435,22 +435,19 @@
         var mapped = mapServerEvents(resp.data && resp.data.events ? resp.data.events : []);
         setCalendarEvents(mapped);
         setTimeout(function(){
-          var calNode = document.getElementById('foyerSchedulesCalendar');
-          var n1 = calNode ? calNode.querySelectorAll('.ec-event').length : 0;
-          var n2 = calNode ? calNode.querySelectorAll('.ec .ec-event').length : 0;
-          var n = Math.max(n1, n2);
-          var dbg = document.getElementById('foyerCalDebug');
-          if (dbg) {
+          try {
+            var calNode = document.getElementById('foyerSchedulesCalendar');
+            var n1 = calNode ? calNode.querySelectorAll('.ec-event').length : 0;
+            var n2 = calNode ? calNode.querySelectorAll('.ec .ec-event').length : 0;
+            var n = Math.max(n1, n2);
             var first = mapped[0] ? { id: mapped[0].id, title: mapped[0].title, start: mapped[0].start, end: mapped[0].end } : null;
-            var eventsLabel = getI18nString('eventsLabel','Events');
-            var firstLabel = getI18nString('firstLabel','First');
-            var renderedLabel = getI18nString('renderedLabel','Rendered');
-            try { dbg.innerHTML = escapeHTML(eventsLabel) + ': ' + mapped.length + '<br/>' + escapeHTML(firstLabel) + ': ' + (first ? escapeHTML(JSON.stringify(first)) : '-') + '<br/>' + escapeHTML(renderedLabel) + ': ' + n; }
-            catch(e) { dbg.textContent = eventsLabel + ': ' + mapped.length + ' ' + renderedLabel + ': ' + n; }
+            debugLog('[Foyer Scheduler] events render summary', { count: mapped.length, first: first, renderedElements: n });
+          } catch(e) {
+            debugWarn('[Foyer Scheduler] render summary failed', e);
           }
         }, 300);
       })
-      .catch(function(err){ var dbg=document.getElementById('foyerCalDebug'); if(dbg){ var errLabel = getI18nString('errorLabel','Error'); dbg.textContent = errLabel + ': ' + (err && err.message ? err.message : String(err)); } });
+      .catch(function(err){ debugError('[Foyer Scheduler] events fetch error', err); });
   }
 
   // Preselect displays from URL (?display=ID or ?displays=ID,ID2)

@@ -1013,7 +1013,6 @@ class Foyer_Admin_Scheduler {
         echo '<div id="foyer-cal-layout" style="display:flex; gap:16px; align-items:stretch;">';
         echo '<div id="foyer-cal-main" style="flex:1; min-height:640px;">';
         echo '<div id="foyerSchedulesCalendar" style="min-height:640px; border:1px solid #ccd0d4; background:#fff;"></div>';
-        echo '<div id="foyerCalDebug" style="margin-top:8px; font-size:12px; color:#666;"></div>';
                 echo '</div>';
         echo '<div id="foyer-cal-sidebar" class="postbox" style="width:320px;">';
         echo '<h2 class="hndle" style="padding:8px 12px; margin:0;">' . esc_html__( 'Display selector', 'foyer' ) . '</h2>';
