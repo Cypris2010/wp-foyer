@@ -200,9 +200,9 @@
         headerToolbar: { start: 'title', center: '', end: 'today prev,next dayGridMonth,timeGridWeek' },
         views: {
           dayGridMonth: { dayMaxEvents: 3, displayEventEnd: false },
-          timeGridWeek: { slotDuration: '00:30:00', nowIndicator: true, allDaySlot: false }
+          timeGridWeek: { slotDuration: '00:30:00', nowIndicator: true, allDaySlot: false, slotMinTime: '00:00:00', scrollTime: '07:00:00' }
         },
-        datesSet: function(info){ try { applyMonthStyling(); scheduleRefetch('datesSet', info.start, info.end); scrollToCoreTime(); } catch(e){} },
+        datesSet: function(info){ try { applyMonthStyling(); scheduleRefetch('datesSet', info.start, info.end); } catch(e){} },
         loading: function(isLoading){ try { var dbg=document.getElementById('foyerCalDebug'); if(dbg){ dbg.innerHTML = isLoading ? getI18nString('loadingLabel','Loading…') : dbg.innerHTML; } } catch(e){} },
         dateClick: handleDateClick,
         select: handleSelect,
@@ -257,7 +257,6 @@
         eventAllUpdated: function(info){}
       });
       applyMonthStyling();
-      setTimeout(scrollToCoreTime, 60);
     } catch(e){
       if (calEl){ calEl.innerHTML = '<div style="padding:12px;">'+ escapeHTML(e && e.message ? e.message : getI18nString('calendarInitError','Calendar failed to initialize')) +'</div>'; }
     }
@@ -270,39 +269,6 @@
       if (!calEl) return;
       if (type === 'dayGridMonth') { calEl.classList.add('foyer-month-view'); }
       else { calEl.classList.remove('foyer-month-view'); }
-    } catch(e){}
-  }
-
-  function findCalendarScroller(){
-    try {
-      var known = calEl.querySelector('.ec-scroll-y') || calEl.querySelector('.ec-timegrid-scroller') || calEl.querySelector('.ec-scroller');
-      if (known && known.scrollHeight > known.clientHeight) { return known; }
-      var all = calEl.querySelectorAll('*');
-      for (var i=0;i<all.length;i++){
-        var el = all[i];
-        var cs = window.getComputedStyle(el);
-        if (!cs) continue;
-        var oy = cs.overflowY;
-        if ((oy === 'auto' || oy === 'scroll') && (el.scrollHeight - el.clientHeight) > 40){ return el; }
-      }
-    } catch(e){}
-    return null;
-  }
-  function scrollToHour(hour){
-    try {
-      var sc = findCalendarScroller();
-      if (!sc) return;
-      var ratio = Math.max(0, Math.min(1, hour/24));
-      var maxScroll = Math.max(0, sc.scrollHeight - sc.clientHeight);
-      sc.scrollTop = Math.round(maxScroll * ratio);
-    } catch(e){}
-  }
-  function scrollToCoreTime(){
-    try {
-      if (!ec || typeof ec.getView !== 'function') return;
-      var v = ec.getView();
-      var t = v && v.type ? v.type : '';
-      if (t && t.indexOf('timeGrid') === 0){ setTimeout(function(){ scrollToHour(7); }, 30); }
     } catch(e){}
   }
 
@@ -482,7 +448,6 @@
             try { dbg.innerHTML = escapeHTML(eventsLabel) + ': ' + mapped.length + '<br/>' + escapeHTML(firstLabel) + ': ' + (first ? escapeHTML(JSON.stringify(first)) : '-') + '<br/>' + escapeHTML(renderedLabel) + ': ' + n; }
             catch(e) { dbg.textContent = eventsLabel + ': ' + mapped.length + ' ' + renderedLabel + ': ' + n; }
           }
-          scrollToCoreTime();
         }, 300);
       })
       .catch(function(err){ var dbg=document.getElementById('foyerCalDebug'); if(dbg){ var errLabel = getI18nString('errorLabel','Error'); dbg.textContent = errLabel + ': ' + (err && err.message ? err.message : String(err)); } });

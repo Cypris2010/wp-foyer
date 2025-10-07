@@ -1010,7 +1010,7 @@ class Foyer_Admin_Scheduler {
         echo '<div class="wrap">';
         echo '<h1>' . esc_html__( 'Scheduler', 'foyer' ) . '</h1>';
         // Basic layout: left calendar, right display selector
-        echo '<div id="foyer-cal-layout" style="display:flex; gap:16px; align-items:flex-start;">';
+        echo '<div id="foyer-cal-layout" style="display:flex; gap:16px; align-items:stretch;">';
         echo '<div id="foyer-cal-main" style="flex:1; min-height:640px;">';
         echo '<div id="foyerSchedulesCalendar" style="min-height:640px; border:1px solid #ccd0d4; background:#fff;"></div>';
         echo '<div id="foyerCalDebug" style="margin-top:8px; font-size:12px; color:#666;"></div>';
@@ -1026,7 +1026,7 @@ class Foyer_Admin_Scheduler {
         if ( empty( $displays_data ) ) {
             echo '<em>' . esc_html__( 'No displays found.', 'foyer' ) . '</em>';
         } else {
-            echo '<div id="foyerCalDisplays" class="foyer-display-list" style="max-height:420px; overflow:auto; background:#fff;">';
+            echo '<div id="foyerCalDisplays" class="foyer-display-list" style="overflow:auto; background:#fff;">';
             foreach ( $displays_data as $row ) {
                 $color = self::color_for_display( $row['id'] );
                 echo '<div class="foyer-display-item" data-id="' . intval( $row['id'] ) . '" data-color="' . esc_attr( $color ) . '" role="button" tabindex="0">'
