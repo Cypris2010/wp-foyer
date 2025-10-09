@@ -727,7 +727,7 @@
       '#foyerSchedulerOverlay .ov-end-row .ov-end-opt input[type=text]{margin-left:6px;}' +
       '#foyerSchedulerOverlay .ov-form-grid{display:grid;grid-template-columns:1fr;gap:16px;align-items:start;}' +
       '@media(min-width:700px){#foyerSchedulerOverlay .ov-form-grid{grid-template-columns:1fr 3fr 1fr}}' +
-      '#foyerSchedulerOverlay .ov-col-left,#foyerSchedulerOverlay .ov-col-right{min-width:0;}' +
+      '#foyerSchedulerOverlay .ov-col-left,#foyerSchedulerOverlay .ov-col-right{min-width:250px;}' +
       '#foyerSchedulerOverlay .ov-recur-summary{margin:6px 0 2px 0;font-size:12px;color:#555;}' +
       '#foyerSchedulerOverlay .ov-freq-group{display:flex;gap:8px;flex-wrap:wrap;}' +
       '#foyerSchedulerOverlay .ov-chip{border:1px solid #ccc;border-radius:16px;padding:4px 10px;cursor:pointer;user-select:none;}' +
