@@ -690,7 +690,8 @@
       '#foyerSchedulerOverlay .ov-delete-btn:hover,#foyerSchedulerOverlay .ov-delete-btn:focus{background:#d63638;color:#fff;border-color:#d63638;}'+
       '#foyerSchedulerOverlay .ov-delete-btn:hover .dashicons,#foyerSchedulerOverlay .ov-delete-btn:focus .dashicons{color:#fff;}'+
       '#foyerSchedulerOverlay h2{margin:0 0 8px 0;}' +
-      '#foyerSchedulerOverlay .ov-form-row{margin:8px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}' +
+      '#foyerSchedulerOverlay .ov-form-row{margin:0px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}' +
+      '#foyerSchedulerOverlay .ov-form-row.ov-freq-row,#foyerSchedulerOverlay .ov-form-row.ov-weekly,#foyerSchedulerOverlay .ov-form-row.ov-monthly,#foyerSchedulerOverlay .ov-form-row.ov-end-row{margin-bottom:6px;min-height:30px;}' +
       '#foyerSchedulerOverlay .ov-actions{position:sticky;bottom:0;display:flex;gap:8px;justify-content:flex-end;padding-top:8px;margin-top:12px;background:#fff;}' +
       '#foyerSchedulerOverlay .foyer-ov-displays .ov-display-item{display:flex;align-items:center;gap:8px;padding:8px 10px;margin:4px 0;border-radius:4px;cursor:pointer;user-select:none;transition:background-color .15s ease,border-color .15s ease;border:1px solid transparent;}' +
       '#foyerSchedulerOverlay .foyer-ov-displays .ov-display-item input{display:none;}' +
@@ -725,10 +726,9 @@
       '#foyerSchedulerOverlay .ov-end-row .ov-end-opt{display:inline-flex;align-items:center;white-space:nowrap;}' +
       '#foyerSchedulerOverlay .ov-end-row .ov-end-opt input[type=text]{margin-left:6px;}' +
       '#foyerSchedulerOverlay .ov-form-grid{display:grid;grid-template-columns:1fr;gap:16px;align-items:start;}' +
-      '@media(min-width:700px){#foyerSchedulerOverlay .ov-form-grid{grid-template-columns:1fr 1fr;}}' +
+      '@media(min-width:700px){#foyerSchedulerOverlay .ov-form-grid{grid-template-columns:1fr 3fr 1fr}}' +
       '#foyerSchedulerOverlay .ov-col-left,#foyerSchedulerOverlay .ov-col-right{min-width:0;}' +
       '#foyerSchedulerOverlay .ov-recur-summary{margin:6px 0 2px 0;font-size:12px;color:#555;}' +
-      '#foyerSchedulerOverlay .ov-rrule{margin:4px 0;color:#666;font-size:11px;font-family:Menlo,Monaco,Consolas,monospace;word-break:break-all;}' +
       '#foyerSchedulerOverlay .ov-freq-group{display:flex;gap:8px;flex-wrap:wrap;}' +
       '#foyerSchedulerOverlay .ov-chip{border:1px solid #ccc;border-radius:16px;padding:4px 10px;cursor:pointer;user-select:none;}' +
       '#foyerSchedulerOverlay .ov-chip input{display:none;}' +
@@ -769,6 +769,7 @@
           '</div>'+
           '<div class="ov-col-right">'+
             '<fieldset class="ov-recur" id="ovRecurBox">'+
+              '<div class="ov-field ov-field-heading"><label>'+escapeHTML(getI18nString('repetitionLabel','Repetition'))+'</label></div>'+
               '<div class="ov-form-row ov-freq-row">'+
                 '<div class="ov-freq-group" role="radiogroup" aria-label="'+escapeHTML(getI18nString('freqGroupLabel','Frequency'))+'">'+
                   '<label class="ov-chip"><input type="radio" name="ovFreq" value="SINGLE" checked> '+escapeHTML(getI18nString('freqSingle','Single'))+'</label>'+
@@ -776,20 +777,19 @@
                   '<label class="ov-chip"><input type="radio" name="ovFreq" value="WEEKLY"> '+escapeHTML(getI18nString('freqWeekly','Weekly'))+'</label>'+
                   '<label class="ov-chip"><input type="radio" name="ovFreq" value="MONTHLY"> '+escapeHTML(getI18nString('freqMonthly','Monthly'))+'</label>'+
                 '</div>'+
-                '<div id="ovIntervalWrap" style="margin-left:auto;">'+getI18nString('every','every')+' <input type="number" id="ovInterval" class="small-text" min="1" value="1"/> <span id="ovIntervalUnit">'+getI18nString('unitDay','day(s)')+'</span></div>'+
+                '<div id="ovIntervalWrap" style="">'+getI18nString('every','every')+' <input type="number" id="ovInterval" class="small-text" min="1" value="1"/> <span id="ovIntervalUnit">'+getI18nString('unitDay','day(s)')+'</span></div>'+
               '</div>'+
                             '<div class="ov-form-row ov-weekly ov-hidden" id="ovWeeklyOpts">'+escapeHTML(getI18nString('weekDaysLabel','Days:'))+' '
                 +['MO','TU','WE','TH','FR','SA','SU'].map(function(d){return '<label style="margin-right:6px;"><input type="checkbox" class="ovByDay" value="'+d+'"/> '+d+'</label>';}).join(' ')
               +'</div>'+
               '<div class="ov-form-row ov-monthly ov-hidden" id="ovMonthlyOpts">'
-                +'<label>'+escapeHTML(getI18nString('monthDaysLabel','Month days (e.g. 1,15,31)'))+' <input type="text" id="ovByMonthDay" class="regular-text" placeholder="1,15,31"/></label>'+
+                +'<label>'+escapeHTML(getI18nString('monthDaysLabel','Month days'))+' <input type="text" id="ovByMonthDay" class="regular-text" placeholder="1,15,31"/></label>'+
               '</div>'+
                           '<div class="ov-form-row ov-end-row">'+
                 '<label class="ov-end-opt"><input type="radio" name="ovEndMode" value="never" checked> '+escapeHTML(getI18nString('endNever','Never ends'))+'</label>'+
                 '<label class="ov-end-opt"><input type="radio" name="ovEndMode" value="until"> '+escapeHTML(getI18nString('endUntil','Ends at'))+' <input type="text" id="ovUntil" class="regular-text" placeholder="YYYY-MM-DD HH:mm:ss"/></label>'+
                 '<label class="ov-end-opt"><input type="radio" name="ovEndMode" value="count"> '+escapeHTML(getI18nString('endCount','Ends after'))+' <input type="number" id="ovCount" class="small-text" min="1"/> '+escapeHTML(getI18nString('termsWord','occurrences'))+'</label>'+
               '</div>'+
-              '<div class="ov-rrule" id="ovRRulePreview" aria-live="polite"></div>'+
             '</fieldset>'+
           '</div>'+
         '</div>'+
@@ -904,7 +904,14 @@
       } catch(e){ return ''; }
     }
     function updateRRulePreview(){
-      try{ var el=document.getElementById('ovRRulePreview'); if(!el) return; var s=buildRRuleStringFromUI(); el.textContent = s ? ('RRULE: '+s) : 'RRULE: —'; } catch(e){}
+      try {
+        var s = buildRRuleStringFromUI();
+        if (debugEnabled) {
+          debugLog('[Foyer Scheduler] RRULE:', s || '—');
+        }
+      } catch(err) {
+        if (debugEnabled) { debugWarn('[Foyer Scheduler] RRULE preview error', err); }
+      }
     }
     function parseRRuleUntilToDate(val){
       try{
