@@ -6,13 +6,15 @@ Create slideshows and show them off on any networked display. Hardware not inclu
 
 # Forked and new development
 
-The project form mennolui seemed inactive but we are using the plugin and needed some more fratures:
+The project from mennolui seemed inactive, but we are using the plugin and needed some more features:
 
 * Scheduling of slides in a channel (implemented)
-* Scheduling of more than one channel for a display (implemented)
-* Scheduler for global scheduling for multiple channels on muliple displays (development)
+
+* Global scheduler covering multiple channels and displays, including a monthly list view (implemented)
+* RSS feed slide for external news sources (implemented)
+* QR codes on slides for quick links (implemented)
 * New types of slides (planned)
-* Splited channels for showing two channels on one display (planed)
+* Split channels for showing two channels on one display (planned)
 
 My code is not clean at the moment but it works ;)
 

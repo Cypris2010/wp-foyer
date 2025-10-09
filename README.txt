@@ -2,7 +2,7 @@
 Contributors: mennolui, slimndap
 Tags: digital signage, signage, narrowcasting, slideshow, theater
 Requires at least: 4.1
-Tested up to: 5.7
+Tested up to: 6.8.2
 Stable tag: trunk
 License: GPLv3 or later
 License URI: https://www.gnu.org/licenses/gpl.html
@@ -22,8 +22,9 @@ Create slideshows and show them off on any networked display. Hardware not inclu
 * **Set up slides, channels (slideshows) and displays**.
 * Choose from various Slide formats and Slide backgrounds.
 * Choose slide duration and transition effect.
-* Change the channel on a display when needed, or..
-* Schedule a temporary channel on a display.
+* Change the channel on a display when needed.
+* Schedule channels on displays (temporary or recurring).
+* Manage centralized schedules with recurrence and exceptions across one or many displays.
 
 = Slide formats =
 * **Default**: Displays a background only.
@@ -32,7 +33,9 @@ Create slideshows and show them off on any networked display. Hardware not inclu
 * **Recent posts**: Displays a slide for each recent post.
 * **Event**: Displays title and details of an event, with its featured image as default background (requires Theater for WordPress).
 * **Upcoming events**: Displays a slide for each upcoming event (requires Theater for WordPress).
+* **Calendar**: Displays a monthly calendar of events.
 * **External web page**: Displays a web page to your liking.
+* **RSS feed**: Displays feed entries stacked with QR codes and optional animation.
 * **PDF**: Creates a slide for each page in an uploaded PDF, displaying that page contained within the slide.
 
 = Slide backgrounds =
@@ -40,7 +43,7 @@ Create slideshows and show them off on any networked display. Hardware not inclu
 * **Video**: Displays an uploaded or external video, or a specified fragment, as slide background.
 * **YouTube**: Displays a YouTube video, or a specified fragment, as slide background.
 
-More features, slide formats and slide backgrounds are coming soon. Most notably advanced scheduling of channels and slides.
+Advanced scheduling with recurrence and exceptions is available via Schedules. More formats and backgrounds will continue to be added.
 
 = Features for theaters, music venues, festivals =
 Foyer comes with built-in support for [Theater for WordPress](https://wordpress.org/plugins/theatre/). With Theater & Foyer you can easily publish your events on your website *and* your onsite displays.
@@ -160,24 +163,24 @@ Highlights:
 
 - Recurrence and Exceptions
   - RRULE support (subset): FREQ=DAILY/WEEKLY/MONTHLY, INTERVAL, BYDAY, BYMONTHDAY, UNTIL, COUNT.
-  - EXDATE (Ausschlüsse) und RDATE (zusätzliche Einzeltermine) mit lokaler Zeitzonenbehandlung.
-  - Instanz-Overrides vorbereitet (Kanal/Start/Dauer pro Vorkommnis).
+  - EXDATE and RDATE with local timezone handling.
+  - Instance overrides prepared (channel/start/duration per occurrence).
 
 - Admin-UI
-  - Neuer Editor für zentrale Schedules (General, Timing, RRULE-Builder, Exceptions, Preview).
-  - RRULE-Builder (komfortable Eingabe statt Freitext): Daily/Weekly/Monthly, INTERVAL, BYDAY/BYMONTHDAY, UNTIL/COUNT.
-  - Preview zeigt die nächsten 10 Vorkommnisse.
-  - Strikte Konfliktvalidierung beim Speichern: verhindert Überschneidungen pro Display und zeigt eine Admin-Notice an.
+  - New editor for centralized schedules (General, Timing, RRULE-Builder, Exceptions, Preview).
+  - RRULE-Builder (guided input instead of free text): Daily/Weekly/Monthly, INTERVAL, BYDAY/BYMONTHDAY, UNTIL/COUNT.
+  - Preview shows the next 10 occurrences.
+  - Strict conflict validation on save: prevents overlaps per display and shows an admin notice.
 
 - Migration
-  - Einmalige automatische Migration von foyer_display_schedule → zentrale foyer_schedule (Single-Occurrence), inkl. Zusammenführen identischer Pläne über mehrere Displays.
+  - One-time automatic migration from foyer_display_schedule → centralized foyer_schedule (single-occurrence), including merging identical plans across multiple displays.
 
 - Performance
-  - Transient-Caching für Occurrence-Expansion (pro Schedule+Fenster+Meta-Signatur), reduziert Last in Listenansichten.
+  - Transient caching for occurrence expansion (per schedule+window+meta signature), reducing load in list views.
 
-- Sonstiges
-  - Foyer > Schedules als direkter Untermenüpunkt.
-  - CPT-Berechtigungen so gemappt, dass Standardrollen mit edit_posts Zugriff haben.
+- Misc
+  - Foyer > Schedules as a direct submenu item.
+  - CPT capabilities mapped so standard roles with edit_posts have access.
 
 = 1.9.2 =
 Release Date: Unreleased
@@ -391,6 +394,9 @@ Bug fixes:
 
 
 == Upgrade Notice ==
+= 2.0.0.alpha =
+Major release introducing centralized scheduling with recurrence and exceptions. Read the changelog for important migration notes.
+
 = 1.7.5 =
 Bug fixes and minor enhancements. Check the changelog for full details.
 

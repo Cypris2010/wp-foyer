@@ -194,7 +194,7 @@
       var originalValue = input.value;
       var picker = new window.AirDatepicker(input, {
         timepicker: true,
-        minutesStep: 1,
+        minutesStep: 5,
         secondsStep: 1,
         autoClose: false,
         dateFormat: 'yyyy-MM-dd',
