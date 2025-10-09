@@ -190,6 +190,9 @@ class Foyer_Admin_Scheduler {
             'renderedLabel'    => __( 'Rendered', 'foyer' ),
             'errorLabel'       => __( 'Error', 'foyer' ),
             'todayLabel'       => __( 'Today', 'foyer' ),
+            'monthViewLabel'   => __( 'Month', 'foyer' ),
+            'weekViewLabel'    => __( 'Week', 'foyer' ),
+            'listViewLabel'    => __( 'List', 'foyer' ),
             'clearLabel'       => __( 'Clear', 'foyer' ),
             'timeLabel'        => __( 'Time', 'foyer' ),
         );

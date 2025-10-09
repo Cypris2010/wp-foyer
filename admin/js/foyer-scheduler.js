@@ -381,10 +381,17 @@
         selectable: true,
         scrollTime: '07:00:00',
         events: [],
-        headerToolbar: { start: 'title', center: '', end: 'today prev,next dayGridMonth,timeGridWeek' },
+        headerToolbar: { start: 'title', center: '', end: 'today prev,next dayGridMonth,timeGridWeek,listMonth' },
         views: {
           dayGridMonth: { dayMaxEvents: 3, displayEventEnd: false },
-          timeGridWeek: { slotDuration: '00:30:00', nowIndicator: true, allDaySlot: false, slotMinTime: '00:00:00', scrollTime: '07:00:00' }
+          timeGridWeek: { slotDuration: '00:30:00', nowIndicator: true, allDaySlot: false, slotMinTime: '00:00:00', scrollTime: '07:00:00' },
+          listMonth: {}
+        },
+        buttonText: {
+          today: getI18nString('todayLabel','Today'),
+          dayGridMonth: getI18nString('monthViewLabel','Month'),
+          timeGridWeek: getI18nString('weekViewLabel','Week'),
+          listMonth: getI18nString('listViewLabel','List')
         },
         datesSet: function(info){ try { applyMonthStyling(); scheduleRefetch('datesSet', info.start, info.end); } catch(e){} },
         loading: function(isLoading){ debugLog('[Foyer Scheduler] loading state', { isLoading: !!isLoading }); },
@@ -449,10 +456,12 @@
 
   function applyMonthStyling(){
     try {
-      var type = (ec && typeof ec.getView === 'function' && ec.getView()) ? ec.getView().type : '';
+      var view = (ec && typeof ec.getView === 'function' && ec.getView()) ? ec.getView().type : '';
       if (!calEl) return;
-      if (type === 'dayGridMonth') { calEl.classList.add('foyer-month-view'); }
+      if (view === 'dayGridMonth') { calEl.classList.add('foyer-month-view'); }
       else { calEl.classList.remove('foyer-month-view'); }
+      if (typeof view === 'string' && view.indexOf('list') === 0) { calEl.classList.add('foyer-list-view'); }
+      else { calEl.classList.remove('foyer-list-view'); }
     } catch(e){}
   }
 
@@ -586,11 +595,23 @@
   function scheduleRefetch(trigger, startOpt, endOpt){
     var vr = (startOpt && endOpt) ? { start: startOpt, end: endOpt } : getVisibleRangeFromView();
     if (!vr || !vr.start || !vr.end) return;
+    var viewType = (ec && typeof ec.getView === 'function' && ec.getView()) ? ec.getView().type : '';
+    if (typeof viewType === 'string' && viewType.indexOf('list') === 0) {
+      var anchor = null;
+      try {
+        if (ec && typeof ec.getDate === 'function') {
+          anchor = ec.getDate();
+        }
+      } catch(err){}
+      var base = (anchor instanceof Date) ? anchor : (vr.start instanceof Date ? vr.start : new Date());
+      var monthStart = new Date(base.getFullYear(), base.getMonth(), 1);
+      var monthEnd = new Date(base.getFullYear(), base.getMonth() + 1, 1);
+      vr = { start: monthStart, end: monthEnd };
+    }
     var displays = getSelectedDisplays();
     if (!displays.length){ setCalendarEvents([]); return; }
     var startIso = new Date(vr.start).toISOString();
     var endIso   = new Date(vr.end).toISOString();
-    var viewType = (ec && typeof ec.getView === 'function' && ec.getView()) ? ec.getView().type : '';
     var displaysKey = displays.slice().sort(function(a,b){return a-b;}).join(',');
 
     var force = (trigger === 'create' || trigger === 'update' || trigger === 'delete' || trigger === 'manual');
