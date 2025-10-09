@@ -671,11 +671,15 @@
     var css = ''+
       '#foyerSchedulerOverlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100001;display:flex;align-items:stretch;justify-content:center;will-change:clip-path;-webkit-clip-path:circle(150% at 50% 50%);clip-path:circle(150% at 50% 50%);transition:clip-path .32s ease-in-out,-webkit-clip-path .32s ease-in-out;}'+
       '.air-datepicker{z-index:100010;}'+
-      '#foyerSchedulerOverlay .foyer-ov-panel{background:#fff;width:96vw;height:90vh;margin:auto;box-shadow:0 4px 24px rgba(0,0,0,.3);display:grid;grid-template-rows:auto 1fr;grid-template-columns:1fr;gap:16px;padding:16px;box-sizing:border-box;}'+
-      '#foyerSchedulerOverlay .foyer-ov-top{overflow:auto;padding:0 8px;}'+
-      '#foyerSchedulerOverlay .foyer-ov-bottom{display:grid;grid-template-columns:4fr 1fr;gap:16px;height:100%;overflow:hidden;}'+
-      '#foyerSchedulerOverlay .foyer-ov-channelsWrap{overflow:auto;padding-right:8px;}'+
-      '#foyerSchedulerOverlay .foyer-ov-displaysWrap{overflow:auto;padding-left:8px;}'+
+      '#foyerSchedulerOverlay .foyer-ov-panel{background:#fff;width:96vw;height:90vh;margin:auto;box-shadow:0 4px 24px rgba(0,0,0,.3);display:grid;grid-template-columns:4fr 1fr;grid-template-rows:auto 1fr;gap:16px;padding:16px;box-sizing:border-box;}'+
+      '#foyerSchedulerOverlay .foyer-ov-panel>.foyer-ov-head{grid-column:1/-1;padding:0 8px;}'+
+      '#foyerSchedulerOverlay .foyer-ov-left{display:grid;grid-template-rows:auto 1fr;gap:16px;min-width:0;overflow:hidden;}'+
+      '#foyerSchedulerOverlay .foyer-ov-top{overflow:auto;padding:0 8px;min-height:0;}'+
+      '#foyerSchedulerOverlay .foyer-ov-channelsWrap{position:relative;overflow:auto;padding-right:8px;min-height:0;}'+
+      '#foyerSchedulerOverlay .foyer-ov-channelsWrap::before{content:"";position:absolute;inset:0;background:#f8f9fb;border-radius:6px;border:1px solid #e2e4e7;}'+
+      '#foyerSchedulerOverlay .foyer-ov-channelsWrap > *{position:relative;z-index:1;}'+
+      '#foyerSchedulerOverlay .foyer-ov-channelsWrap .foyer-ov-head{position:sticky;top:0;z-index:2;background:#f8f9fb;padding:12px;margin:0;border-radius:6px 6px 0 0;}'+
+      '#foyerSchedulerOverlay .foyer-ov-displaysWrap{overflow:auto;padding-left:8px;min-width:0;}'+
       '#foyerSchedulerOverlay .ov-datetime-grid .ov-field{flex:1 1 260px;min-width:240px;}'+
       '#foyerSchedulerOverlay .ov-datetime-grid .ov-field input{width:100%;max-width:360px;}'+
       '#foyerSchedulerOverlay .foyer-ov-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}'+
@@ -697,10 +701,10 @@
       '#foyerSchedulerOverlay .foyer-ov-displays .ov-display-item .foyer-display-title{flex:1;}' +
       '#foyerSchedulerOverlay input[type=checkbox].ovDisplay{display:none !important;}' +
       '#foyerSchedulerOverlay #ovSelectAll{display:none !important;}' +
-      '#foyerSchedulerOverlay .foyer-ov-channels{display:grid;gap:12px;grid-template-columns:repeat(2, 1fr);}' +
+      '#foyerSchedulerOverlay .foyer-ov-channels{display:grid;gap:12px;grid-template-columns:repeat(2, 1fr);flex:1 1 auto;min-height:0;padding:0 0 16px 0;padding:2px}' +
       '@media(min-width:1100px){#foyerSchedulerOverlay .foyer-ov-channels{grid-template-columns:repeat(3, 1fr);}}' +
       '@media(min-width:1400px){#foyerSchedulerOverlay .foyer-ov-channels{grid-template-columns:repeat(4, 1fr);}}' +
-      '#foyerSchedulerOverlay .foyer-channel-card{display:block;text-align:left;border:1px solid #ddd;border-radius:4px;overflow:hidden;background:#fafafa;cursor:pointer;}' +
+      '#foyerSchedulerOverlay .foyer-channel-card{display:block;text-align:left;border:1px solid #ddd;border-radius:4px;overflow:hidden;background:#fff;cursor:pointer;}' +
       '#foyerSchedulerOverlay .foyer-channel-card.is-selected{outline:2px solid #2271b1; background:#eef6ff;}' +
       '#foyerSchedulerOverlay .foyer-channel-card__preview{position:relative;width:100%;padding-top:56.25%;background:#e0e0e0;}' +
       '#foyerSchedulerOverlay .foyer-channel-card__preview iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}' +
@@ -747,8 +751,10 @@
     try { wrap.style.webkitClipPath = 'circle(0px at '+ox+'px '+oy+'px)'; } catch(e){}
     try { wrap.style.clipPath = 'circle(0px at '+ox+'px '+oy+'px)'; } catch(e){}
     var panel = document.createElement('div'); panel.className='foyer-ov-panel';
+    var mainHead = document.createElement('div');
+    mainHead.className = 'foyer-ov-head';
+    mainHead.innerHTML = '<h2>'+ escapeHTML(titleText || getI18nString('scheduleFallback','Schedule')) +'</h2><div class="foyer-ov-head-actions"><button type="button" class="button ov-delete-btn" id="ovDelete"><span class="dashicons dashicons-trash" aria-hidden="true"></span></button><button class="button" id="ovCloseBtn">'+escapeHTML(getI18nString('cancel','Cancel'))+'</button><button class="button button-primary" id="ovSave">'+escapeHTML(getI18nString('save','Save'))+'</button></div>';
     var top = document.createElement('section'); top.className='foyer-ov-top'; top.innerHTML = ''+
-      '<div class="foyer-ov-head"><h2>'+ escapeHTML(titleText || getI18nString('scheduleFallback','Schedule')) +'</h2><div class="foyer-ov-head-actions"><button type="button" class="button ov-delete-btn" id="ovDelete"><span class="dashicons dashicons-trash" aria-hidden="true"></span></button><button class="button" id="ovCloseBtn">'+escapeHTML(getI18nString('cancel','Cancel'))+'</button><button class="button button-primary" id="ovSave">'+escapeHTML(getI18nString('save','Save'))+'</button></div></div>'+
       '<div class="ov-form">'+
         '<div class="ov-form-grid">'+
           '<div class="ov-col-left">'+
@@ -785,7 +791,7 @@
           '</div>'+
         '</div>'+
       '</div>';
-    var bottom = document.createElement('div'); bottom.className='foyer-ov-bottom';
+    var leftColumn = document.createElement('div'); leftColumn.className='foyer-ov-left';
     var channelsWrap = document.createElement('section'); channelsWrap.className='foyer-ov-channelsWrap'; channelsWrap.innerHTML = ''+
       '<div class="foyer-ov-head">'
         +'<div class="ov-chan-title" style="display:flex;gap:8px;align-items:center;">'
@@ -805,8 +811,12 @@
       +'</div>'
       +'<div class="foyer-ov-channels" id="ovChannels"></div>';
     var displaysWrap = document.createElement('aside'); displaysWrap.className='foyer-ov-displaysWrap'; displaysWrap.innerHTML = '<div class="foyer-ov-head"><h2>'+escapeHTML(getI18nString('displaysHeading','Displays'))+'</h2></div><div class="foyer-ov-displays" id="ovDisplays"></div>';
-    bottom.appendChild(channelsWrap); bottom.appendChild(displaysWrap);
-    panel.appendChild(top); panel.appendChild(bottom); wrap.appendChild(panel); document.body.appendChild(wrap);
+    leftColumn.appendChild(top);
+    leftColumn.appendChild(channelsWrap);
+    panel.appendChild(mainHead);
+    panel.appendChild(leftColumn);
+    panel.appendChild(displaysWrap);
+    wrap.appendChild(panel); document.body.appendChild(wrap);
     // animate open (expand from origin)
     try {
       requestAnimationFrame(function(){
