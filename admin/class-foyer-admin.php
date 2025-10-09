@@ -28,16 +28,35 @@ class Foyer_Admin {
 		add_action( 'admin_menu', array( __CLASS__, 'admin_menu' ) );
 		// Scheduler page submenu and save handler
 		add_action( 'admin_menu', array( 'Foyer_Admin_Scheduler', 'admin_menu' ) );
+		// Central schedules admin UI
+		add_action( 'add_meta_boxes', array( 'Foyer_Admin_Schedule', 'add_meta_boxes' ) );
+		add_action( 'save_post_foyer_schedule', array( 'Foyer_Admin_Schedule', 'save_schedule' ), 10, 2 );
+		add_action( 'wp_ajax_foyer_schedule_preview', array( 'Foyer_Admin_Schedule', 'ajax_preview' ) );
+		// List table columns for Schedules
+		add_filter( 'manage_edit-foyer_schedule_columns', array( 'Foyer_Admin_Schedule', 'add_list_columns' ) );
+		add_action( 'manage_foyer_schedule_posts_custom_column', array( 'Foyer_Admin_Schedule', 'render_list_columns' ), 10, 2 );
+		add_action( 'admin_menu', array( 'Foyer_Admin_Settings', 'add_menu' ), 11 );
 		add_action( 'admin_post_foyer_save_scheduler', array( 'Foyer_Admin_Scheduler', 'handle_post' ) );
 		add_action( 'admin_post_foyer_apply_scheduler_template', array( 'Foyer_Admin_Scheduler', 'handle_apply_template' ) );
+		add_action( 'admin_init', array( 'Foyer_Admin_Settings', 'register_settings' ) );
+		add_action( 'admin_init', array( 'Foyer_Admin_Settings', 'maybe_redirect_legacy_slug' ), 1 );
 
 		/* Foyer_Admin_Display */
 		add_action( 'admin_enqueue_scripts', array( 'Foyer_Admin_Display', 'localize_scripts' ) );
 		add_action( 'admin_notices', array( 'Foyer_Admin_Display', 'render_notices' ) );
+		add_action( 'load-edit.php', array( 'Foyer_Admin_Display', 'maybe_render_displays_screen' ) );
+		add_filter( 'set-screen-option', array( 'Foyer_Admin_Display', 'handle_screen_option' ), 10, 3 );
 		add_action( 'wp_ajax_foyer_validate_schedule', array( 'Foyer_Admin_Display', 'validate_schedule_over_ajax' ) );
+		// Calendar scheduler AJAX endpoints
+		add_action( 'wp_ajax_foyer_schedules_get_events', array( 'Foyer_Admin_Scheduler', 'ajax_get_events' ) );
+		add_action( 'wp_ajax_foyer_schedules_get_schedule', array( 'Foyer_Admin_Scheduler', 'ajax_get_schedule' ) );
+		add_action( 'wp_ajax_foyer_schedules_create_event', array( 'Foyer_Admin_Scheduler', 'ajax_create_event' ) );
+		add_action( 'wp_ajax_foyer_schedules_update_event', array( 'Foyer_Admin_Scheduler', 'ajax_update_event' ) );
+		add_action( 'wp_ajax_foyer_schedules_delete_event', array( 'Foyer_Admin_Scheduler', 'ajax_delete_event' ) );
 		add_action( 'add_meta_boxes', array( 'Foyer_Admin_Display', 'add_channel_editor_meta_box' ) );
 			// Only use the new multi-entry scheduler list UI
 			add_action( 'add_meta_boxes', array( 'Foyer_Admin_Display', 'add_channel_scheduler_list_meta_box' ) );
+		add_action( 'add_meta_boxes', array( 'Foyer_Admin_Display', 'add_display_settings_meta_box' ), 40 );
 		// Default sort Displays list by title ASC
 		add_action( 'pre_get_posts', array( 'Foyer_Admin_Display', 'set_default_admin_order' ) );
 		add_action( 'save_post', array( 'Foyer_Admin_Display', 'save_display' ) );
@@ -47,9 +66,10 @@ class Foyer_Admin {
 		add_action( 'admin_enqueue_scripts', array( 'Foyer_Admin_Channel', 'localize_scripts' ) );
 		// Order favorites first in Channels list via SQL clause filter
 		add_filter( 'posts_clauses', array( 'Foyer_Admin_Channel', 'order_favorites_first_clause' ), 10, 2 );
+		add_action( 'add_meta_boxes', array( 'Foyer_Admin_Channel', 'prioritize_publish_meta_box' ), 15 );
 		add_action( 'add_meta_boxes', array( 'Foyer_Admin_Channel', 'add_slides_editor_meta_box' ), 20 );
-		add_action( 'add_meta_boxes', array( 'Foyer_Admin_Channel', 'add_slides_settings_meta_box' ), 40 );
-        // New: Channel settings (sidebar) meta box
+		add_action( 'add_meta_boxes', array( 'Foyer_Admin_Channel', 'add_slide_preview_meta_box' ), 25 );
+		// Channel settings (sidebar) meta box
 		add_action( 'add_meta_boxes', array( 'Foyer_Admin_Channel', 'add_channel_settings_meta_box' ), 30 );
 		add_action( 'save_post', array( 'Foyer_Admin_Channel', 'save_channel' ) );
 			add_action( 'wp_ajax_foyer_slides_editor_add_slide', array( 'Foyer_Admin_Channel', 'add_slide_over_ajax' ) );
@@ -103,7 +123,7 @@ class Foyer_Admin {
 			'dashicons-welcome-view-site',
 			31
 		);
-	}
+			}
 
 	/**
 	 * Enqueues the JavaScript for the admin area.
@@ -153,10 +173,11 @@ class Foyer_Admin {
 		/**
 		 * Admin area functionality for display, channel and slide.
 		 */
-		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-display.php';
-		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-channel.php';
-		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide.php';
-		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-preview.php';
+	require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-display.php';
+	require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-channel.php';
+	require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide.php';
+	require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-preview.php';
+	require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-settings.php';
 
 		/**
 		 * Admin area functionality for specific slide backgrounds.
@@ -173,9 +194,13 @@ class Foyer_Admin {
 		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-post.php';
 		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-production.php';
 		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-recent-posts.php';
+		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-rss.php';
+		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-calendar.php';
 		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-text.php';
         require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-upcoming-productions.php';
 		// Scheduler admin page
-		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-scheduler.php';
+	require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-scheduler.php';
+		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-schedule.php';
+
 	}
 }

@@ -147,6 +147,104 @@ class Foyer_Public {
 
 		wp_enqueue_script( Foyer::get_plugin_name() );
 
+		$progress_script = <<<'JS'
+( function( $ ) {
+	var defaultDuration = 5;
+	var queueFrame = typeof window.requestAnimationFrame === 'function' ? function( callback ) {
+		return window.requestAnimationFrame( callback );
+	} : function( callback ) {
+		return window.setTimeout( callback, 16 );
+	};
+
+	function resetProgress( $slide ) {
+		var $bar = $slide.children( '.foyer-slide-progress' ).children( '.foyer-slide-progress-bar' );
+		if ( $bar.length ) {
+			$bar.css( { transition: 'none', transform: 'scaleX(0)' } );
+		}
+	}
+
+	function ensureProgressBars( $scope, shouldReset ) {
+		if ( !$scope || !$scope.length ) {
+			return;
+		}
+
+		var $slides = $scope;
+		if ( !$slides.is( foyer_slide_selector ) ) {
+			$slides = $scope.find( foyer_slide_selector );
+		}
+
+		$slides.each( function() {
+			var $slide = $( this );
+			if ( !$slide.children( '.foyer-slide-progress' ).length ) {
+				$slide.prepend( '<div class="foyer-slide-progress" aria-hidden="true"><div class="foyer-slide-progress-bar"></div></div>' );
+			}
+			if ( shouldReset ) {
+				resetProgress( $slide );
+			}
+		} );
+	}
+
+	function startProgress( $slide ) {
+		var duration = parseFloat( $slide.data( 'foyer-slide-duration' ) );
+		if ( !( duration > 0 ) ) {
+			duration = defaultDuration;
+		}
+
+		var $bar = $slide.children( '.foyer-slide-progress' ).children( '.foyer-slide-progress-bar' );
+		if ( !$bar.length ) {
+			return;
+		}
+
+		$bar.css( { transition: 'none', transform: 'scaleX(0)' } );
+		queueFrame( function() {
+			queueFrame( function() {
+				$bar.css( { transition: 'transform ' + duration + 's linear', transform: 'scaleX(1)' } );
+			} );
+		} );
+	}
+
+	function bindEvents() {
+		$( 'body' ).on( 'slide:becoming-active', foyer_slide_selector, function() {
+			startProgress( $( this ) );
+		} );
+
+		$( 'body' ).on( 'slide:leaving-active', foyer_slide_selector, function() {
+			resetProgress( $( this ) );
+		} );
+
+		$( foyer_slides_selector ).on( 'slides:loaded-new-slide-group', function( event, groupClass ) {
+			var $target = groupClass ? $( this ).children( '.' + groupClass ) : $( this );
+			ensureProgressBars( $target, true );
+		} );
+
+		$( 'body' ).on( 'channel:replaced-channel', foyer_channel_selector, function() {
+			ensureProgressBars( $( this ), true );
+		} );
+	}
+
+	$( function() {
+		if ( typeof foyer_slide_selector === 'undefined' || typeof foyer_slides_selector === 'undefined' ) {
+			return;
+		}
+
+		var $display = $( foyer_display_selector );
+		if ( $display.length && $display.first().hasClass( 'foyer-display-progress-disabled' ) ) {
+			return;
+		}
+
+		ensureProgressBars( $( foyer_slides_selector ), true );
+		bindEvents();
+
+		var $active = $( foyer_slide_selector + '.active' );
+		if ( $active.length ) {
+			startProgress( $active );
+		}
+	} );
+} )( jQuery );
+JS;
+
+		wp_add_inline_script( Foyer::get_plugin_name(), $progress_script );
+
 		/*
 		 * Runs after the Foyer public scripts are enqueued.
 		 *

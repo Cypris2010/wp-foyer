@@ -3,3 +3,4 @@
 // @codekit-prepend "foyer-public-slide-background-video.js";
 // @codekit-prepend "foyer-public-slide-background-html5-video.js";
 // @codekit-prepend "foyer-public-slides-ticker.js";
+// @codekit-prepend "foyer-public-slide-format-rss-feed.js";

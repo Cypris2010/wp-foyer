@@ -2,7 +2,7 @@
 Contributors: mennolui, slimndap
 Tags: digital signage, signage, narrowcasting, slideshow, theater
 Requires at least: 4.1
-Tested up to: 5.7
+Tested up to: 6.8.2
 Stable tag: trunk
 License: GPLv3 or later
 License URI: https://www.gnu.org/licenses/gpl.html
@@ -22,8 +22,9 @@ Create slideshows and show them off on any networked display. Hardware not inclu
 * **Set up slides, channels (slideshows) and displays**.
 * Choose from various Slide formats and Slide backgrounds.
 * Choose slide duration and transition effect.
-* Change the channel on a display when needed, or..
-* Schedule a temporary channel on a display.
+* Change the channel on a display when needed.
+* Schedule channels on displays (temporary or recurring).
+* Manage centralized schedules with recurrence and exceptions across one or many displays.
 
 = Slide formats =
 * **Default**: Displays a background only.
@@ -32,7 +33,9 @@ Create slideshows and show them off on any networked display. Hardware not inclu
 * **Recent posts**: Displays a slide for each recent post.
 * **Event**: Displays title and details of an event, with its featured image as default background (requires Theater for WordPress).
 * **Upcoming events**: Displays a slide for each upcoming event (requires Theater for WordPress).
+* **Calendar**: Displays a monthly calendar of events.
 * **External web page**: Displays a web page to your liking.
+* **RSS feed**: Displays feed entries stacked with QR codes and optional animation.
 * **PDF**: Creates a slide for each page in an uploaded PDF, displaying that page contained within the slide.
 
 = Slide backgrounds =
@@ -40,7 +43,7 @@ Create slideshows and show them off on any networked display. Hardware not inclu
 * **Video**: Displays an uploaded or external video, or a specified fragment, as slide background.
 * **YouTube**: Displays a YouTube video, or a specified fragment, as slide background.
 
-More features, slide formats and slide backgrounds are coming soon. Most notably advanced scheduling of channels and slides.
+Advanced scheduling with recurrence and exceptions is available via Schedules. More formats and backgrounds will continue to be added.
 
 = Features for theaters, music venues, festivals =
 Foyer comes with built-in support for [Theater for WordPress](https://wordpress.org/plugins/theatre/). With Theater & Foyer you can easily publish your events on your website *and* your onsite displays.
@@ -146,6 +149,113 @@ Yes, but your cache settings might need some tweaking. Your display loads new co
 Settings for W3 Total Cache: Add `/foyer/*` on a new line under Performance > Page Cache > Never cache the following pages.
 
 == Changelog ==
+
+= 2.0.0.alpha =
+Release Date: Unreleased
+
+Major release introducing centralized scheduling with recurrence and exceptions.
+
+Highlights:
+
+- Centralized Schedules (Single Source of Truth)
+  - New CPT “Schedules” under Foyer > Schedules manages channel plans for multiple displays.
+  - Displays no longer store their own schedule entries; legacy per-display entries are migrated automatically.
+
+- Recurrence and Exceptions
+  - RRULE support (subset): FREQ=DAILY/WEEKLY/MONTHLY, INTERVAL, BYDAY, BYMONTHDAY, UNTIL, COUNT.
+  - EXDATE and RDATE with local timezone handling.
+  - Instance overrides prepared (channel/start/duration per occurrence).
+
+- Admin-UI
+  - New editor for centralized schedules (General, Timing, RRULE-Builder, Exceptions, Preview).
+  - RRULE-Builder (guided input instead of free text): Daily/Weekly/Monthly, INTERVAL, BYDAY/BYMONTHDAY, UNTIL/COUNT.
+  - Preview shows the next 10 occurrences.
+  - Strict conflict validation on save: prevents overlaps per display and shows an admin notice.
+
+- Migration
+  - One-time automatic migration from foyer_display_schedule → centralized foyer_schedule (single-occurrence), including merging identical plans across multiple displays.
+
+- Performance
+  - Transient caching for occurrence expansion (per schedule+window+meta signature), reducing load in list views.
+
+- Misc
+  - Foyer > Schedules as a direct submenu item.
+  - CPT capabilities mapped so standard roles with edit_posts have access.
+
+= 1.9.2 =
+Release Date: Unreleased
+
+Bug fixes:
+
+* Added an explicit **Admin datetime picker format** setting (defaults to `Y-m-d H:i`) so site owners can keep a purely numeric backend format while still using localized display strings elsewhere.
+* All admin pickers (display scheduler, template scheduler, channel slide windows) now render and parse using the picker format, eliminating the “1899” fallback for localized month names.
+* Existing schedules are normalized on load: previous strings are converted to UTC timestamps so you keep full compatibility while benefiting from the new format.
+* JavaScript diagnostics now log mismatched values vs. picker format, helping administrators spot misconfigured settings quickly.
+* RSS feed slides now store their zoom animation preference reliably, so per-slide overrides persist instead of reverting to the global setting.
+* Applying a schedule template now keeps the existing display plan intact, only appending non-conflicting entries and surfacing clashes instead of wiping the display’s full schedule.
+* Scheduler datetime pickers share the same parsing helpers as the display editor, so editing an entry no longer resets the picker to “1899” when localized dates are in use.
+* Saving a planned channel preserves the exact times that were entered by respecting the site timezone, avoiding the previous +2 hour drift.
+
+= 1.9 =
+Release Date: Unreleased
+
+Enhancements:
+
+* QR codes on Text slides are now rendered server-side as crisp inline SVG with caching and configurable error correction levels (1.9.0).
+* Bundled lightweight QR libraries so QR generation works on modern PHP versions while still falling back to phpqrcode when needed (1.9.0).
+* Confirmed full compatibility with PHP 8.4 and WordPress 6.8.2 so you can safely run Foyer on current hosting stacks (1.9.0).
+* Added a dedicated **RSS feed** slide format that stacks feed entries, auto-generates QR codes for each post, supports configurable caching and lets operators disable the feed title per slide (1.9.1).
+* RSS feed slides now feature a gentle background zoom animation and matching light text tiles/QR panels to align with the Text slide aesthetics (1.9.1).
+
+Bug fixes:
+
+* Added fallbacks for the removed Serializable interface in PHP 8.4 and ensured QR code generation keeps working on legacy PHP installs (1.9.0).
+* Unified slide content spacing so paragraphs no longer introduce a top margin within text blocks across all slide formats (1.9.1).
+* Ensure the very first RSS entry animates the background zoom immediately and no longer snaps back at slide handover (1.9.1).
+
+Hey developers!:
+
+* Introduced the `Foyer_QR::svg()` helper plus PSR-4 autoload shims for chillerlan/php-qrcode, making custom QR integrations easier without Composer (1.9.0).
+
+= 1.8 =
+Release Date: Unreleased
+
+Enhancements:
+
+* Channels can now be marked as favorites, feature a star column in the list table and default to showing favorites first (1.8.0).
+* Channel editors gained preview ratio controls and richer slide preview cards that can be toggled between 9:16 and 16:9 (1.8.1).
+* Slide availability windows now surface visual status badges in the editor so you immediately see which slides are active, upcoming or expired (1.8.0).
+* The Scheduler admin screen adds conflict detection, reusable templates and timezone-aware parsing before applying updates to one or many displays (1.8.0).
+* Displays can show an opt-in progress timer whose bar height and styling were refreshed to remain visible from a distance (1.8.0).
+* The Displays list table now defaults to sorting alphabetically, matching how operators expect to find their screens (1.8.1).
+
+Bug fixes:
+
+* Schedule saves now validate overlapping entries and normalise dates using the site timezone to prevent displays from switching at the wrong moment (1.8.0).
+* Channel slide lists remain sortable and Add buttons stay disabled after an AJAX insert to avoid duplicate queueing (1.8.1).
+
+Hey developers!:
+
+* Added helper methods such as `Foyer_Channels::get_favorites()` plus a reusable `Foyer_Admin_Channel::get_slide_preview_html()` renderer for custom dashboards (1.8.0, 1.8.1).
+* New AJAX endpoints (`foyer_channel_toggle_favorite`, `foyer_channel_set_slide_window`, `foyer_validate_schedule`) allow extensions to integrate more deeply with scheduling and channel curation (1.8.0).
+
+= 1.7.6 =
+Release Date: Unreleased
+
+Enhancements:
+
+* Redesigned the per-display schedule editor into a sortable table with status highlighting, bulk actions and inline add/remove controls (1.7.6).
+* Added AJAX-powered per-slide show/hide windows so channels can plan slides for specific date ranges and have the front-end hide out-of-window slides automatically (1.7.6).
+* Slide and channel selectors gained instant search, column sorting, pagination controls and better previews to speed up curation (1.7.6).
+
+Bug fixes:
+
+* Added pre-save validation and helpful admin notices when schedule rows overlap instead of silently overwriting them (1.7.6).
+* Fixed regressions with WordPress media integration, datetime picker behaviour and removed the unfinished Instagram format to prevent admin fatals (1.7.6).
+
+Hey developers!:
+
+* Introduced the Scheduler submenu and `foyer_channel_slide_windows` meta helpers, laying the groundwork for custom scheduling tooling (1.7.6).
 
 = 1.7 =
 Release Date: November 15, 2018
@@ -284,6 +394,9 @@ Bug fixes:
 
 
 == Upgrade Notice ==
+= 2.0.0.alpha =
+Major release introducing centralized scheduling with recurrence and exceptions. Read the changelog for important migration notes.
+
 = 1.7.5 =
 Bug fixes and minor enhancements. Check the changelog for full details.
 
@@ -379,4 +492,3 @@ Added a PDF slide format. Creates a slide for each page in an uploaded PDF.
 
 = 1.0.1 =
 Improved code security: Sanitized and validated all user input, and escaped and sanitized the output of the plugin.
-

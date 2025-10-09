@@ -4,8 +4,19 @@ A free Digital Signage / Narrowcasting plugin for WordPress.
 
 Create slideshows and show them off on any networked display. Hardware not included :-)
 
-**Check out this demo sign:**
-[http://demo.foyer.tv](http://demo.foyer.tv)
+# Forked and new development
+
+The project from mennolui seemed inactive, but we are using the plugin and needed some more features:
+
+* Scheduling of slides in a channel (implemented)
+
+* Global scheduler covering multiple channels and displays, including a monthly list view (implemented)
+* RSS feed slide for external news sources (implemented)
+* QR codes on slides for quick links (implemented)
+* New types of slides (planned)
+* Split channels for showing two channels on one display (planned)
+
+My code is not clean at the moment but it works ;)
 
 ## Features
 
@@ -17,6 +28,19 @@ Create slideshows and show them off on any networked display. Hardware not inclu
 ## Features for theaters, music venues, festivals
 
 Foyer comes with build in support for the [Theater for WordPress plugin](https://wordpress.org/plugins/theatre/). With Theater & Foyer you can easily publish your events on your website, and showcase them on your onsite displays.
+
+
+**Check out this demo sign:**
+[http://demo.foyer.tv](http://demo.foyer.tv) (This demo is for the 1.7 realese of mennolui)
+
+## Third-party components
+
+This project bundles the following external libraries:
+
+* EventCalendar v4.6.0 by Viktor Kurko – MIT License (https://github.com/vkurko/calendar)
+* Air Datepicker v3.5.1 by 101digital / Alexander Chernyaev (t1m0n) – MIT License (https://air-datepicker.com)
+
+
 
 ## Installation, FAQ & more
 

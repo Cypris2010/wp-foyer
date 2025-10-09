@@ -1,0 +1,107 @@
+/* Scheduler calendar layout and sidebar styles */
+
+#foyerSchedulesCalendar.foyer-month-view .ec .ec-event,
+#foyerSchedulesCalendar.foyer-month-view .ec .ec-event .ec-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#foyerSchedulesCalendar.foyer-month-view .ec .ec-event {
+  line-height: 20px;
+  max-height: 20px;
+}
+#foyerSchedulesCalendar.foyer-month-view .ec .ec-day {
+  min-height: 110px;
+  overflow: hidden;
+}
+#foyerSchedulesCalendar { box-sizing: border-box; }
+#foyerSchedulesCalendar > .ec { padding: 12px; }
+#foyer-cal-main { min-height: 800px !important; }
+#foyerSchedulesCalendar { min-height: 800px !important; }
+#foyerSchedulesCalendar .ec .ec-body { max-height: 800px; overflow-y: auto; }
+#foyer-cal-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 800px;
+  box-sizing: border-box;
+}
+#foyer-cal-sidebar .inside {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+#foyerCalDisplays {
+  flex: 1 1 auto;
+  max-height: none;
+  min-height: 0;
+}
+
+/* Event header with display swatches */
+#foyerSchedulesCalendar .ec .foyer-ev-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+#foyerSchedulesCalendar .ec .foyer-ev-swatches {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+#foyerSchedulesCalendar .ec .foyer-ev-swatches .foyer-display-swatch {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15);
+}
+
+/* Make calendar events background white (override library defaults) */
+#foyerSchedulesCalendar .ec .ec-event {
+  background-color: #fff !important;
+  color: #1d2327;
+  border: 1px solid #ccd0d4;
+}
+#foyerSchedulesCalendar.foyer-month-view .ec .ec-event {
+  background-color: #fff !important;
+}
+#foyerSchedulesCalendar .ec .ec-event .ec-title,
+#foyerSchedulesCalendar .ec .ec-event .ec-time {
+  color: inherit;
+}
+#foyerSchedulesCalendar .ec .ec-event:hover {
+  filter: brightness(0.98);
+}
+/* In month view keep swatches compact without extra gap */
+#foyerSchedulesCalendar.foyer-month-view .ec .foyer-ev-head {
+  margin-bottom: 0;
+}
+
+/* Display selector styling */
+#foyer-cal-sidebar .foyer-display-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  margin: 4px 0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease;
+  border: 1px solid transparent;
+}
+#foyer-cal-sidebar .foyer-display-item:hover { background: #f6f7f7; }
+#foyer-cal-sidebar .foyer-display-item.is-selected { border-color: rgba(0,0,0,.1); }
+#foyer-cal-sidebar .foyer-display-item .foyer-display-swatch { display:inline-block; width:12px; height:12px; border:1px solid #999; border-radius:2px; }
+#foyer-cal-sidebar .foyer-display-item .foyer-display-title { flex:1; }
+#foyer-cal-sidebar .foyer-display-item input.foyerCalDisplay { display:none; }
+
+/* Select-all swatch pattern */
+#foyer-cal-sidebar .foyer-select-all .foyer-display-swatch {
+  background: repeating-linear-gradient(45deg, #bbb, #bbb 4px, #dedede 4px, #dedede 8px);
+  border-color: #aaa;
+}
+#foyerCalSelectAll { display: none; }
+#foyerCalSelectAllRow { cursor: pointer; }
