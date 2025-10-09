@@ -1134,6 +1134,12 @@
     // State for search/pagination
     if (!window.__ovChanState) { window.__ovChanState = { query: '', page: 1, perPage: 12, sorted: null }; }
     var state = window.__ovChanState;
+    var selectedKey = (__ovSelectedChannelId !== null && __ovSelectedChannelId !== undefined) ? String(__ovSelectedChannelId) : '';
+    if (state.sortedSelectedId !== selectedKey) {
+      state.sorted = null;
+      state.sortedSelectedId = selectedKey;
+      state.page = 1;
+    }
 
     function getSortedChannels(){
       var arr = Array.isArray(foyerCalChannels) ? foyerCalChannels.slice() : [];
@@ -1147,6 +1153,12 @@
         var tb = String(b && b.title ? b.title : '').toLowerCase();
         if (ta < tb) return -1; if (ta > tb) return 1; return 0;
       });
+      if (selectedKey) {
+        var idx = arr.findIndex(function(item){ return String(item && item.id) === selectedKey; });
+        if (idx > 0) {
+          arr.unshift(arr.splice(idx, 1)[0]);
+        }
+      }
       return arr;
     }
     function filterChannels(chans, q){
