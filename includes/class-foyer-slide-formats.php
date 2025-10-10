@@ -98,6 +98,36 @@ class Foyer_Slide_Formats {
 	}
 
 	/**
+	 * Adds the Teacher Dashboard slide format.
+	 *
+	 * @since	1.?.?
+	 *
+	 * @param 	array	$slide_formats	The current slide formats.
+	 * @return	array					The slide formats with the Teacher Dashboard slide format added.
+	 */
+	static function add_teacher_dashboard_slide_format( $slide_formats ) {
+
+		$slide_format_backgrounds = array( 'default' );
+
+		/**
+		 * Filter available slide backgrounds for this slide format.
+		 *
+		 * @since	1.?.?
+		 * @param	array	$slide_format_backgrounds	The currently available slide backgrounds for this slide format.
+		 */
+		$slide_format_backgrounds = apply_filters( 'foyer/slides/backgrounds/format=teacher-dashboard', $slide_format_backgrounds );
+
+		$slide_formats['teacher-dashboard'] = array(
+			'title' => _x( 'Lehrerübersicht', 'slide-format', 'foyer' ),
+			'description' => __( 'Zeigt eine WebUntis Lehrerübersicht mit auswählbaren Lehrern.', 'foyer' ),
+			'meta_box' => array( 'Foyer_Admin_Slide_Format_Teacher_Dashboard', 'slide_meta_box' ),
+			'save_post' => array( 'Foyer_Admin_Slide_Format_Teacher_Dashboard', 'save_slide' ),
+			'slide_backgrounds' => $slide_format_backgrounds,
+		);
+		return $slide_formats;
+	}
+
+	/**
 	 * Adds the PDF slide format.
 	 *
 	 * @since	1.1.0

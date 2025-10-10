@@ -198,6 +198,7 @@ class Foyer_Admin {
 		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-pdf.php';
 		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-post.php';
 		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-production.php';
+		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-teacher-dashboard.php';
 		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-recent-posts.php';
 		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-rss.php';
 		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-calendar.php';

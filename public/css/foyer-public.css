@@ -159,6 +159,301 @@ body.single-foyer_slide:not(.custom-background-image):after {
   transform: scaleX(0);
   transition: none;
 }
+
+/* Teacher dashboard slide */
+.foyer-slide-teacher-dashboard {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: stretch;
+      -ms-flex-align: stretch;
+          align-items: stretch;
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard {
+  --gap: 12px;
+  --tile-radius: 16px;
+  --tile-padding: 14px;
+  --base-font: 18px;
+  --dashboard-bg: #000;
+  --dashboard-foreground: #111;
+  --tile-bg: #fff;
+  --tile-text: #111;
+  --tile-border: rgba(0, 0, 0, 0.08);
+  --overlay-bg: rgba(0, 0, 0, 0.6);
+  --overlay-text: #fff;
+  --overlay-box-bg: rgba(30, 30, 30, 0.9);
+  --overlay-box-heading: #fff;
+  --status-gone-bg: gold;
+  --status-gone-text: #1a1a1a;
+  --status-nodata-bg: gray;
+  --status-nodata-text: #fff;
+  --status-irregular-bg: green;
+  --status-irregular-text: #fff;
+  --status-none-bg: var(--tile-bg);
+  --status-none-text: var(--tile-text);
+  --status-cancelled-bg: red;
+  --status-cancelled-text: #fff;
+  --status-future-bg: #f2f4f7;
+  --status-future-text: #111;
+  position: relative;
+  z-index: 2;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  padding: var(--gap);
+  background: var(--dashboard-bg);
+  color: var(--dashboard-foreground);
+  overflow: hidden;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+      -ms-flex-direction: column;
+          flex-direction: column;
+  gap: var(--gap);
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard--light {
+  --dashboard-bg: #f8fafc;
+  --dashboard-foreground: #0f172a;
+  --tile-bg: #fff;
+  --tile-text: #0f172a;
+  --tile-border: rgba(15, 23, 42, 0.12);
+  --overlay-bg: rgba(255, 255, 255, 0.92);
+  --overlay-text: #0f172a;
+  --overlay-box-bg: rgba(255, 255, 255, 0.98);
+  --overlay-box-heading: #0f172a;
+  --status-gone-bg: #fde68a;
+  --status-gone-text: #1f2937;
+  --status-nodata-bg: #e2e8f0;
+  --status-nodata-text: #1f2937;
+  --status-irregular-bg: #bbf7d0;
+  --status-irregular-text: #1f2937;
+  --status-none-bg: #ffffff;
+  --status-none-text: #0f172a;
+  --status-cancelled-bg: #fecdd3;
+  --status-cancelled-text: #1f2937;
+  --status-future-bg: #e2e8f0;
+  --status-future-text: #0f172a;
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard--dark {
+  --dashboard-bg: #000;
+  --dashboard-foreground: #d0d5dd;
+  --tile-bg: #fff;
+  --tile-text: #111;
+  --tile-border: rgba(0, 0, 0, 0.08);
+  --overlay-bg: rgba(0, 0, 0, 0.6);
+  --overlay-text: #fff;
+  --overlay-box-bg: rgba(30, 30, 30, 0.9);
+  --overlay-box-heading: #fff;
+  --status-gone-bg: gold;
+  --status-gone-text: #1a1a1a;
+  --status-nodata-bg: gray;
+  --status-nodata-text: #fff;
+  --status-irregular-bg: green;
+  --status-irregular-text: #fff;
+  --status-none-bg: #fff;
+  --status-none-text: #111;
+  --status-cancelled-bg: red;
+  --status-cancelled-text: #fff;
+  --status-future-bg: #f2f4f7;
+  --status-future-text: #111;
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__grid {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-auto-rows: 1fr;
+  gap: var(--gap);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  -webkit-box-flex: 1;
+      -ms-flex: 1 1 auto;
+          flex: 1 1 auto;
+  min-height: 0;
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__legend {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-pack: start;
+      -ms-flex-pack: start;
+          justify-content: flex-start;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  -ms-flex-wrap: wrap;
+      flex-wrap: wrap;
+  gap: 8px;
+  font-size: calc(var(--base-font) * 0.7);
+  color: var(--dashboard-foreground);
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__legend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--tile-border);
+  background: var(--tile-bg);
+  color: var(--tile-text);
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__legend-chip.is-active {
+  border-color: currentColor;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__legend-chip.is-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__legend-chip:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__legend-chip[data-status="gone"] {
+  background: var(--status-gone-bg);
+  color: var(--status-gone-text);
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__legend-chip[data-status="gone"] .foyer-teacher-dashboard__legend-swatch {
+  background: var(--status-gone-bg);
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__legend-chip[data-status="nodata"] {
+  background: var(--status-nodata-bg);
+  color: var(--status-nodata-text);
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__legend-chip[data-status="nodata"] .foyer-teacher-dashboard__legend-swatch {
+  background: var(--status-nodata-bg);
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__legend-chip[data-status="irregular"] {
+  background: var(--status-irregular-bg);
+  color: var(--status-irregular-text);
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__legend-chip[data-status="irregular"] .foyer-teacher-dashboard__legend-swatch {
+  background: var(--status-irregular-bg);
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__legend-chip[data-status="none"] {
+  background: var(--status-none-bg);
+  color: var(--status-none-text);
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__legend-chip[data-status="none"] .foyer-teacher-dashboard__legend-swatch {
+  background: var(--status-none-bg);
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__legend-chip[data-status="cancelled"] {
+  background: var(--status-cancelled-bg);
+  color: var(--status-cancelled-text);
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__legend-chip[data-status="cancelled"] .foyer-teacher-dashboard__legend-swatch {
+  background: var(--status-cancelled-bg);
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__legend-count {
+  font-weight: 700;
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__error {
+  position: absolute;
+  inset: 0;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-pack: center;
+      -ms-flex-pack: center;
+          justify-content: center;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  padding: 24px;
+  background: var(--overlay-bg);
+  color: var(--overlay-text);
+  text-align: center;
+  z-index: 3;
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__error[hidden] {
+  display: none !important;
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__error-box {
+  background: var(--overlay-box-bg);
+  padding: 16px 20px;
+  border-radius: 12px;
+  max-width: 720px;
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__error-box h3 {
+  margin: 0 0 8px;
+  font-size: 1.2rem;
+  color: var(--overlay-box-heading);
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__error-msg {
+  margin: 0;
+  font-size: 1rem;
+  opacity: 0.85;
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__tile {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+      -ms-flex-direction: column;
+          flex-direction: column;
+  -webkit-box-pack: center;
+      -ms-flex-pack: center;
+          justify-content: center;
+  gap: 4px;
+  padding: var(--tile-padding);
+  border-radius: var(--tile-radius);
+  border: 1px solid var(--tile-border);
+  -webkit-box-shadow: 0 1px 2px rgba(0, 0, 0, 0.07);
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.07);
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--base-font);
+  line-height: 1.15;
+  background: var(--tile-bg);
+  color: var(--tile-text);
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__tile > div {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.foyer-slide-teacher-dashboard .foyer-teacher-dashboard__tile .ln1 {
+  font-weight: 700;
+  font-size: calc(var(--base-font) * 1.1);
+}
+.foyer-slide-teacher-dashboard .bg-gone {
+  background: var(--status-gone-bg);
+  color: var(--status-gone-text);
+}
+.foyer-slide-teacher-dashboard .bg-nodata {
+  background: var(--status-nodata-bg);
+  color: var(--status-nodata-text);
+}
+.foyer-slide-teacher-dashboard .bg-irregular {
+  background: var(--status-irregular-bg);
+  color: var(--status-irregular-text);
+}
+.foyer-slide-teacher-dashboard .bg-none {
+  background: var(--status-none-bg);
+  color: var(--status-none-text);
+}
+.foyer-slide-teacher-dashboard .bg-cancelled {
+  background: var(--status-cancelled-bg);
+  color: var(--status-cancelled-text);
+}
+.foyer-slide-teacher-dashboard .bg-future {
+  background: var(--status-future-bg);
+  color: var(--status-future-text);
+}
 .foyer-transition-fade .foyer-slides {
   position: relative;
   overflow: hidden;
