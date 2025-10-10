@@ -161,12 +161,18 @@ class Foyer {
 		/* Central schedules API */
 		require_once FOYER_PLUGIN_PATH . 'includes/class-foyer-schedules.php';
 
+		/* Login redirect handler */
+		require_once FOYER_PLUGIN_PATH . 'includes/class-foyer-login.php';
+
 		/**
 		 * ------ Admin ------
 		 */
 
 		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin.php';
 		Foyer_Admin::init();
+
+		// Initialize login redirect handling
+		Foyer_Login::init();
 
 		/**
 		 * ------ Public ------

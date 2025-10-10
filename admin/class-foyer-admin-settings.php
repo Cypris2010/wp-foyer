@@ -36,6 +36,11 @@ class Foyer_Admin_Settings {
 	const OPTION_SCHEDULER_DEBUG = 'foyer_scheduler_enable_debug';
 
 	/**
+	 * Option name used to enable redirect to Displays after login.
+	 */
+	const OPTION_LOGIN_REDIRECT = 'foyer_login_redirect_to_displays';
+
+	/**
 	 * Settings API option group identifier.
 	 */
 	const OPTION_GROUP = 'foyer_settings';
@@ -94,6 +99,16 @@ class Foyer_Admin_Settings {
 			)
 		);
 
+		register_setting(
+			self::OPTION_GROUP,
+			self::OPTION_LOGIN_REDIRECT,
+			array(
+				'type' => 'boolean',
+				'sanitize_callback' => array( __CLASS__, 'sanitize_checkbox' ),
+				'default' => 0,
+			)
+		);
+
 		add_settings_section(
 			'foyer_settings_general',
 			__( 'General', 'foyer' ),
@@ -121,6 +136,14 @@ class Foyer_Admin_Settings {
 			self::OPTION_SCHEDULER_DEBUG,
 			__( 'Enable scheduler debug logs', 'foyer' ),
 			array( __CLASS__, 'render_scheduler_debug_field' ),
+			self::SETTINGS_PAGE,
+			'foyer_settings_general'
+		);
+
+		add_settings_field(
+			self::OPTION_LOGIN_REDIRECT,
+			__( 'Redirect after login to Displays', 'foyer' ),
+			array( __CLASS__, 'render_login_redirect_field' ),
 			self::SETTINGS_PAGE,
 			'foyer_settings_general'
 		);
@@ -201,6 +224,24 @@ class Foyer_Admin_Settings {
 		</label>
 		<p class="description">
 			<?php esc_html_e( 'Enable only while troubleshooting the scheduler overlay.', 'foyer' ); ?>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Renders the login redirect checkbox field.
+	 *
+	 * @return void
+	 */
+	public static function render_login_redirect_field() {
+		$enabled = (bool) get_option( self::OPTION_LOGIN_REDIRECT, 0 );
+		?>
+		<label>
+			<input type="checkbox" name="<?php echo esc_attr( self::OPTION_LOGIN_REDIRECT ); ?>" value="1" <?php checked( $enabled ); ?> />
+			<?php esc_html_e( 'After successful login, redirect users to the Foyer Displays admin screen instead of the Dashboard.', 'foyer' ); ?>
+		</label>
+		<p class="description">
+			<?php esc_html_e( 'Respects redirect_to when it points to a non-admin URL. Users without sufficient permissions will be redirected to their profile page.', 'foyer' ); ?>
 		</p>
 		<?php
 	}
