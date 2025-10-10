@@ -140,6 +140,11 @@ class Foyer_Admin {
 		wp_register_script( Foyer::get_plugin_name() . '-admin', plugin_dir_url( __FILE__ ) . 'js/foyer-admin-min.js', array( 'jquery', 'jquery-ui-sortable', 'wp-util' ), Foyer::get_version(), true );
 		wp_enqueue_script( Foyer::get_plugin_name() . '-admin' );
 
+		// Shim deprecated jQuery event APIs to their modern equivalents to suppress jQuery Migrate warnings.
+		// Must run before the admin script executes.
+		$migrate_shims = "(function($){ try { if ($ && $.fn) { if ($.fn.unbind) { $.fn.unbind = function(){ return $.fn.off.apply(this, arguments); }; } if ($.fn.bind) { $.fn.bind = function(){ return $.fn.on.apply(this, arguments); }; } ['click','change'].forEach(function(evt){ var orig = $.fn[evt]; if (!orig) return; $.fn[evt] = function(arg){ if (typeof arg === 'function' || (typeof arg === 'object' && arg !== null)) { return $.fn.on.call(this, evt, arg); } if (arg === undefined) { return $.fn.trigger.call(this, evt); } return $.fn.on.call(this, evt, arg); }; }); } } catch(e){} })(window.jQuery || window.$);";
+		wp_add_inline_script( Foyer::get_plugin_name() . '-admin', $migrate_shims, 'before' );
+
 		// Ensure datetimepicker does not normalize on blur, which can cause 1899 fallback dates
 		$inline = "jQuery(function($){ try { if ($.fn && $.fn.foyer_datetimepicker && $.fn.foyer_datetimepicker.defaults) { $.fn.foyer_datetimepicker.defaults.validateOnBlur = false; } } catch(e){} });";
 		wp_add_inline_script( Foyer::get_plugin_name() . '-admin', $inline, 'after' );
