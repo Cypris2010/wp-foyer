@@ -128,6 +128,37 @@ class Foyer_Slide_Formats {
 	}
 
 	/**
+	 * Adds the WebUntis room display slide format.
+	 *
+	 * @since	1.?.?
+	 *
+	 * @param array $slide_formats The current slide formats.
+	 * @return array The slide formats including the WebUntis room display.
+	 */
+	static function add_webuntis_room_display_slide_format( $slide_formats ) {
+
+		$slide_format_backgrounds = array( 'default' );
+
+		/**
+		 * Filter available slide backgrounds for this slide format.
+		 *
+		 * @since	1.?.?
+		 * @param	array	$slide_format_backgrounds	The currently available slide backgrounds for this slide format.
+		 */
+		$slide_format_backgrounds = apply_filters( 'foyer/slides/backgrounds/format=webuntis-room-display', $slide_format_backgrounds );
+
+		$slide_formats['webuntis-room-display'] = array(
+			'title' => _x( 'Raumdisplay (WebUntis)', 'slide-format', 'foyer' ),
+			'description' => __( 'Zeigt aktuelle und kommende Raumbelegungen aus WebUntis.', 'foyer' ),
+			'meta_box' => array( 'Foyer_Admin_Slide_Format_Webuntis_Room_Display', 'slide_meta_box' ),
+			'save_post' => array( 'Foyer_Admin_Slide_Format_Webuntis_Room_Display', 'save_slide' ),
+			'slide_backgrounds' => $slide_format_backgrounds,
+		);
+
+		return $slide_formats;
+	}
+
+	/**
 	 * Adds the PDF slide format.
 	 *
 	 * @since	1.1.0

@@ -68,6 +68,7 @@ class Foyer {
 		add_filter( 'foyer/slides/formats', array( 'Foyer_Slide_Formats', 'add_calendar_slide_format' ), 5 );
 			add_filter( 'foyer/slides/formats', array( 'Foyer_Slide_Formats', 'add_upcoming_productions_slide_format' ), 5 );
 		add_filter( 'foyer/slides/formats', array( 'Foyer_Slide_Formats', 'add_teacher_dashboard_slide_format' ), 5 );
+		add_filter( 'foyer/slides/formats', array( 'Foyer_Slide_Formats', 'add_webuntis_room_display_slide_format' ), 5 );
             add_filter( 'foyer/slides/formats', array( 'Foyer_Slide_Formats', 'add_pdf_slide_format' ), 5 );
             // Additional formats (Instagram removed)
 	}

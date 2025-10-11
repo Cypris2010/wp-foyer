@@ -230,10 +230,11 @@ class Foyer_Admin {
 		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-iframe.php';
 		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-pdf.php';
 		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-post.php';
-		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-production.php';
-		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-teacher-dashboard.php';
-		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-recent-posts.php';
-		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-rss.php';
+	require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-production.php';
+	require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-teacher-dashboard.php';
+	require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-webuntis-room-display.php';
+	require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-recent-posts.php';
+	require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-rss.php';
 		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-calendar.php';
 		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-text.php';
         require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin-slide-format-upcoming-productions.php';
