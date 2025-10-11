@@ -41,6 +41,25 @@ class Foyer_Admin_Settings {
 	const OPTION_LOGIN_REDIRECT = 'foyer_login_redirect_to_displays';
 
 	/**
+	 * Options to hide core admin menu items for non-admin users.
+	 */
+	const OPTION_HIDE_MENU_DASHBOARD  = 'foyer_hide_menu_dashboard';
+	const OPTION_HIDE_MENU_POSTS      = 'foyer_hide_menu_posts';
+	const OPTION_HIDE_MENU_MEDIA      = 'foyer_hide_menu_media';
+	const OPTION_HIDE_MENU_PAGES      = 'foyer_hide_menu_pages';
+	const OPTION_HIDE_MENU_COMMENTS   = 'foyer_hide_menu_comments';
+	const OPTION_HIDE_MENU_APPEARANCE = 'foyer_hide_menu_appearance';
+	const OPTION_HIDE_MENU_PLUGINS    = 'foyer_hide_menu_plugins';
+	const OPTION_HIDE_MENU_USERS      = 'foyer_hide_menu_users';
+	const OPTION_HIDE_MENU_TOOLS      = 'foyer_hide_menu_tools';
+	const OPTION_HIDE_MENU_SETTINGS   = 'foyer_hide_menu_settings';
+
+	/**
+	 * Option to place the Foyer menu at the top of the admin menu.
+	 */
+	const OPTION_MENU_TOP = 'foyer_menu_top';
+
+	/**
 	 * Settings API option group identifier.
 	 */
 	const OPTION_GROUP = 'foyer_settings';
@@ -109,6 +128,42 @@ class Foyer_Admin_Settings {
 			)
 		);
 
+		// Register options to hide core admin menu items for non-admin users.
+		$bool_opts = array(
+			self::OPTION_HIDE_MENU_DASHBOARD,
+			self::OPTION_HIDE_MENU_POSTS,
+			self::OPTION_HIDE_MENU_MEDIA,
+			self::OPTION_HIDE_MENU_PAGES,
+			self::OPTION_HIDE_MENU_COMMENTS,
+			self::OPTION_HIDE_MENU_APPEARANCE,
+			self::OPTION_HIDE_MENU_PLUGINS,
+			self::OPTION_HIDE_MENU_USERS,
+			self::OPTION_HIDE_MENU_TOOLS,
+			self::OPTION_HIDE_MENU_SETTINGS,
+		);
+
+		foreach ( $bool_opts as $opt ) {
+			register_setting(
+				self::OPTION_GROUP,
+				$opt,
+				array(
+					'type'              => 'boolean',
+					'sanitize_callback' => array( __CLASS__, 'sanitize_checkbox' ),
+					'default'           => 0,
+				)
+			);
+		}
+
+		register_setting(
+			self::OPTION_GROUP,
+			self::OPTION_MENU_TOP,
+			array(
+				'type' => 'boolean',
+				'sanitize_callback' => array( __CLASS__, 'sanitize_checkbox' ),
+				'default' => 0,
+			)
+		);
+
 		add_settings_section(
 			'foyer_settings_general',
 			__( 'General', 'foyer' ),
@@ -146,6 +201,111 @@ class Foyer_Admin_Settings {
 			array( __CLASS__, 'render_login_redirect_field' ),
 			self::SETTINGS_PAGE,
 			'foyer_settings_general'
+		);
+
+		add_settings_section(
+			'foyer_settings_admin_menu',
+			__( 'Admin menu visibility (non-admins)', 'foyer' ),
+			'__return_false',
+			self::SETTINGS_PAGE
+		);
+
+		add_settings_field(
+			self::OPTION_MENU_TOP,
+			__( 'Place Foyer menu at top', 'foyer' ),
+			array( __CLASS__, 'render_menu_top_field' ),
+			self::SETTINGS_PAGE,
+			'foyer_settings_admin_menu'
+		);
+
+		add_settings_field(
+			self::OPTION_HIDE_MENU_DASHBOARD,
+			__( 'Hide Dashboard', 'foyer' ),
+			array( __CLASS__, 'render_menu_visibility_field' ),
+			self::SETTINGS_PAGE,
+			'foyer_settings_admin_menu',
+			array( 'option' => self::OPTION_HIDE_MENU_DASHBOARD )
+		);
+
+		add_settings_field(
+			self::OPTION_HIDE_MENU_POSTS,
+			__( 'Hide Posts', 'foyer' ),
+			array( __CLASS__, 'render_menu_visibility_field' ),
+			self::SETTINGS_PAGE,
+			'foyer_settings_admin_menu',
+			array( 'option' => self::OPTION_HIDE_MENU_POSTS )
+		);
+
+		add_settings_field(
+			self::OPTION_HIDE_MENU_MEDIA,
+			__( 'Hide Media', 'foyer' ),
+			array( __CLASS__, 'render_menu_visibility_field' ),
+			self::SETTINGS_PAGE,
+			'foyer_settings_admin_menu',
+			array( 'option' => self::OPTION_HIDE_MENU_MEDIA )
+		);
+
+		add_settings_field(
+			self::OPTION_HIDE_MENU_PAGES,
+			__( 'Hide Pages', 'foyer' ),
+			array( __CLASS__, 'render_menu_visibility_field' ),
+			self::SETTINGS_PAGE,
+			'foyer_settings_admin_menu',
+			array( 'option' => self::OPTION_HIDE_MENU_PAGES )
+		);
+
+		add_settings_field(
+			self::OPTION_HIDE_MENU_COMMENTS,
+			__( 'Hide Comments', 'foyer' ),
+			array( __CLASS__, 'render_menu_visibility_field' ),
+			self::SETTINGS_PAGE,
+			'foyer_settings_admin_menu',
+			array( 'option' => self::OPTION_HIDE_MENU_COMMENTS )
+		);
+
+		add_settings_field(
+			self::OPTION_HIDE_MENU_APPEARANCE,
+			__( 'Hide Appearance', 'foyer' ),
+			array( __CLASS__, 'render_menu_visibility_field' ),
+			self::SETTINGS_PAGE,
+			'foyer_settings_admin_menu',
+			array( 'option' => self::OPTION_HIDE_MENU_APPEARANCE )
+		);
+
+		add_settings_field(
+			self::OPTION_HIDE_MENU_PLUGINS,
+			__( 'Hide Plugins', 'foyer' ),
+			array( __CLASS__, 'render_menu_visibility_field' ),
+			self::SETTINGS_PAGE,
+			'foyer_settings_admin_menu',
+			array( 'option' => self::OPTION_HIDE_MENU_PLUGINS )
+		);
+
+		add_settings_field(
+			self::OPTION_HIDE_MENU_USERS,
+			__( 'Hide Users', 'foyer' ),
+			array( __CLASS__, 'render_menu_visibility_field' ),
+			self::SETTINGS_PAGE,
+			'foyer_settings_admin_menu',
+			array( 'option' => self::OPTION_HIDE_MENU_USERS )
+		);
+
+		add_settings_field(
+			self::OPTION_HIDE_MENU_TOOLS,
+			__( 'Hide Tools', 'foyer' ),
+			array( __CLASS__, 'render_menu_visibility_field' ),
+			self::SETTINGS_PAGE,
+			'foyer_settings_admin_menu',
+			array( 'option' => self::OPTION_HIDE_MENU_TOOLS )
+		);
+
+		add_settings_field(
+			self::OPTION_HIDE_MENU_SETTINGS,
+			__( 'Hide Settings', 'foyer' ),
+			array( __CLASS__, 'render_menu_visibility_field' ),
+			self::SETTINGS_PAGE,
+			'foyer_settings_admin_menu',
+			array( 'option' => self::OPTION_HIDE_MENU_SETTINGS )
 		);
 	}
 
@@ -243,6 +403,38 @@ class Foyer_Admin_Settings {
 		<p class="description">
 			<?php esc_html_e( 'Respects redirect_to when it points to a non-admin URL. Users without sufficient permissions will be redirected to their profile page.', 'foyer' ); ?>
 		</p>
+		<?php
+	}
+
+	/**
+	 * Renders a generic checkbox for menu visibility options.
+	 *
+	 * @param array $args {
+	 *   @type string $option Option name to read/write.
+	 * }
+	 * @return void
+	 */
+	public static function render_menu_top_field() {
+		$enabled = (bool) get_option( self::OPTION_MENU_TOP, 0 );
+		?>
+		<label>
+			<input type="checkbox" name="<?php echo esc_attr( self::OPTION_MENU_TOP ); ?>" value="1" <?php checked( $enabled ); ?> />
+			<?php esc_html_e( 'Move Foyer to the top of the admin menu', 'foyer' ); ?>
+		</label>
+		<?php
+	}
+
+	public static function render_menu_visibility_field( $args ) {
+		$option = isset( $args['option'] ) ? (string) $args['option'] : '';
+		if ( '' === $option ) {
+			return;
+		}
+		$enabled = (bool) get_option( $option, 0 );
+		?>
+		<label>
+			<input type="checkbox" name="<?php echo esc_attr( $option ); ?>" value="1" <?php checked( $enabled ); ?> />
+			<?php esc_html_e( 'Hide for non-admin users', 'foyer' ); ?>
+		</label>
 		<?php
 	}
 

@@ -41,6 +41,9 @@ class Foyer_Admin {
 		add_action( 'admin_init', array( 'Foyer_Admin_Settings', 'register_settings' ) );
 		add_action( 'admin_init', array( 'Foyer_Admin_Settings', 'maybe_redirect_legacy_slug' ), 1 );
 
+		// Hide selected core admin menu items for non-admin users
+		add_action( 'admin_menu', array( __CLASS__, 'maybe_hide_core_menus_for_non_admins' ), 999 );
+
 		/* Foyer_Admin_Display */
 		add_action( 'admin_enqueue_scripts', array( 'Foyer_Admin_Display', 'localize_scripts' ) );
 		add_action( 'admin_notices', array( 'Foyer_Admin_Display', 'render_notices' ) );
@@ -114,6 +117,7 @@ class Foyer_Admin {
 	 * @since	1.5.1	Improved the context of the translatable string 'Foyer' to make translation easier.
 	 */
 	static function admin_menu() {
+		$position = get_option( Foyer_Admin_Settings::OPTION_MENU_TOP, 0 ) ? 1 : 31;
 		add_menu_page(
 			_x( 'Foyer', 'plugin name in admin menu', 'foyer' ),
 			_x( 'Foyer', 'plugin name in admin menu', 'foyer' ),
@@ -121,7 +125,7 @@ class Foyer_Admin {
 			'foyer',
 			array(),
 			'dashicons-welcome-view-site',
-			31
+			$position
 		);
 			}
 
@@ -173,6 +177,35 @@ class Foyer_Admin {
 	 *
 	 * @access	private
 	 */
+	/**
+	 * Conditionally hides selected core admin menu items for non-admin users.
+	 * Runs late on admin_menu to ensure items are registered.
+	 */
+	public static function maybe_hide_core_menus_for_non_admins() {
+		if ( current_user_can( 'manage_options' ) ) {
+			return; // Never hide for admins
+		}
+
+		$map = array(
+			'index.php'               => Foyer_Admin_Settings::OPTION_HIDE_MENU_DASHBOARD,
+			'edit.php'                => Foyer_Admin_Settings::OPTION_HIDE_MENU_POSTS,
+			'upload.php'              => Foyer_Admin_Settings::OPTION_HIDE_MENU_MEDIA,
+			'edit.php?post_type=page' => Foyer_Admin_Settings::OPTION_HIDE_MENU_PAGES,
+			'edit-comments.php'       => Foyer_Admin_Settings::OPTION_HIDE_MENU_COMMENTS,
+			'themes.php'              => Foyer_Admin_Settings::OPTION_HIDE_MENU_APPEARANCE,
+			'plugins.php'             => Foyer_Admin_Settings::OPTION_HIDE_MENU_PLUGINS,
+			'users.php'               => Foyer_Admin_Settings::OPTION_HIDE_MENU_USERS,
+			'tools.php'               => Foyer_Admin_Settings::OPTION_HIDE_MENU_TOOLS,
+			'options-general.php'     => Foyer_Admin_Settings::OPTION_HIDE_MENU_SETTINGS,
+		);
+
+		foreach ( $map as $slug => $option ) {
+			if ( get_option( $option, 0 ) ) {
+				remove_menu_page( $slug );
+			}
+		}
+	}
+
 	private static function load_dependencies() {
 
 		/**
