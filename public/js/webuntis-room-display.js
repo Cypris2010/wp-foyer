@@ -498,12 +498,13 @@
 			var body = document.createElement('div');
 			body.className = 'foyer-webuntis-room-display__body';
 
-			var currentBlock = document.createElement('div');
-			currentBlock.className = 'foyer-webuntis-room-display__current';
 			var currentTitle = document.createElement('h3');
 			currentTitle.className = 'foyer-webuntis-room-display__section-title';
 			currentTitle.textContent = labels.current;
-			currentBlock.appendChild(currentTitle);
+			body.appendChild(currentTitle);
+
+			var currentBlock = document.createElement('div');
+			currentBlock.className = 'foyer-webuntis-room-display__current';
 
 			if (data.current) {
 				currentBlock.appendChild(buildDetails(data.current, labels, locale, timezone));
@@ -516,12 +517,13 @@
 
 			body.appendChild(currentBlock);
 
-			var upcomingBlock = document.createElement('div');
-			upcomingBlock.className = 'foyer-webuntis-room-display__upcoming';
 			var upcomingTitle = document.createElement('h3');
 			upcomingTitle.className = 'foyer-webuntis-room-display__section-title';
 			upcomingTitle.textContent = labels.upcoming;
-			upcomingBlock.appendChild(upcomingTitle);
+			body.appendChild(upcomingTitle);
+
+			var upcomingBlock = document.createElement('div');
+			upcomingBlock.className = 'foyer-webuntis-room-display__upcoming';
 
 			if (data.upcoming && data.upcoming.length) {
 				upcomingBlock.appendChild(buildUpcomingList(data.upcoming, labels, locale, timezone));

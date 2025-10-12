@@ -1299,7 +1299,7 @@ html {
 .foyer-webuntis-room-display__body {
   display: flex;
   flex-direction: column;
-  gap: 3.2vmin;
+  gap: 2.2vmin;
   flex: 1 1 auto;
   min-height: 0;
 }
