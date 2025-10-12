@@ -312,6 +312,145 @@
 		return list;
 	}
 
+	function updateTimestamp(node, labels, locale, timezone, timestamp) {
+		var updatedNode = node.querySelector('.foyer-webuntis-room-display__updated');
+		if (!updatedNode || !timestamp) {
+			return;
+		}
+		var formattedTime = formatTime(timestamp, locale, timezone);
+		if (labels.updated && labels.updated.indexOf('%s') !== -1) {
+			updatedNode.textContent = labels.updated.replace('%s', formattedTime);
+		} else if (labels.updated) {
+			updatedNode.textContent = labels.updated + ' ' + formattedTime;
+		} else {
+			updatedNode.textContent = formattedTime;
+		}
+	}
+
+	function pad(number) {
+		return number < 10 ? '0' + number : String(number);
+	}
+
+	function formatDate(date, locale, timezone) {
+		try {
+			return new Intl.DateTimeFormat(locale || undefined, {
+				year: 'numeric',
+				month: '2-digit',
+				day: '2-digit',
+				timeZone: timezone || undefined
+			}).format(date);
+		} catch (err) {
+			return pad(date.getDate()) + '.' + pad(date.getMonth() + 1) + '.' + date.getFullYear();
+		}
+	}
+
+	function formatClockTime(date, locale, timezone) {
+		try {
+			return new Intl.DateTimeFormat(locale || undefined, {
+				hour: '2-digit',
+				minute: '2-digit',
+				hour12: false,
+				timeZone: timezone || undefined
+			}).format(date);
+		} catch (err) {
+			return pad(date.getHours()) + ':' + pad(date.getMinutes());
+		}
+	}
+
+	function startClock(node, state) {
+		var container = node.querySelector('.foyer-webuntis-room-display__clock');
+		if (!container) {
+			return;
+		}
+		if (state.clockTimer) {
+			clearTimeout(state.clockTimer);
+			state.clockTimer = null;
+		}
+
+		var dateNode = container.querySelector('.foyer-webuntis-room-display__clock-date');
+		var timeNode = container.querySelector('.foyer-webuntis-room-display__clock-time');
+
+		var formatDateAttr = container.getAttribute('data-format-date');
+		var formatTimeAttr = container.getAttribute('data-format-time');
+
+		function applyFormats(now) {
+			if (dateNode) {
+				if (formatDateAttr) {
+					dateNode.textContent = formatCustom(now, formatDateAttr, state.timezone);
+				} else {
+					dateNode.textContent = formatDate(now, state.locale, state.timezone);
+				}
+			}
+			if (timeNode) {
+				if (formatTimeAttr) {
+					timeNode.textContent = formatCustom(now, formatTimeAttr, state.timezone);
+				} else {
+					timeNode.textContent = formatClockTime(now, state.locale, state.timezone);
+				}
+			}
+		}
+
+		function schedule() {
+			var now = new Date();
+			applyFormats(now);
+			var delay = 60000 - ((now.getSeconds() * 1000) + now.getMilliseconds());
+			state.clockTimer = setTimeout(schedule, delay > 0 ? delay : 60000);
+		}
+
+		schedule();
+	}
+
+	function formatCustom(date, pattern, timezone) {
+		var zoned = dateWithZone(date, timezone);
+		var replacements = {
+			'Y': String(zoned.getFullYear()),
+			'y': String(zoned.getFullYear()).slice(-2),
+			'm': pad(zoned.getMonth() + 1),
+			'n': String(zoned.getMonth() + 1),
+			'd': pad(zoned.getDate()),
+			'j': String(zoned.getDate()),
+			'H': pad(zoned.getHours()),
+			'G': String(zoned.getHours()),
+			'i': pad(zoned.getMinutes())
+		};
+
+		return pattern.replace(/Y|y|m|n|d|j|H|G|i/g, function (token) {
+			return replacements[token] !== undefined ? replacements[token] : token;
+		});
+	}
+
+	function dateWithZone(date, timezone) {
+		if (!timezone || !Intl || !Intl.DateTimeFormat) {
+			return new Date(date);
+		}
+		try {
+			var parts = new Intl.DateTimeFormat('en-US', {
+				timeZone: timezone,
+				year: 'numeric',
+				month: '2-digit',
+				day: '2-digit',
+				hour: '2-digit',
+				minute: '2-digit',
+				second: '2-digit',
+				hour12: false
+			}).formatToParts(date);
+			var values = {};
+			for (var i = 0; i < parts.length; i++) {
+				values[parts[i].type] = parts[i].value;
+			}
+			return new Date(Date.UTC(
+				Number(values.year),
+				Number(values.month) - 1,
+				Number(values.day),
+				Number(values.hour),
+				Number(values.minute),
+				Number(values.second)
+			));
+		} catch (err) {
+			return new Date(date);
+		}
+	}
+
 	function render(node, rooms, labels, locale, timezone) {
 		var grid = node.querySelector('.foyer-webuntis-room-display__grid');
 		if (!grid) {
@@ -319,6 +458,12 @@
 		}
 
 		clearChildren(grid);
+
+		var outdatedRoomMarkers = node.querySelectorAll('.foyer-webuntis-room-display__header .foyer-webuntis-room-display__updated');
+		for (var removeIndex = 0; removeIndex < outdatedRoomMarkers.length; removeIndex++) {
+			var marker = outdatedRoomMarkers[removeIndex];
+			marker.parentNode.removeChild(marker);
+		}
 
 		if (!rooms.length) {
 			var placeholder = document.createElement('div');
@@ -347,11 +492,6 @@
 			badge.classList.add(occupied ? 'is-occupied' : 'is-free');
 			badge.textContent = occupied ? labels.occupied : labels.free;
 			header.appendChild(badge);
-
-			var updated = document.createElement('p');
-			updated.className = 'foyer-webuntis-room-display__updated';
-			updated.textContent = labels.updated.replace('%s', formatTime(new Date(), locale, timezone));
-			header.appendChild(updated);
 
 			column.appendChild(header);
 
@@ -428,6 +568,10 @@
 			state.controller.abort();
 			state.controller = null;
 		}
+		if (state.clockTimer) {
+			clearTimeout(state.clockTimer);
+			state.clockTimer = null;
+		}
 	}
 
 	function fetchAndRender(node, state) {
@@ -450,12 +594,41 @@
 			if (!response.ok) {
 				throw new Error('HTTP ' + response.status);
 			}
-			return response.text();
-		}).then(function (text) {
+			var lastModifiedHeader = response.headers ? response.headers.get('Last-Modified') : null;
+			var dateHeader = response.headers ? response.headers.get('Date') : null;
+			return response.text().then(function (text) {
+				return {
+					text: text,
+					lastModified: lastModifiedHeader,
+					responseDate: dateHeader
+				};
+			});
+		}).then(function (payload) {
 			clearError(node);
-			var entries = parseUntis(text);
+			var entries = parseUntis(payload.text);
 			var rooms = buildRoomData(entries, state.rooms);
+
+			var parsedLastModified = null;
+			if (payload.lastModified) {
+				var headerDate = new Date(payload.lastModified);
+				if (!isNaN(headerDate.getTime())) {
+					parsedLastModified = headerDate;
+				}
+			}
+			if (!parsedLastModified && payload.responseDate) {
+				var fallbackDate = new Date(payload.responseDate);
+				if (!isNaN(fallbackDate.getTime())) {
+					parsedLastModified = fallbackDate;
+				}
+			}
+			if (!parsedLastModified) {
+				parsedLastModified = new Date();
+			}
+			state.lastUpdated = parsedLastModified;
+
 			render(node, rooms, state.labels, state.locale, state.timezone);
+			startClock(node, state);
+			updateTimestamp(node, state.labels, state.locale, state.timezone, state.lastUpdated);
 		}).catch(function (error) {
 			var message = error && error.message ? error.message : 'unknown error';
 			setError(node, state.labels.error + ' (' + message + ')');
@@ -514,7 +687,9 @@
 			timezone: node.getAttribute('data-timezone') || undefined,
 			labels: labels,
 			timer: null,
-			controller: null
+			controller: null,
+			lastUpdated: null,
+			clockTimer: null
 		};
 
 		instances.set(node, state);
@@ -523,6 +698,8 @@
 			setError(node, labels.error + ' (no source)');
 			return;
 		}
+
+		startClock(node, state);
 
 		if (!rooms.length) {
 			var grid = node.querySelector('.foyer-webuntis-room-display__grid');

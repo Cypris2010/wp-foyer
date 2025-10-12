@@ -1184,19 +1184,54 @@ html {
 }
 .foyer-slide-webuntis-room-display .foyer-webuntis-room-display {
   display: flex;
+  flex-direction: column;
   align-items: stretch;
-  justify-content: center;
+  justify-content: flex-start;
   width: 100%;
   height: 100%;
   padding: 4vmin;
   box-sizing: border-box;
   position: relative;
+  background: #f3f6fb;
+  gap: 3vmin;
 }
 .foyer-webuntis-room-display__grid {
   display: flex;
   gap: 4vmin;
   width: 100%;
   flex: 1 1 auto;
+}
+.foyer-webuntis-room-display__page-header {
+  width: 100%;
+  padding: 0;
+}
+.foyer-webuntis-room-display__page-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2vmin;
+  padding: 1.6vmin 3vmin;
+  border-radius: 1.6vmin;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 1.2vmin 2.4vmin rgba(15, 23, 42, 0.12);
+  width: 100%;
+  box-sizing: border-box;
+}
+.foyer-webuntis-room-display__clock {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1vmin;
+  font-weight: 600;
+  color: rgba(30, 41, 59, 0.9);
+  font-size: 3vmin;
+}
+.foyer-webuntis-room-display__clock-date {
+  opacity: 0.85;
+  font-size: 4.2vmin;
+}
+.foyer-webuntis-room-display__clock-time {
+  font-size: 4.2vmin;
 }
 .foyer-webuntis-room-display__placeholder,
 .foyer-webuntis-room-display__empty,
@@ -1206,15 +1241,16 @@ html {
   margin: 0;
 }
 .foyer-webuntis-room-display__column {
-  background: rgba(15, 15, 20, 0.8);
-  color: #f5f6f8;
+  background: rgba(255, 255, 255, 0.96);
+  color: #1f2937;
   border-radius: 2vmin;
   padding: 3.4vmin;
   display: flex;
   flex-direction: column;
   gap: 3vmin;
-  box-shadow: 0 2.4vmin 4vmin rgba(0, 0, 0, 0.28);
+  box-shadow: 0 1.8vmin 3.4vmin rgba(15, 23, 42, 0.12);
   backdrop-filter: blur(7px);
+  border: 1px solid rgba(15, 23, 42, 0.08);
   flex: 1 1 calc(50% - 2vmin);
   min-width: 0;
 }
@@ -1238,18 +1274,27 @@ html {
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-weight: 700;
-  color: #0f141c;
+  background: #e2e8f0;
+  color: #1e293b;
 }
 .foyer-webuntis-room-display__status.is-free {
-  background: #58d28d;
+  background: #bbf7d0;
+  color: #047857;
 }
 .foyer-webuntis-room-display__status.is-occupied {
-  background: #ff7579;
+  background: #fecaca;
+  color: #b91c1c;
 }
 .foyer-webuntis-room-display__updated {
   margin: 0;
   font-size: 2vmin;
-  opacity: 0.7;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(30, 41, 59, 0.7);
+  text-align: right;
+}
+.foyer-webuntis-room-display__column .foyer-webuntis-room-display__updated {
+  display: none !important;
 }
 .foyer-webuntis-room-display__body {
   display: flex;
@@ -1272,8 +1317,8 @@ html {
   min-height: 0;
   padding: 2.2vmin;
   border-radius: 1.6vmin;
-  background: rgba(0, 0, 0, 0.25);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  background: rgba(15, 23, 42, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.1);
 }
 .foyer-webuntis-room-display__details {
   display: flex;
@@ -1298,8 +1343,8 @@ html {
   min-height: 0;
   padding: 2.2vmin;
   border-radius: 1.6vmin;
-  background: rgba(0, 0, 0, 0.2);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  background: rgba(15, 23, 42, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
 }
 .foyer-webuntis-room-display__list {
   list-style: none;
@@ -1316,8 +1361,8 @@ html {
   gap: 1.6vmin;
   padding: 1.4vmin 2vmin;
   border-radius: 1.4vmin;
-  background: rgba(255, 255, 255, 0.1);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
 }
 .foyer-webuntis-room-display__list-time {
   font-size: 2.6vmin;
@@ -1334,7 +1379,7 @@ html {
   font-weight: 600;
 }
 .foyer-webuntis-room-display__list-meta {
-  opacity: 0.8;
+  opacity: 0.7;
 }
 .foyer-webuntis-room-display__error {
   position: absolute;
@@ -1343,16 +1388,16 @@ html {
   transform: translateX(-50%);
   padding: 1.2vmin 2.4vmin;
   border-radius: 999px;
-  background: rgba(255, 91, 95, 0.92);
-  color: #111;
+  background: rgba(248, 113, 113, 0.95);
+  color: #7f1d1d;
   font-size: 2.1vmin;
-  box-shadow: 0 1.8vmin 3.6vmin rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1.6vmin 3.2vmin rgba(15, 23, 42, 0.12);
 }
 .foyer-webuntis-room-display__noscript {
   margin: 2vmin 0 0;
   font-size: 2.4vmin;
 }
-@media (max-width: 1200px) {
+@media (max-width: 1200px) and (orientation: portrait) {
   .foyer-webuntis-room-display__grid {
     flex-direction: column;
   }

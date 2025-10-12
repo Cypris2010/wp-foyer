@@ -66,6 +66,15 @@ $dataset = array(
         data-label-remarks="<?php echo $dataset['labelRemarks']; ?>"
         data-error-message="<?php echo $dataset['errorMessage']; ?>"
         data-error-no-rooms="<?php echo $dataset['errorNoRooms']; ?>">
+        <header class="foyer-webuntis-room-display__page-header">
+            <div class="foyer-webuntis-room-display__page-meta">
+                <div class="foyer-webuntis-room-display__clock" data-format-date="<?php echo esc_attr( _x( 'd.m.Y', 'webuntis room display date format', 'foyer' ) ); ?>" data-format-time="<?php echo esc_attr( _x( 'H:i', 'webuntis room display time format', 'foyer' ) ); ?>">
+                    <span class="foyer-webuntis-room-display__clock-date">--.--.----</span>
+                    <span class="foyer-webuntis-room-display__clock-time">--:--</span>
+                </div>
+                <p class="foyer-webuntis-room-display__updated" aria-live="polite"><?php echo esc_html( sprintf( __( 'Aktualisiert um %s', 'foyer' ), '--:--' ) ); ?></p>
+            </div>
+        </header>
         <div class="foyer-webuntis-room-display__grid" aria-live="polite">
             <div class="foyer-webuntis-room-display__placeholder"><?php esc_html_e( 'Lade Belegungen …', 'foyer' ); ?></div>
         </div>
