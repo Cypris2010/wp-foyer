@@ -1193,11 +1193,10 @@ html {
   position: relative;
 }
 .foyer-webuntis-room-display__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(38vmin, 1fr));
+  display: flex;
   gap: 4vmin;
   width: 100%;
-  align-content: stretch;
+  flex: 1 1 auto;
 }
 .foyer-webuntis-room-display__placeholder,
 .foyer-webuntis-room-display__empty,
@@ -1216,6 +1215,8 @@ html {
   gap: 3vmin;
   box-shadow: 0 2.4vmin 4vmin rgba(0, 0, 0, 0.28);
   backdrop-filter: blur(7px);
+  flex: 1 1 calc(50% - 2vmin);
+  min-width: 0;
 }
 .foyer-webuntis-room-display__header {
   display: flex;
@@ -1251,14 +1252,28 @@ html {
   opacity: 0.7;
 }
 .foyer-webuntis-room-display__body {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 3.2vmin;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 .foyer-webuntis-room-display__section-title {
   margin: 0 0 1.4vmin;
   font-size: 3.1vmin;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+.foyer-webuntis-room-display__current {
+  display: flex;
+  flex-direction: column;
+  gap: 1.6vmin;
+  flex: 2 1 0;
+  min-height: 0;
+  padding: 2.2vmin;
+  border-radius: 1.6vmin;
+  background: rgba(0, 0, 0, 0.25);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 .foyer-webuntis-room-display__details {
   display: flex;
@@ -1275,6 +1290,17 @@ html {
   margin: 0;
   opacity: 0.9;
 }
+.foyer-webuntis-room-display__upcoming {
+  display: flex;
+  flex-direction: column;
+  gap: 1.6vmin;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 2.2vmin;
+  border-radius: 1.6vmin;
+  background: rgba(0, 0, 0, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
 .foyer-webuntis-room-display__list {
   list-style: none;
   margin: 0;
@@ -1282,6 +1308,7 @@ html {
   display: flex;
   flex-direction: column;
   gap: 1.6vmin;
+  overflow: auto;
 }
 .foyer-webuntis-room-display__list-item {
   display: grid;
@@ -1325,16 +1352,26 @@ html {
   margin: 2vmin 0 0;
   font-size: 2.4vmin;
 }
+@media (max-width: 1200px) {
+  .foyer-webuntis-room-display__grid {
+    flex-direction: column;
+  }
+  .foyer-webuntis-room-display__column {
+    flex: 1 1 100%;
+  }
+}
+
 @media (max-aspect-ratio: 1/1) {
   .foyer-slide-webuntis-room-display .foyer-webuntis-room-display {
     padding: 5vmin 3vmin;
   }
   .foyer-webuntis-room-display__grid {
-    grid-template-columns: 1fr;
+    flex-direction: column;
     gap: 3vmin;
   }
   .foyer-webuntis-room-display__column {
     padding: 3vmin;
+    flex: 1 1 100%;
   }
   .foyer-webuntis-room-display__room {
     font-size: 6vmin;
