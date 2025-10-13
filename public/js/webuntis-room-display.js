@@ -401,17 +401,17 @@
 	}
 
 	function formatCustom(date, pattern, timezone) {
-		var zoned = dateWithZone(date, timezone);
+		var components = dateWithZone(date, timezone);
 		var replacements = {
-			'Y': String(zoned.getFullYear()),
-			'y': String(zoned.getFullYear()).slice(-2),
-			'm': pad(zoned.getMonth() + 1),
-			'n': String(zoned.getMonth() + 1),
-			'd': pad(zoned.getDate()),
-			'j': String(zoned.getDate()),
-			'H': pad(zoned.getHours()),
-			'G': String(zoned.getHours()),
-			'i': pad(zoned.getMinutes())
+			'Y': String(components.year),
+			'y': String(components.year).slice(-2),
+			'm': pad(components.month),
+			'n': String(components.month),
+			'd': pad(components.day),
+			'j': String(components.day),
+			'H': pad(components.hour),
+			'G': String(components.hour),
+			'i': pad(components.minute)
 		};
 
 		return pattern.replace(/Y|y|m|n|d|j|H|G|i/g, function (token) {
@@ -420,8 +420,16 @@
 	}
 
 	function dateWithZone(date, timezone) {
+		var fallback = {
+			year: date.getFullYear(),
+			month: date.getMonth() + 1,
+			day: date.getDate(),
+			hour: date.getHours(),
+			minute: date.getMinutes()
+		};
+
 		if (!timezone || !Intl || !Intl.DateTimeFormat) {
-			return new Date(date);
+			return fallback;
 		}
 		try {
 			var parts = new Intl.DateTimeFormat('en-US', {
@@ -431,33 +439,42 @@
 				day: '2-digit',
 				hour: '2-digit',
 				minute: '2-digit',
-				second: '2-digit',
 				hour12: false
 			}).formatToParts(date);
 			var values = {};
 			for (var i = 0; i < parts.length; i++) {
 				values[parts[i].type] = parts[i].value;
 			}
-			return new Date(Date.UTC(
-				Number(values.year),
-				Number(values.month) - 1,
-				Number(values.day),
-				Number(values.hour),
-				Number(values.minute),
-				Number(values.second)
-			));
+
+			return {
+				year: values.year ? Number(values.year) : fallback.year,
+				month: values.month ? Number(values.month) : fallback.month,
+				day: values.day ? Number(values.day) : fallback.day,
+				hour: values.hour ? Number(values.hour) : fallback.hour,
+				minute: values.minute ? Number(values.minute) : fallback.minute
+			};
 		} catch (err) {
-			return new Date(date);
+			return fallback;
 		}
 	}
 
-	function render(node, rooms, labels, locale, timezone) {
+	function render(node, rooms, labels, locale, timezone, options) {
 		var grid = node.querySelector('.foyer-webuntis-room-display__grid');
 		if (!grid) {
 			return;
 		}
 
 		clearChildren(grid);
+
+		var count = rooms.length;
+		var size = Math.max(1, Math.ceil(Math.sqrt(count || 1)));
+		var columns = Math.min(size, Math.max(count, 1));
+		if (columns === 0) {
+			columns = 1;
+		}
+		var rows = Math.max(1, Math.ceil(count / columns));
+		grid.style.setProperty('--foyer-room-columns', String(columns));
+		grid.style.setProperty('--foyer-room-rows', String(rows));
 
 		var outdatedRoomMarkers = node.querySelectorAll('.foyer-webuntis-room-display__header .foyer-webuntis-room-display__updated');
 		for (var removeIndex = 0; removeIndex < outdatedRoomMarkers.length; removeIndex++) {
@@ -472,6 +489,9 @@
 			grid.appendChild(placeholder);
 			return;
 		}
+
+		var hideUpcoming = options && options.hideUpcoming;
+		var hideCurrent = options && options.hideCurrent;
 
 		for (var i = 0; i < rooms.length; i++) {
 			var data = rooms[i];
@@ -498,10 +518,12 @@
 			var body = document.createElement('div');
 			body.className = 'foyer-webuntis-room-display__body';
 
-			var currentTitle = document.createElement('h3');
-			currentTitle.className = 'foyer-webuntis-room-display__section-title';
-			currentTitle.textContent = labels.current;
-			body.appendChild(currentTitle);
+			if (!hideCurrent) {
+				var currentTitle = document.createElement('h3');
+				currentTitle.className = 'foyer-webuntis-room-display__section-title';
+				currentTitle.textContent = labels.current;
+				body.appendChild(currentTitle);
+			}
 
 			var currentBlock = document.createElement('div');
 			currentBlock.className = 'foyer-webuntis-room-display__current';
@@ -517,24 +539,26 @@
 
 			body.appendChild(currentBlock);
 
-			var upcomingTitle = document.createElement('h3');
-			upcomingTitle.className = 'foyer-webuntis-room-display__section-title';
-			upcomingTitle.textContent = labels.upcoming;
-			body.appendChild(upcomingTitle);
+			if (!hideUpcoming) {
+				var upcomingTitle = document.createElement('h3');
+				upcomingTitle.className = 'foyer-webuntis-room-display__section-title';
+				upcomingTitle.textContent = labels.upcoming;
+				body.appendChild(upcomingTitle);
 
-			var upcomingBlock = document.createElement('div');
-			upcomingBlock.className = 'foyer-webuntis-room-display__upcoming';
+				var upcomingBlock = document.createElement('div');
+				upcomingBlock.className = 'foyer-webuntis-room-display__upcoming';
 
-			if (data.upcoming && data.upcoming.length) {
-				upcomingBlock.appendChild(buildUpcomingList(data.upcoming, labels, locale, timezone));
-			} else {
-				var empty = document.createElement('p');
-				empty.className = 'foyer-webuntis-room-display__empty';
-				empty.textContent = labels.noUpcoming;
-				upcomingBlock.appendChild(empty);
+				if (data.upcoming && data.upcoming.length) {
+					upcomingBlock.appendChild(buildUpcomingList(data.upcoming, labels, locale, timezone));
+				} else {
+					var empty = document.createElement('p');
+					empty.className = 'foyer-webuntis-room-display__empty';
+					empty.textContent = labels.noUpcoming;
+					upcomingBlock.appendChild(empty);
+				}
+
+				body.appendChild(upcomingBlock);
 			}
-
-			body.appendChild(upcomingBlock);
 			column.appendChild(body);
 			grid.appendChild(column);
 		}
@@ -628,9 +652,9 @@
 			}
 			state.lastUpdated = parsedLastModified;
 
-			render(node, rooms, state.labels, state.locale, state.timezone);
-			startClock(node, state);
-			updateTimestamp(node, state.labels, state.locale, state.timezone, state.lastUpdated);
+				render(node, rooms, state.labels, state.locale, state.timezone, { hideUpcoming: state.hideUpcoming, hideCurrent: state.hideCurrent });
+				startClock(node, state);
+				updateTimestamp(node, state.labels, state.locale, state.timezone, state.lastUpdated);
 		}).catch(function (error) {
 			var message = error && error.message ? error.message : 'unknown error';
 			setError(node, state.labels.error + ' (' + message + ')');
@@ -653,9 +677,13 @@
 		var rooms = parseJsonAttribute(node.getAttribute('data-rooms')).map(function (room) {
 			return String(room || '').trim();
 		}).filter(Boolean);
-		if (rooms.length > 2) {
-			rooms = rooms.slice(0, 2);
-		}
+		var uniqueRooms = [];
+		rooms.forEach(function (room) {
+			if (uniqueRooms.indexOf(room) === -1) {
+				uniqueRooms.push(room);
+			}
+		});
+		rooms = uniqueRooms;
 
 		var refresh = parseInt(node.getAttribute('data-refresh'), 10);
 		if (!(refresh > 0)) {
@@ -691,7 +719,9 @@
 			timer: null,
 			controller: null,
 			lastUpdated: null,
-			clockTimer: null
+			clockTimer: null,
+			hideUpcoming: node.getAttribute('data-hide-upcoming') === '1',
+			hideCurrent: node.getAttribute('data-hide-current') === '1'
 		};
 
 		instances.set(node, state);

@@ -9,9 +9,11 @@ class Foyer_Admin_Slide_Format_Webuntis_Room_Display {
     const META_ROOMS   = 'slide_webuntis_room_display_rooms';
     const META_REFRESH = 'slide_webuntis_room_display_refresh';
 
-    const DEFAULT_SOURCE  = 'https://bigbrother2.lgsit.de/untisdata/raeume_ganzer_tag.txt';
-    const DEFAULT_REFRESH = 60; // seconds
-    const CACHE_TTL       = 300; // 5 minutes
+    const DEFAULT_SOURCE       = 'https://bigbrother2.lgsit.de/untisdata/raeume_ganzer_tag.txt';
+    const DEFAULT_REFRESH      = 60; // seconds
+    const CACHE_TTL            = 300; // 5 minutes
+    const META_HIDE_UPCOMING   = 'slide_webuntis_room_display_hide_upcoming';
+    const META_HIDE_CURRENT    = 'slide_webuntis_room_display_hide_current';
 
     /**
      * Render the meta box for configuring the slide format.
@@ -28,10 +30,13 @@ class Foyer_Admin_Slide_Format_Webuntis_Room_Display {
 
         $selected_rooms = get_post_meta( $post->ID, self::META_ROOMS, true );
         $selected_rooms = is_array( $selected_rooms ) ? array_map( 'sanitize_text_field', $selected_rooms ) : array();
-        $selected_rooms = array_slice( $selected_rooms, 0, 2 );
+        $selected_rooms = array_values( array_unique( array_filter( $selected_rooms, 'strlen' ) ) );
 
         $refresh = get_post_meta( $post->ID, self::META_REFRESH, true );
         $refresh = ( $refresh && $refresh > 0 ) ? absint( $refresh ) : self::DEFAULT_REFRESH;
+
+        $hide_upcoming = get_post_meta( $post->ID, self::META_HIDE_UPCOMING, true ) === 'yes';
+        $hide_current  = get_post_meta( $post->ID, self::META_HIDE_CURRENT, true ) === 'yes';
 
         $rooms = self::get_room_choices( $source );
         $rooms_error = is_wp_error( $rooms );
@@ -70,7 +75,7 @@ class Foyer_Admin_Slide_Format_Webuntis_Room_Display {
                                     <option value="<?php echo esc_attr( $value ); ?>" <?php selected( in_array( $value, $selected_rooms, true ) ); ?>><?php echo esc_html( $label ); ?></option>
                                 <?php endforeach; ?>
                             </select>
-                            <p class="description"><?php esc_html_e( 'Maximal zwei Räume auswählen. Ohne Auswahl wird kein Inhalt angezeigt.', 'foyer' ); ?></p>
+                            <p class="description"><?php esc_html_e( 'Wählen Sie die Räume aus, die auf dieser Folie erscheinen sollen. Ohne Auswahl wird kein Inhalt angezeigt.', 'foyer' ); ?></p>
                         <?php endif; ?>
                     </td>
                 </tr>
@@ -83,6 +88,32 @@ class Foyer_Admin_Slide_Format_Webuntis_Room_Display {
                     <td>
                         <input type="number" min="15" step="5" id="<?php echo esc_attr( self::META_REFRESH ); ?>" name="<?php echo esc_attr( self::META_REFRESH ); ?>" value="<?php echo esc_attr( $refresh ); ?>" />
                         <p class="description"><?php esc_html_e( 'Die Daten werden zyklisch neu geladen. Empfohlen: 30–120 Sekunden.', 'foyer' ); ?></p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">
+                        <label for="<?php echo esc_attr( self::META_HIDE_UPCOMING ); ?>">
+                            <?php esc_html_e( 'Nächste Belegungen ausblenden', 'foyer' ); ?>
+                        </label>
+                    </th>
+                    <td>
+                        <label>
+                            <input type="checkbox" id="<?php echo esc_attr( self::META_HIDE_UPCOMING ); ?>" name="<?php echo esc_attr( self::META_HIDE_UPCOMING ); ?>" value="yes" <?php checked( $hide_upcoming ); ?> />
+                            <?php esc_html_e( 'Nur die aktuelle Belegung anzeigen (falls vorhanden).', 'foyer' ); ?>
+                        </label>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">
+                        <label for="<?php echo esc_attr( self::META_HIDE_CURRENT ); ?>">
+                            <?php esc_html_e( '"Aktuell"-Überschrift ausblenden', 'foyer' ); ?>
+                        </label>
+                    </th>
+                    <td>
+                        <label>
+                            <input type="checkbox" id="<?php echo esc_attr( self::META_HIDE_CURRENT ); ?>" name="<?php echo esc_attr( self::META_HIDE_CURRENT ); ?>" value="yes" <?php checked( $hide_current ); ?> />
+                            <?php esc_html_e( 'Den Abschnittstitel "Aktuell" verbergen.', 'foyer' ); ?>
+                        </label>
                     </td>
                 </tr>
             </tbody>
@@ -123,9 +154,8 @@ class Foyer_Admin_Slide_Format_Webuntis_Room_Display {
         $rooms = array();
         if ( isset( $_POST[ self::META_ROOMS ] ) && is_array( $_POST[ self::META_ROOMS ] ) ) {
             $rooms = array_map( 'sanitize_text_field', wp_unslash( $_POST[ self::META_ROOMS ] ) );
-            $rooms = array_values( array_unique( $rooms ) );
+            $rooms = array_values( array_unique( array_filter( $rooms, 'strlen' ) ) );
         }
-        $rooms = array_slice( $rooms, 0, 2 );
         update_post_meta( $post_id, self::META_ROOMS, $rooms );
 
         $refresh = isset( $_POST[ self::META_REFRESH ] ) ? absint( $_POST[ self::META_REFRESH ] ) : self::DEFAULT_REFRESH;
@@ -133,6 +163,12 @@ class Foyer_Admin_Slide_Format_Webuntis_Room_Display {
             $refresh = 15;
         }
         update_post_meta( $post_id, self::META_REFRESH, $refresh );
+
+        $hide_upcoming = ( isset( $_POST[ self::META_HIDE_UPCOMING ] ) && 'yes' === $_POST[ self::META_HIDE_UPCOMING ] ) ? 'yes' : 'no';
+        update_post_meta( $post_id, self::META_HIDE_UPCOMING, $hide_upcoming );
+
+        $hide_current = ( isset( $_POST[ self::META_HIDE_CURRENT ] ) && 'yes' === $_POST[ self::META_HIDE_CURRENT ] ) ? 'yes' : 'no';
+        update_post_meta( $post_id, self::META_HIDE_CURRENT, $hide_current );
     }
 
     /**

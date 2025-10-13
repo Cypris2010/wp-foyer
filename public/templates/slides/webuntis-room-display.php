@@ -11,14 +11,17 @@ if ( empty( $source ) ) {
 }
 
 $rooms = get_post_meta( $slide->ID, Foyer_Admin_Slide_Format_Webuntis_Room_Display::META_ROOMS, true );
-$rooms = is_array( $rooms ) ? array_values( array_map( 'sanitize_text_field', $rooms ) ) : array();
-$rooms = array_slice( $rooms, 0, 2 );
+$rooms = is_array( $rooms ) ? array_map( 'sanitize_text_field', $rooms ) : array();
+$rooms = array_values( array_unique( array_filter( $rooms, 'strlen' ) ) );
 
 $refresh = get_post_meta( $slide->ID, Foyer_Admin_Slide_Format_Webuntis_Room_Display::META_REFRESH, true );
 $refresh = ( $refresh && $refresh > 0 ) ? absint( $refresh ) : Foyer_Admin_Slide_Format_Webuntis_Room_Display::DEFAULT_REFRESH;
 if ( $refresh < 15 ) {
     $refresh = 15;
 }
+
+$hide_upcoming = get_post_meta( $slide->ID, Foyer_Admin_Slide_Format_Webuntis_Room_Display::META_HIDE_UPCOMING, true ) === 'yes';
+$hide_current  = get_post_meta( $slide->ID, Foyer_Admin_Slide_Format_Webuntis_Room_Display::META_HIDE_CURRENT, true ) === 'yes';
 
 $locale   = get_locale();
 $timezone = wp_timezone_string();
@@ -44,6 +47,8 @@ $dataset = array(
     'labelRemarks'    => esc_attr__( 'Hinweis', 'foyer' ),
     'errorMessage'    => esc_attr__( 'Daten konnten nicht geladen werden.', 'foyer' ),
     'errorNoRooms'    => esc_attr__( 'Bitte wählen Sie mindestens einen Raum in den Folieneinstellungen aus.', 'foyer' ),
+    'hideUpcoming'    => $hide_upcoming ? '1' : '0',
+    'hideCurrent'     => $hide_current ? '1' : '0',
 );
 ?>
 <div<?php $slide->classes( array( 'foyer-slide-webuntis-room-display' ) ); ?><?php $slide->data_attr(); ?>>
@@ -65,7 +70,9 @@ $dataset = array(
         data-label-teachers="<?php echo $dataset['labelTeachers']; ?>"
         data-label-remarks="<?php echo $dataset['labelRemarks']; ?>"
         data-error-message="<?php echo $dataset['errorMessage']; ?>"
-        data-error-no-rooms="<?php echo $dataset['errorNoRooms']; ?>">
+        data-error-no-rooms="<?php echo $dataset['errorNoRooms']; ?>"
+        data-hide-upcoming="<?php echo esc_attr( $dataset['hideUpcoming'] ); ?>"
+        data-hide-current="<?php echo esc_attr( $dataset['hideCurrent'] ); ?>">
         <header class="foyer-webuntis-room-display__page-header">
             <div class="foyer-webuntis-room-display__page-meta">
                 <div class="foyer-webuntis-room-display__clock" data-format-date="<?php echo esc_attr( _x( 'd.m.Y', 'webuntis room display date format', 'foyer' ) ); ?>" data-format-time="<?php echo esc_attr( _x( 'H:i', 'webuntis room display time format', 'foyer' ) ); ?>">
