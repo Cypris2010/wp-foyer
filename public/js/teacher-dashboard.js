@@ -1,7 +1,7 @@
 (function(){
 	'use strict';
 
-	// Controller for the Teacher Dashboard slide – mirrors the standalone WebUntis dashboard behaviour.
+	// Controller for the WebUntis Teacher Dashboard slide – mirrors the standalone WebUntis dashboard behaviour.
 
 	const STATUS_KEYS = ['gone', 'nodata', 'irregular', 'none', 'cancelled'];
 	const STATUS_LABELS = {

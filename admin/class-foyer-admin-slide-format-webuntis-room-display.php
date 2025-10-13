@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Admin helpers for the WebUntis room display slide format.
+ * Admin helpers for the WebUntis Room Display slide format.
  */
 class Foyer_Admin_Slide_Format_Webuntis_Room_Display {
 

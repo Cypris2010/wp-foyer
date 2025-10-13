@@ -1,6 +1,6 @@
 <?php
 /**
- * WebUntis room display slide template.
+ * WebUntis Room Display slide template.
  */
 
 $slide = new Foyer_Slide( get_the_id() );
@@ -75,7 +75,7 @@ $dataset = array(
         data-hide-current="<?php echo esc_attr( $dataset['hideCurrent'] ); ?>">
         <header class="foyer-webuntis-room-display__page-header">
             <div class="foyer-webuntis-room-display__page-meta">
-                <div class="foyer-webuntis-room-display__clock" data-format-date="<?php echo esc_attr( _x( 'd.m.Y', 'webuntis room display date format', 'foyer' ) ); ?>" data-format-time="<?php echo esc_attr( _x( 'H:i', 'webuntis room display time format', 'foyer' ) ); ?>">
+                <div class="foyer-webuntis-room-display__clock" data-format-date="<?php echo esc_attr( _x( 'd.m.Y', 'WebUntis Room Display date format', 'foyer' ) ); ?>" data-format-time="<?php echo esc_attr( _x( 'H:i', 'WebUntis Room Display time format', 'foyer' ) ); ?>">
                     <span class="foyer-webuntis-room-display__clock-date">--.--.----</span>
                     <span class="foyer-webuntis-room-display__clock-time">--:--</span>
                 </div>

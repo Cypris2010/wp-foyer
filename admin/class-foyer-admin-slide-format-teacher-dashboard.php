@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Adds admin functionality for the Teacher Dashboard slide format.
+ * Adds admin functionality for the WebUntis Teacher Dashboard slide format.
  *
  * @since		1.?.?
  *
@@ -20,7 +20,7 @@ class Foyer_Admin_Slide_Format_Teacher_Dashboard {
 	const CACHE_TTL = 300; // 5 minutes
 
 	/**
-	 * Outputs the meta box for the Teacher Dashboard slide format.
+	 * Outputs the meta box for the WebUntis Teacher Dashboard slide format.
 	 *
 	 * @since	1.?.?
 	 *
@@ -112,7 +112,7 @@ class Foyer_Admin_Slide_Format_Teacher_Dashboard {
 	}
 
 	/**
-	 * Saves additional data for the Teacher Dashboard slide format.
+	 * Saves additional data for the WebUntis Teacher Dashboard slide format.
 	 *
 	 * @since	1.?.?
 	 *

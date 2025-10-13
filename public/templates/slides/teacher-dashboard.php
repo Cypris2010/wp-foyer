@@ -1,6 +1,6 @@
 <?php
 /**
- * Teacher Dashboard slide format template.
+ * WebUntis Teacher Dashboard slide format template.
  *
  * @since	1.?.?
  */
