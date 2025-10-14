@@ -1,11 +1,16 @@
 (function () {
 	'use strict';
 
+	// The widget mounts on every node that matches this selector.
 	var SELECTOR = '.foyer-webuntis-room-display';
+	// Track per-node runtime state so timers and fetches can be cleaned up.
 	var instances = new WeakMap();
+	// Limit how many future lessons are shown in the upcoming list.
 	var MAX_UPCOMING = 3;
+	// Some browsers do not ship AbortController; feature-detect before using it.
 	var supportsAbort = typeof AbortController !== 'undefined';
 
+	// Safely parse JSON stored in data attributes and fall back to an empty list.
 	function parseJsonAttribute(value) {
 		if (!value) {
 			return [];
@@ -18,10 +23,12 @@
 		}
 	}
 
+	// Normalise room labels to make comparisons whitespace-insensitive.
 	function normaliseRoom(value) {
 		return (value || '').replace(/\s+/g, ' ').trim();
 	}
 
+	// Convert the WebUntis timestamp format into a Date object.
 	function parseDate(raw) {
 		if (!raw || raw === '-' ) {
 			return null;
@@ -31,6 +38,8 @@
 		return isNaN(date.getTime()) ? null : date;
 	}
 
+	// Format a single clock time in the configured locale/timezone;
+	// fall back to a manual formatter if Intl fails (e.g. on old browsers).
 	function formatTime(date, locale, timezone) {
 		try {
 			return new Intl.DateTimeFormat(locale || undefined, {
@@ -46,6 +55,7 @@
 		}
 	}
 
+	// Render a human readable time span such as "08:00 – 09:30".
 	function formatTimeRange(start, end, locale, timezone) {
 		if (!start || !end) {
 			return '';
@@ -53,19 +63,24 @@
 		return formatTime(start, locale, timezone) + ' – ' + formatTime(end, locale, timezone);
 	}
 
+	// Determine whether two consecutive events should be merged into one block.
 	function shouldMerge(prev, next) {
 		if (!prev || !next) {
 			return false;
 		}
 		return prev.room === next.room &&
 			prev.endRaw === next.startRaw &&
-			prev.title === next.title &&
+			prev.rooms === next.rooms &&
 			prev.teachers === next.teachers &&
 			prev.classes === next.classes &&
 			prev.subject === next.subject &&
-			prev.status === next.status;
+			prev.status === next.status &&
+			prev.type === next.type &&
+			prev.textSubstitute === next.textSubstitute &&
+			prev.textBooking === next.textBooking;
 	}
 
+	// Merge adjacent entries that belong together so the display stays compact.
 	function mergeEntries(entries) {
 		if (!entries.length) {
 			return entries;
@@ -83,14 +98,14 @@
 			if (shouldMerge(previous, current)) {
 				previous.endRaw = current.endRaw;
 				previous.endDate = current.endDate;
-				if (!previous.remark && current.remark) {
-					previous.remark = current.remark;
+				if (!previous.type && current.type) {
+					previous.type = current.type;
 				}
-				if (!previous.remark2 && current.remark2) {
-					previous.remark2 = current.remark2;
+				if (!previous.textSubstitute && current.textSubstitute) {
+					previous.textSubstitute = current.textSubstitute;
 				}
-				if (!previous.remark3 && current.remark3) {
-					previous.remark3 = current.remark3;
+				if (!previous.textBooking && current.textBooking) {
+					previous.textBooking = current.textBooking;
 				}
 			} else {
 				result.push(current);
@@ -99,6 +114,7 @@
 		return result;
 	}
 
+	// Parse the raw WebUntis export (pipe-separated text) into structured events.
 	function parseUntis(text) {
 		var lines = String(text || '').split(/\r?\n/);
 		var entries = [];
@@ -135,20 +151,21 @@
 				endRaw: endRaw,
 				startDate: startDate,
 				endDate: endDate,
-				title: parts[3] ? parts[3].trim() : '',
+				rooms: parts[3] ? parts[3].trim() : '',
 				teachers: parts[4] ? parts[4].trim() : '',
-				classes: parts[5] ? parts[5].trim() : '',
-				subject: parts[6] ? parts[6].trim() : '',
-				status: statusRaw,
-				remark: parts[8] ? parts[8].trim() : '',
-				remark2: parts[9] ? parts[9].trim() : '',
-				remark3: parts[10] ? parts[10].trim() : ''
+					classes: parts[5] ? parts[5].trim() : '',
+					subject: parts[6] ? parts[6].trim() : '',
+					status: statusRaw,
+					type: parts[8] ? parts[8].trim() : '',
+					textSubstitute: parts[9] ? parts[9].trim() : '',
+					textBooking: parts[10] ? parts[10].trim() : ''
 			});
 		}
 
 		return mergeEntries(entries);
 	}
 
+	// Group parsed entries by the requested rooms and compute current/upcoming events.
 	function buildRoomData(entries, requested) {
 		var now = new Date();
 		var byRoom = new Map();
@@ -210,12 +227,14 @@
 		return result;
 	}
 
+	// Remove every child node so the grid can be rebuilt from scratch.
 	function clearChildren(node) {
 		while (node.firstChild) {
 			node.removeChild(node.firstChild);
 		}
 	}
 
+	// Utility to create a <p> element that shows a label/value pair when data exists.
 	function createLine(label, value, className) {
 		if (!value) {
 			return null;
@@ -226,6 +245,7 @@
 		return line;
 	}
 
+	// Build the detail block for the currently running event.
 	function buildDetails(event, labels, locale, timezone) {
 		var container = document.createElement('div');
 		container.className = 'foyer-webuntis-room-display__details';
@@ -250,7 +270,7 @@
 			container.appendChild(teacherLine);
 		}
 
-		var remarks = [event.remark, event.remark2, event.remark3].filter(function (value) {
+		var remarks = [event.type, event.textSubstitute, event.textBooking].filter(function (value) {
 			return value && value.length;
 		});
 		if (remarks.length) {
@@ -263,6 +283,7 @@
 		return container;
 	}
 
+	// Render the list of upcoming bookings underneath the current event.
 	function buildUpcomingList(upcoming, labels, locale, timezone) {
 		var list = document.createElement('ul');
 		list.className = 'foyer-webuntis-room-display__list';
@@ -280,7 +301,7 @@
 			var info = document.createElement('div');
 			info.className = 'foyer-webuntis-room-display__list-info';
 
-			var title = event.subject || event.title || '';
+			var title = event.subject || event.textBooking || '';
 			if (title) {
 				var titleNode = document.createElement('div');
 				titleNode.className = 'foyer-webuntis-room-display__list-subject';
@@ -295,8 +316,11 @@
 			if (event.teachers) {
 				subtitleParts.push(event.teachers);
 			}
-			if (event.remark && subtitleParts.length === 0) {
-				subtitleParts.push(event.remark);
+			if (subtitleParts.length === 0) {
+				var fallbackMeta = event.textSubstitute || event.textBooking || event.type;
+				if (fallbackMeta) {
+					subtitleParts.push(fallbackMeta);
+				}
 			}
 			if (subtitleParts.length) {
 				var subtitle = document.createElement('div');
@@ -312,6 +336,7 @@
 		return list;
 	}
 
+	// Update the "last refreshed" badge that sits in each column header.
 	function updateTimestamp(node, labels, locale, timezone, timestamp) {
 		var updatedNode = node.querySelector('.foyer-webuntis-room-display__updated');
 		if (!updatedNode || !timestamp) {
@@ -327,10 +352,12 @@
 		}
 	}
 
+	// Manual zero-padding helper for fallback formatters.
 	function pad(number) {
 		return number < 10 ? '0' + number : String(number);
 	}
 
+	// Format a calendar date using Intl if available, otherwise fall back to DD.MM.YYYY.
 	function formatDate(date, locale, timezone) {
 		try {
 			return new Intl.DateTimeFormat(locale || undefined, {
@@ -344,6 +371,7 @@
 		}
 	}
 
+	// Format a time string (HH:MM) for the live clock shown on the widget.
 	function formatClockTime(date, locale, timezone) {
 		try {
 			return new Intl.DateTimeFormat(locale || undefined, {
@@ -357,6 +385,7 @@
 		}
 	}
 
+	// Kick off the live clock displayed above the schedule.
 	function startClock(node, state) {
 		var container = node.querySelector('.foyer-webuntis-room-display__clock');
 		if (!container) {
@@ -400,6 +429,7 @@
 		schedule();
 	}
 
+	// Interpret a small custom formatting syntax (Y, m, d, H, i, ...).
 	function formatCustom(date, pattern, timezone) {
 		var components = dateWithZone(date, timezone);
 		var replacements = {
@@ -419,6 +449,7 @@
 		});
 	}
 
+	// Read date components for a specific timezone, falling back to local time.
 	function dateWithZone(date, timezone) {
 		var fallback = {
 			year: date.getFullYear(),
@@ -458,6 +489,7 @@
 		}
 	}
 
+	// Rebuild the entire grid for the requested rooms based on the latest data.
 	function render(node, rooms, labels, locale, timezone, options) {
 		var grid = node.querySelector('.foyer-webuntis-room-display__grid');
 		if (!grid) {
@@ -564,6 +596,7 @@
 		}
 	}
 
+	// Show an inline error message inside the widget.
 	function setError(node, message) {
 		var errorBox = node.querySelector('.foyer-webuntis-room-display__error');
 		if (!errorBox) {
@@ -573,6 +606,7 @@
 		errorBox.hidden = false;
 	}
 
+	// Hide the error area so the normal content can be shown.
 	function clearError(node) {
 		var errorBox = node.querySelector('.foyer-webuntis-room-display__error');
 		if (!errorBox) {
@@ -582,6 +616,7 @@
 		errorBox.textContent = '';
 	}
 
+	// Cancel timers and pending fetches when an instance is torn down.
 	function cleanupInstance(state) {
 		if (!state) {
 			return;
@@ -600,6 +635,7 @@
 		}
 	}
 
+	// Fetch the WebUntis export, parse it, and refresh the rendered DOM.
 	function fetchAndRender(node, state) {
 		if (state.timer) {
 			clearTimeout(state.timer);
@@ -668,6 +704,7 @@
 		});
 	}
 
+	// Initialise a newly discovered widget node and start polling its data source.
 	function initInstance(node) {
 		if (instances.has(node)) {
 			return;
@@ -748,6 +785,7 @@
 		fetchAndRender(node, state);
 	}
 
+	// Tear down a widget instance when it leaves the DOM.
 	function destroyInstance(node) {
 		var state = instances.get(node);
 		if (!state) {
@@ -757,6 +795,7 @@
 		instances.delete(node);
 	}
 
+	// Run initialisation for all matching nodes on first load.
 	function initAll() {
 		var nodes = document.querySelectorAll(SELECTOR);
 		for (var i = 0; i < nodes.length; i++) {
@@ -764,12 +803,14 @@
 		}
 	}
 
+	// Auto-init existing nodes after DOM ready and watch for additions/removals.
 	if (document.readyState === 'loading') {
 		document.addEventListener('DOMContentLoaded', initAll, { once: true });
 	} else {
 		initAll();
 	}
 
+	// Observe the whole document so dynamically inserted widgets are supported.
 	var observer = new MutationObserver(function (mutations) {
 		mutations.forEach(function (mutation) {
 			for (var i = 0; i < mutation.addedNodes.length; i++) {
