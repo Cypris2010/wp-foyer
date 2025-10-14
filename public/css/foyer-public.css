@@ -316,6 +316,12 @@ body.single-foyer_slide:not(.custom-background-image):after {
   outline: 2px solid currentColor;
   outline-offset: 1px;
 }
+
+@media (max-width: 768px) {
+  .foyer-slide-teacher-dashboard .foyer-teacher-dashboard__grid[data-foyer-tile-groups="few"] {
+    grid-template-columns: 1fr !important;
+  }
+}
 .foyer-slide-teacher-dashboard .foyer-teacher-dashboard__legend-chip[data-status="gone"] {
   background: var(--status-gone-bg);
   color: var(--status-gone-text);

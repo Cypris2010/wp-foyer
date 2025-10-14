@@ -202,25 +202,43 @@
 			});
 	}
 
-	function computeGrid(wrapper, grid, count) {
-		if (!wrapper || !grid) {
-			return;
+		function computeGrid(wrapper, grid, count) {
+			if (!wrapper || !grid) {
+				return;
+			}
+			// Use the rendered (possibly scaled) size when deciding how many columns we can fit.
+			const wrapperRect = typeof wrapper.getBoundingClientRect === 'function' ? wrapper.getBoundingClientRect() : null;
+			const gridRect = typeof grid.getBoundingClientRect === 'function' ? grid.getBoundingClientRect() : null;
+			const w = (wrapperRect && wrapperRect.width) || (gridRect && gridRect.width) || wrapper.clientWidth || grid.clientWidth;
+			const h = (wrapperRect && wrapperRect.height) || (gridRect && gridRect.height) || grid.clientHeight || wrapper.clientHeight;
+			if (!w || !h) {
+				return;
+			}
+			const gap = 12;
+			const narrowBreakpoint = 768;
+			let cols;
+			const viewportWidth = typeof window !== 'undefined' ? Math.min(window.innerWidth || w, w) : w;
+			const isPortrait = h > w;
+			const twoColTileWidth = count > 1 ? (w - gap) / Math.min(2, count) : w;
+			const shouldForceSingleColumn = count <= 2 && (
+				viewportWidth < narrowBreakpoint ||
+				w < narrowBreakpoint ||
+				isPortrait ||
+				twoColTileWidth < 520
+			);
+			if (shouldForceSingleColumn) {
+				cols = 1;
+			} else {
+				cols = Math.max(1, Math.round(Math.sqrt(count * (w / h))));
+			}
+			cols = Math.min(cols, Math.max(1, count));
+			const rows = Math.max(1, Math.ceil(count / cols));
+			grid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+			const tileW = (w - gap * (cols - 1)) / cols;
+			const tileH = (h - gap * (rows - 1)) / rows;
+			const base = Math.max(10, Math.min(tileW, tileH) * 0.068);
+			wrapper.style.setProperty('--base-font', base + 'px');
 		}
-		const w = wrapper.clientWidth || grid.clientWidth;
-		const h = grid.clientHeight || wrapper.clientHeight;
-		if (!w || !h) {
-			return;
-		}
-		const gap = 12;
-		let cols = Math.max(1, Math.round(Math.sqrt(count * (w / h))));
-		cols = Math.min(cols, Math.max(1, count));
-		const rows = Math.max(1, Math.ceil(count / cols));
-		grid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
-		const tileW = (w - gap * (cols - 1)) / cols;
-		const tileH = (h - gap * (rows - 1)) / rows;
-		const base = Math.max(10, Math.min(tileW, tileH) * 0.068);
-		wrapper.style.setProperty('--base-font', base + 'px');
-	}
 
 	function initInstance(wrapper) {
 		if (!wrapper || wrapper.dataset.foyerTeacherDashboardInit === '1') {
@@ -397,8 +415,11 @@
 				}
 			});
 
-			const count = Math.max(1, groups.length);
-			computeGrid(wrapper, grid, count);
+				const count = Math.max(1, groups.length);
+				if (grid) {
+					grid.dataset.foyerTileGroups = count <= 2 ? 'few' : 'many';
+				}
+				computeGrid(wrapper, grid, count);
 			startRotation();
 		}
 
