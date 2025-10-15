@@ -5,10 +5,13 @@
 
 $slide = new Foyer_Slide( get_the_id() );
 
+$has_source_meta = metadata_exists( 'post', $slide->ID, Foyer_Admin_Slide_Format_Webuntis_Room_Display::META_SOURCE );
 $source = get_post_meta( $slide->ID, Foyer_Admin_Slide_Format_Webuntis_Room_Display::META_SOURCE, true );
-if ( empty( $source ) ) {
+if ( ! $has_source_meta ) {
     $source = Foyer_Admin_Slide_Format_Webuntis_Room_Display::DEFAULT_SOURCE;
 }
+$fallback_url = trailingslashit( FOYER_PLUGIN_URL ) . Foyer_Admin_Slide_Format_Webuntis_Room_Display::FALLBACK_FILENAME;
+$resolved_source = '' !== $source ? $source : $fallback_url;
 
 $rooms = get_post_meta( $slide->ID, Foyer_Admin_Slide_Format_Webuntis_Room_Display::META_ROOMS, true );
 $rooms = is_array( $rooms ) ? array_map( 'sanitize_text_field', $rooms ) : array();
@@ -29,7 +32,7 @@ $timezone = wp_timezone_string();
 wp_enqueue_script( 'foyer-webuntis-room-display' );
 
 $dataset = array(
-    'source'          => esc_url( $source ),
+    'source'          => esc_url( $resolved_source ),
     'rooms'           => esc_attr( wp_json_encode( $rooms ) ),
     'refresh'         => esc_attr( $refresh ),
     'locale'          => esc_attr( $locale ),

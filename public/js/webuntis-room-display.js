@@ -9,6 +9,46 @@
 	var MAX_UPCOMING = 3;
 	// Some browsers do not ship AbortController; feature-detect before using it.
 	var supportsAbort = typeof AbortController !== 'undefined';
+	// Fallback filename that ships with the script for local testing.
+	var FALLBACK_FILENAME = 'raeume_ganzer_tag.txt';
+
+	// Determine the directory URL the script was loaded from.
+	function getScriptBase() {
+		var candidates = [];
+		if (document.currentScript && document.currentScript.src) {
+			candidates.push(document.currentScript.src);
+		}
+		var scripts = document.getElementsByTagName('script');
+		for (var i = scripts.length - 1; i >= 0; i--) {
+			var src = scripts[i].src;
+			if (src && src.indexOf('webuntis-room-display.js') !== -1) {
+				candidates.push(src);
+				break;
+			}
+		}
+		for (var j = 0; j < candidates.length; j++) {
+			var url = candidates[j];
+			if (!url) {
+				continue;
+			}
+			var withoutHash = url.split('#')[0];
+			var withoutQuery = withoutHash.split('?')[0];
+			var index = withoutQuery.lastIndexOf('/');
+			if (index !== -1) {
+				return withoutQuery.slice(0, index + 1);
+			}
+		}
+		return '';
+	}
+
+	// Resolve the default local data source path once on startup.
+	var fallbackSource = (function () {
+		var base = getScriptBase();
+		if (!base) {
+			return '';
+		}
+		return base + FALLBACK_FILENAME;
+	})();
 
 	// Safely parse JSON stored in data attributes and fall back to an empty list.
 	function parseJsonAttribute(value) {
@@ -74,6 +114,7 @@
 			prev.teachers === next.teachers &&
 			prev.classes === next.classes &&
 			prev.subject === next.subject &&
+			prev.title === next.title &&
 			prev.status === next.status &&
 			prev.type === next.type &&
 			prev.textSubstitute === next.textSubstitute &&
@@ -106,6 +147,9 @@
 				}
 				if (!previous.textBooking && current.textBooking) {
 					previous.textBooking = current.textBooking;
+				}
+				if (!previous.title && current.title) {
+					previous.title = current.title;
 				}
 			} else {
 				result.push(current);
@@ -144,6 +188,15 @@
 				continue;
 			}
 
+			var roomsDetail = parts[3] ? parts[3].trim() : '';
+			var teachersDetail = parts[4] ? parts[4].trim() : '';
+			var classesDetail = parts[5] ? parts[5].trim() : '';
+			var subjectDetail = parts[6] ? parts[6].trim() : '';
+			var typeDetail = parts[8] ? parts[8].trim() : '';
+			var textSubstitute = parts[9] ? parts[9].trim() : '';
+			var textBooking = parts[10] ? parts[10].trim() : '';
+			var titleDetail = [classesDetail, subjectDetail].filter(Boolean).join(' • ');
+
 			entries.push({
 				roomOriginal: roomOriginal || room,
 				room: room,
@@ -151,14 +204,15 @@
 				endRaw: endRaw,
 				startDate: startDate,
 				endDate: endDate,
-				rooms: parts[3] ? parts[3].trim() : '',
-				teachers: parts[4] ? parts[4].trim() : '',
-					classes: parts[5] ? parts[5].trim() : '',
-					subject: parts[6] ? parts[6].trim() : '',
-					status: statusRaw,
-					type: parts[8] ? parts[8].trim() : '',
-					textSubstitute: parts[9] ? parts[9].trim() : '',
-					textBooking: parts[10] ? parts[10].trim() : ''
+				rooms: roomsDetail,
+				teachers: teachersDetail,
+				classes: classesDetail,
+				subject: subjectDetail,
+				title: titleDetail,
+				status: statusRaw,
+				type: typeDetail,
+				textSubstitute: textSubstitute,
+				textBooking: textBooking
 			});
 		}
 
@@ -250,20 +304,20 @@
 		var container = document.createElement('div');
 		container.className = 'foyer-webuntis-room-display__details';
 
+		var heading = document.createElement('div');
+		heading.className = 'foyer-webuntis-room-display__heading';
+
 		var time = document.createElement('p');
 		time.className = 'foyer-webuntis-room-display__time';
 		time.textContent = formatTimeRange(event.startDate, event.endDate, locale, timezone);
-		container.appendChild(time);
+		heading.appendChild(time);
 
-		var subject = createLine(labels.subject, event.subject, 'foyer-webuntis-room-display__line');
-		if (subject) {
-			container.appendChild(subject);
+		var titleLine = createLine('', event.title, 'foyer-webuntis-room-display__title');
+		if (titleLine) {
+		heading.appendChild(titleLine);
 		}
 
-		var classesLine = createLine(labels.classes, event.classes, 'foyer-webuntis-room-display__line');
-		if (classesLine) {
-			container.appendChild(classesLine);
-		}
+		container.appendChild(heading);
 
 		var teacherLine = createLine(labels.teachers, event.teachers, 'foyer-webuntis-room-display__line');
 		if (teacherLine) {
@@ -301,7 +355,7 @@
 			var info = document.createElement('div');
 			info.className = 'foyer-webuntis-room-display__list-info';
 
-			var title = event.subject || event.textBooking || '';
+			var title = event.title || event.subject || event.textBooking || event.rooms || '';
 			if (title) {
 				var titleNode = document.createElement('div');
 				titleNode.className = 'foyer-webuntis-room-display__list-subject';
@@ -310,14 +364,11 @@
 			}
 
 			var subtitleParts = [];
-			if (event.classes) {
-				subtitleParts.push(event.classes);
-			}
 			if (event.teachers) {
 				subtitleParts.push(event.teachers);
 			}
 			if (subtitleParts.length === 0) {
-				var fallbackMeta = event.textSubstitute || event.textBooking || event.type;
+				var fallbackMeta = event.textSubstitute || event.textBooking || event.type || event.classes;
 				if (fallbackMeta) {
 					subtitleParts.push(fallbackMeta);
 				}
@@ -711,6 +762,9 @@
 		}
 
 		var source = node.getAttribute('data-source') || '';
+		if (!source && fallbackSource) {
+			source = fallbackSource;
+		}
 		var rooms = parseJsonAttribute(node.getAttribute('data-rooms')).map(function (room) {
 			return String(room || '').trim();
 		}).filter(Boolean);
@@ -763,8 +817,8 @@
 
 		instances.set(node, state);
 
-		if (!source) {
-			setError(node, labels.error + ' (no source)');
+		if (!state.source) {
+			setError(node, labels.error + ' (no source available)');
 			return;
 		}
 

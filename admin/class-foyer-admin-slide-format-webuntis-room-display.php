@@ -10,6 +10,7 @@ class Foyer_Admin_Slide_Format_Webuntis_Room_Display {
     const META_REFRESH = 'slide_webuntis_room_display_refresh';
 
     const DEFAULT_SOURCE       = 'https://bigbrother2.lgsit.de/untisdata/raeume_ganzer_tag.txt';
+    const FALLBACK_FILENAME    = 'public/js/raeume_ganzer_tag.txt';
     const DEFAULT_REFRESH      = 60; // seconds
     const CACHE_TTL            = 300; // 5 minutes
     const META_HIDE_UPCOMING   = 'slide_webuntis_room_display_hide_upcoming';
@@ -23,8 +24,9 @@ class Foyer_Admin_Slide_Format_Webuntis_Room_Display {
     public static function slide_meta_box( $post ) {
         wp_nonce_field( 'foyer_webuntis_room_display_meta', 'foyer_webuntis_room_display_meta' );
 
+        $has_source_meta = metadata_exists( 'post', $post->ID, self::META_SOURCE );
         $source = get_post_meta( $post->ID, self::META_SOURCE, true );
-        if ( empty( $source ) ) {
+        if ( ! $has_source_meta ) {
             $source = self::DEFAULT_SOURCE;
         }
 
@@ -142,9 +144,6 @@ class Foyer_Admin_Slide_Format_Webuntis_Room_Display {
         $previous_source = get_post_meta( $post_id, self::META_SOURCE, true );
 
         $source = isset( $_POST[ self::META_SOURCE ] ) ? esc_url_raw( trim( wp_unslash( $_POST[ self::META_SOURCE ] ) ) ) : '';
-        if ( empty( $source ) ) {
-            $source = self::DEFAULT_SOURCE;
-        }
         update_post_meta( $post_id, self::META_SOURCE, $source );
         delete_transient( self::get_cache_key( $source ) );
         if ( ! empty( $previous_source ) && $previous_source !== $source ) {
@@ -178,8 +177,28 @@ class Foyer_Admin_Slide_Format_Webuntis_Room_Display {
      * @return array|WP_Error
      */
     private static function get_room_choices( $source ) {
-        if ( empty( $source ) ) {
-            return new WP_Error( 'foyer_webuntis_room_missing_source', __( 'Bitte geben Sie eine gültige Datenquelle an.', 'foyer' ) );
+        $source = trim( (string) $source );
+
+        if ( '' === $source ) {
+            $cache_key = self::get_cache_key( '' );
+            $cached = get_transient( $cache_key );
+            if ( false !== $cached ) {
+                return $cached;
+            }
+
+            $body = self::load_local_fallback_body();
+            if ( is_wp_error( $body ) ) {
+                return $body;
+            }
+
+            $choices = self::parse_room_names( $body );
+            if ( empty( $choices ) ) {
+                return new WP_Error( 'foyer_webuntis_room_no_rooms', __( 'In der lokalen Fallback-Datei wurden keine Räume gefunden.', 'foyer' ) );
+            }
+
+            set_transient( $cache_key, $choices, self::CACHE_TTL );
+
+            return $choices;
         }
 
         $cache_key = self::get_cache_key( $source );
@@ -211,6 +230,32 @@ class Foyer_Admin_Slide_Format_Webuntis_Room_Display {
         set_transient( $cache_key, $choices, self::CACHE_TTL );
 
         return $choices;
+    }
+
+    /**
+     * Load the bundled fallback file from the plugin directory.
+     *
+     * @return string|WP_Error
+     */
+    private static function load_local_fallback_body() {
+        $path = trailingslashit( FOYER_PLUGIN_PATH ) . self::FALLBACK_FILENAME;
+
+        if ( ! file_exists( $path ) ) {
+            return new WP_Error( 'foyer_webuntis_room_missing_source', __( 'Die lokale Fallback-Datei wurde nicht gefunden. Bitte geben Sie eine Datenquelle an.', 'foyer' ) );
+        }
+
+        $body = file_get_contents( $path );
+
+        if ( false === $body ) {
+            return new WP_Error( 'foyer_webuntis_room_local_read_error', __( 'Die lokale Fallback-Datei konnte nicht gelesen werden.', 'foyer' ) );
+        }
+
+        $body = (string) $body;
+        if ( '' === trim( $body ) ) {
+            return new WP_Error( 'foyer_webuntis_room_empty', __( 'Die lokale Fallback-Datei ist leer.', 'foyer' ) );
+        }
+
+        return $body;
     }
 
     /**

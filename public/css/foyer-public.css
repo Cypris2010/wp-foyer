@@ -1346,7 +1346,18 @@ html {
   gap: clamp(0.6vmin, calc(0.6vw + 0.4vmin), 1.2vmin);
   font-size: clamp(1.8vmin, calc(0.9vw + 1.3vmin), 2.6vmin);
 }
+.foyer-webuntis-room-display__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: clamp(1vmin, calc(0.6vw + 0.6vmin), 1.8vmin);
+}
 .foyer-webuntis-room-display__time {
+  font-size: clamp(2.2vmin, calc(1.2vw + 1.6vmin), 3.4vmin);
+  font-weight: 600;
+  margin: 0;
+}
+.foyer-webuntis-room-display__title {
   font-size: clamp(2.2vmin, calc(1.2vw + 1.6vmin), 3.4vmin);
   font-weight: 600;
   margin: 0;
