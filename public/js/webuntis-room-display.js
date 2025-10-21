@@ -68,6 +68,11 @@
 		return (value || '').replace(/\s+/g, ' ').trim();
 	}
 
+	// Detect generic lesson markers that should not be surfaced as remarks.
+	function isGenericLessonType(value) {
+		return (value || '').trim().toLowerCase() === 'unterricht';
+	}
+
 	// Convert the WebUntis timestamp format into a Date object.
 	function parseDate(raw) {
 		if (!raw || raw === '-' ) {
@@ -324,9 +329,18 @@
 			container.appendChild(teacherLine);
 		}
 
-		var remarks = [event.type, event.textSubstitute, event.textBooking].filter(function (value) {
-			return value && value.length;
-		});
+		var remarks = [];
+		if (event.type && event.type.length && !isGenericLessonType(event.type)) {
+			remarks.push(event.type);
+		}
+		if (event.textSubstitute && event.textSubstitute.length) {
+			remarks.push(event.textSubstitute);
+		}
+		if (event.textBooking && event.textBooking.length) {
+			if (!isGenericLessonType(event.textBooking)) {
+				remarks.push(event.textBooking);
+			}
+		}
 		if (remarks.length) {
 			var remarkLine = createLine(labels.remarks, remarks.join(' • '), 'foyer-webuntis-room-display__line');
 			if (remarkLine) {
@@ -368,7 +382,16 @@
 				subtitleParts.push(event.teachers);
 			}
 			if (subtitleParts.length === 0) {
-				var fallbackMeta = event.textSubstitute || event.textBooking || event.type || event.classes;
+				var fallbackMeta = event.textSubstitute || '';
+				if (!fallbackMeta && event.textBooking && !isGenericLessonType(event.textBooking)) {
+					fallbackMeta = event.textBooking;
+				}
+				if (!fallbackMeta && event.type && !isGenericLessonType(event.type)) {
+					fallbackMeta = event.type;
+				}
+				if (!fallbackMeta && event.classes) {
+					fallbackMeta = event.classes;
+				}
 				if (fallbackMeta) {
 					subtitleParts.push(fallbackMeta);
 				}
