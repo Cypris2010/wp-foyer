@@ -1320,15 +1320,18 @@ html {
 .foyer-webuntis-room-display__body {
   display: flex;
   flex-direction: column;
-  gap: clamp(1.2vmin, calc(0.9vw + 0.9vmin), 2.2vmin);
+  gap: clamp(0.9vmin, calc(0.6vw + 0.6vmin), 1.6vmin);
   flex: 1 1 auto;
   min-height: 0;
 }
 .foyer-webuntis-room-display__section-title {
-  margin: 0 0 1.4vmin;
-  font-size: clamp(calc(2vmin * var(--foyer-column-scale, 1)), calc((1.1vw + 1.4vmin) * var(--foyer-column-scale, 1)), calc(3.1vmin * var(--foyer-column-scale, 1)));
+  margin: 0;
+  font-size: clamp(calc(1.7vmin * var(--foyer-column-scale, 1)), calc((0.9vw + 1.2vmin) * var(--foyer-column-scale, 1)), calc(2.6vmin * var(--foyer-column-scale, 1)));
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+.foyer-webuntis-room-display__section-title--upcoming {
+  margin-top: clamp(0.8vmin, calc(0.6vw + 0.6vmin), 1.6vmin);
 }
 .foyer-webuntis-room-display__current {
   display: flex;
@@ -1340,6 +1343,42 @@ html {
   border-radius: 1.6vmin;
   background: rgba(15, 23, 42, 0.03);
   box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
+}
+.foyer-webuntis-room-display__current-wrapper {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  position: relative;
+  flex: 2 1 0;
+  min-height: 0;
+  border-radius: 1.6vmin;
+  overflow: hidden;
+}
+.foyer-webuntis-room-display__current-wrapper .foyer-webuntis-room-display__current {
+  grid-area: 1 / 1;
+  width: 100%;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+  z-index: 1;
+}
+.foyer-webuntis-room-display__current-wrapper .foyer-webuntis-room-display__current.is-visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+.foyer-webuntis-room-display__current-overlay {
+  grid-area: 1 / 1;
+  background: #ffffff;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  z-index: 2;
+  border-radius: inherit;
+}
+.foyer-webuntis-room-display__current-overlay.is-active {
+  opacity: 1;
 }
 .foyer-webuntis-room-display__current.is-cancelled {
   background: rgba(248, 113, 113, 0.18);
@@ -1523,7 +1562,7 @@ html {
     font-size: calc(2.6vmin * var(--foyer-column-scale, 1));
   }
   .foyer-webuntis-room-display__section-title {
-    font-size: calc(3.6vmin * var(--foyer-column-scale, 1));
+    font-size: calc(3.1vmin * var(--foyer-column-scale, 1));
   }
   .foyer-webuntis-room-display__time {
     font-size: calc(4vmin * var(--foyer-column-scale, 1));

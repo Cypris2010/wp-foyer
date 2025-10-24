@@ -159,7 +159,7 @@
 			}
 			var baseline = 480;
 			var minScale = 0.5;
-			var maxScale = 1.75;
+			var maxScale = 1.4;
 			for (var i = 0; i < columns.length; i++) {
 				var column = columns[i];
 				var rect = column.getBoundingClientRect();
@@ -168,7 +168,9 @@
 					column.classList.remove('foyer-webuntis-room-display__column--spacious');
 					continue;
 				}
-				var scale = rect.height / baseline;
+				var heightRatio = rect.height / baseline;
+				// Dampening keeps tall displays from inflating the type too aggressively.
+				var scale = heightRatio <= 1 ? heightRatio : 1 + (heightRatio - 1) * 0.35;
 				if (scale < minScale) {
 					scale = minScale;
 				} else if (scale > maxScale) {
@@ -418,14 +420,17 @@
 				}
 				return a.endDate.getTime() - b.endDate.getTime();
 			});
-			var current = null;
+			var current = [];
 			var upcoming = [];
+			var nowTime = now.getTime();
 
 			for (var idx = 0; idx < list.length; idx++) {
 				var item = list[idx];
-				if (!current && item.startDate.getTime() <= now.getTime() && item.endDate.getTime() > now.getTime()) {
-					current = item;
-				} else if (item.startDate.getTime() > now.getTime()) {
+				var startTime = item.startDate.getTime();
+				var endTime = item.endDate.getTime();
+				if (startTime <= nowTime && endTime > nowTime) {
+					current.push(item);
+				} else if (startTime > nowTime) {
 					upcoming.push(item);
 				}
 			}
@@ -474,14 +479,6 @@
 
 		if (event.cancelled) {
 			container.classList.add('is-cancelled');
-			heading.classList.add('is-cancelled');
-			var cancellationBadge = document.createElement('span');
-			cancellationBadge.className = 'foyer-webuntis-room-display__badge foyer-webuntis-room-display__badge--cancelled';
-			cancellationBadge.textContent = labels.cancelled || 'Unterricht entfällt';
-			heading.insertBefore(cancellationBadge, time);
-			var breakNode = document.createElement('span');
-			breakNode.className = 'foyer-webuntis-room-display__break';
-			heading.insertBefore(breakNode, time);
 		}
 
 		var titleLine = createLine('', event.title, 'foyer-webuntis-room-display__title');
@@ -736,13 +733,113 @@
 		}
 	}
 
+	function stopAllRotations(state) {
+		if (!state || !state.rotationTimers) {
+			return;
+		}
+		state.rotationTimers.forEach(function (timer) {
+			clearInterval(timer);
+		});
+		state.rotationTimers.clear();
+	}
+
+	function setBlockVisibility(node, isVisible) {
+		if (!node) {
+			return;
+		}
+		node.classList.toggle('is-visible', isVisible);
+		node.hidden = !isVisible;
+		if (isVisible) {
+			node.style.removeProperty('display');
+		} else {
+			node.style.display = 'none';
+		}
+		node.setAttribute('aria-hidden', isVisible ? 'false' : 'true');
+	}
+
+	function triggerOverlay(overlay, onBeforeSwitch, onAfterSwitch) {
+		if (!overlay) {
+			if (typeof onBeforeSwitch === 'function') {
+				onBeforeSwitch();
+			}
+			if (typeof onAfterSwitch === 'function') {
+				onAfterSwitch();
+			}
+			return;
+		}
+		overlay.classList.remove('is-active');
+		// Force reflow so the animation restarts even if the class was already applied.
+		void overlay.offsetWidth;
+		overlay.classList.add('is-active');
+		var midpointDelay = 180;
+		var releaseDelay = 420;
+		if (typeof onBeforeSwitch === 'function') {
+			setTimeout(onBeforeSwitch, midpointDelay);
+		}
+		setTimeout(function () {
+			overlay.classList.remove('is-active');
+			if (typeof onAfterSwitch === 'function') {
+				onAfterSwitch();
+			}
+		}, releaseDelay);
+	}
+
+	function scheduleCurrentRotation(state, roomKey, nodes) {
+		if (!state || !state.rotationTimers) {
+			return;
+		}
+		if (!nodes || !nodes.length) {
+			return;
+		}
+		nodes.forEach(function (node, idx) {
+			setBlockVisibility(node, idx === 0);
+		});
+		if (nodes.length === 1) {
+			return;
+		}
+		var overlay = nodes[0].parentNode ? nodes[0].parentNode.querySelector('.foyer-webuntis-room-display__current-overlay') : null;
+		var index = 0;
+		var timer = setInterval(function () {
+			if (!nodes.length) {
+				return;
+			}
+			var currentIndex = index;
+			var next = (index + 1) % nodes.length;
+			setBlockVisibility(nodes[next], false);
+			triggerOverlay(overlay, function () {
+				setBlockVisibility(nodes[currentIndex], false);
+			}, function () {
+				setBlockVisibility(nodes[next], true);
+			});
+			index = next;
+		}, 10000);
+		state.rotationTimers.set(roomKey, timer);
+	}
+
+	function buildCurrentBlock(entries, labels, locale, timezone, cancelledGroup) {
+		var block = document.createElement('div');
+		block.className = 'foyer-webuntis-room-display__current';
+		if (cancelledGroup) {
+			block.classList.add('foyer-webuntis-room-display__current--cancelled', 'is-cancelled');
+		} else {
+			block.classList.add('foyer-webuntis-room-display__current--active');
+		}
+		for (var idx = 0; idx < entries.length; idx++) {
+			var detailNode = buildDetails(entries[idx], labels, locale, timezone);
+			detailNode.classList.add('foyer-webuntis-room-display__current-item');
+			block.appendChild(detailNode);
+		}
+		return block;
+	}
+
 	// Rebuild the entire grid for the requested rooms based on the latest data.
-	function render(node, rooms, labels, locale, timezone, options) {
+	function render(node, rooms, labels, locale, timezone, options, state) {
 		var grid = node.querySelector('.foyer-webuntis-room-display__grid');
 		if (!grid) {
 			return;
 		}
 
+		stopAllRotations(state);
 		clearChildren(grid);
 
 		var count = rooms.length;
@@ -774,6 +871,7 @@
 
 		for (var i = 0; i < rooms.length; i++) {
 			var data = rooms[i];
+			var currentEntries = Array.isArray(data.current) ? data.current.slice() : (data.current ? [data.current] : []);
 			var column = document.createElement('section');
 			column.className = 'foyer-webuntis-room-display__column';
 
@@ -787,7 +885,9 @@
 
 				var badge = document.createElement('span');
 				badge.className = 'foyer-webuntis-room-display__status';
-				var occupied = !!(data.current && !data.current.cancelled);
+				var occupied = currentEntries.some(function (entry) {
+					return !entry.cancelled;
+				});
 				badge.classList.add(occupied ? 'is-occupied' : 'is-free');
 				badge.textContent = occupied ? labels.occupied : labels.free;
 			header.appendChild(badge);
@@ -804,28 +904,47 @@
 				body.appendChild(currentTitle);
 			}
 
-			var currentBlock = document.createElement('div');
-			currentBlock.className = 'foyer-webuntis-room-display__current';
-
-				if (data.current) {
-					if (data.current.cancelled) {
-						currentBlock.classList.add('is-cancelled');
-					} else {
-						currentBlock.classList.remove('is-cancelled');
-					}
-					currentBlock.appendChild(buildDetails(data.current, labels, locale, timezone));
-				} else {
-					var free = document.createElement('p');
-					free.className = 'foyer-webuntis-room-display__free';
+			if (currentEntries.length) {
+				var rotationWrapper = document.createElement('div');
+				rotationWrapper.className = 'foyer-webuntis-room-display__current-wrapper';
+				var rotationNodes = [];
+				var activeEntries = currentEntries.filter(function (entry) {
+					return !entry.cancelled;
+				});
+				if (activeEntries.length) {
+					var activeBlock = buildCurrentBlock(activeEntries, labels, locale, timezone, false);
+					rotationWrapper.appendChild(activeBlock);
+					rotationNodes.push(activeBlock);
+				}
+				var cancelledEntries = currentEntries.filter(function (entry) {
+					return !!entry.cancelled;
+				});
+				if (cancelledEntries.length) {
+					var cancelledBlock = buildCurrentBlock(cancelledEntries, labels, locale, timezone, true);
+					rotationWrapper.appendChild(cancelledBlock);
+					rotationNodes.push(cancelledBlock);
+				}
+				if (rotationNodes.length) {
+					var overlay = document.createElement('div');
+					overlay.className = 'foyer-webuntis-room-display__current-overlay';
+					overlay.setAttribute('aria-hidden', 'true');
+					rotationWrapper.appendChild(overlay);
+					body.appendChild(rotationWrapper);
+					scheduleCurrentRotation(state, data.key, rotationNodes);
+				}
+			} else {
+				var freeBlock = document.createElement('div');
+				freeBlock.className = 'foyer-webuntis-room-display__current foyer-webuntis-room-display__current--free';
+				var free = document.createElement('p');
+				free.className = 'foyer-webuntis-room-display__free';
 				free.textContent = labels.freeNow;
-				currentBlock.appendChild(free);
+				freeBlock.appendChild(free);
+				body.appendChild(freeBlock);
 			}
-
-			body.appendChild(currentBlock);
 
 			if (!hideUpcoming) {
 				var upcomingTitle = document.createElement('h3');
-				upcomingTitle.className = 'foyer-webuntis-room-display__section-title';
+				upcomingTitle.className = 'foyer-webuntis-room-display__section-title foyer-webuntis-room-display__section-title--upcoming';
 				upcomingTitle.textContent = labels.upcoming;
 				body.appendChild(upcomingTitle);
 
@@ -887,6 +1006,7 @@
 			clearTimeout(state.clockTimer);
 			state.clockTimer = null;
 		}
+		stopAllRotations(state);
 		if (state.resizeHandler && typeof window !== 'undefined' && window.removeEventListener) {
 			window.removeEventListener('resize', state.resizeHandler);
 			state.resizeHandler = null;
@@ -946,7 +1066,7 @@
 			}
 			state.lastUpdated = parsedLastModified;
 
-				render(node, rooms, state.labels, state.locale, state.timezone, { hideUpcoming: state.hideUpcoming, hideCurrent: state.hideCurrent });
+				render(node, rooms, state.labels, state.locale, state.timezone, { hideUpcoming: state.hideUpcoming, hideCurrent: state.hideCurrent }, state);
 				startClock(node, state);
 				updateTimestamp(node, state.labels, state.locale, state.timezone, state.lastUpdated);
 		}).catch(function (error) {
@@ -1019,6 +1139,7 @@
 			controller: null,
 			lastUpdated: null,
 			clockTimer: null,
+			rotationTimers: new Map(),
 			hideUpcoming: node.getAttribute('data-hide-upcoming') === '1',
 			hideCurrent: node.getAttribute('data-hide-current') === '1',
 			resizeHandler: null
