@@ -7,6 +7,8 @@
 	var instances = new WeakMap();
 	// Limit how many future lessons are shown in the upcoming list.
 	var MAX_UPCOMING = 3;
+	// Treat back-to-back lessons with up to five minutes gap as one block.
+	var MERGE_GAP_MS = 5 * 60 * 1000;
 	// Some browsers do not ship AbortController; feature-detect before using it.
 	var supportsAbort = typeof AbortController !== 'undefined';
 	// Fallback filename that ships with the script for local testing.
@@ -73,6 +75,124 @@
 		return (value || '').trim().toLowerCase() === 'unterricht';
 	}
 
+	function normaliseDetail(value) {
+		return (value || '').replace(/\s+/g, ' ').trim();
+	}
+
+	function normaliseSignature(value) {
+		var detail = normaliseDetail(value).toLowerCase();
+		if (!detail) {
+			return '';
+		}
+		return detail.replace(/[^a-z0-9]/g, '');
+	}
+
+	function collectSignatureTokens(value) {
+		var trimmed = normaliseDetail(value);
+		if (!trimmed) {
+			return [];
+		}
+		var prepared = trimmed.replace(/[,;•/&]+/g, ' ');
+		var rough = prepared.split(/\s+/);
+		var tokens = [];
+		for (var i = 0; i < rough.length; i++) {
+			var current = normaliseSignature(rough[i]);
+			if (!current) {
+				continue;
+			}
+			var next = null;
+			if (i + 1 < rough.length) {
+				next = normaliseSignature(rough[i + 1]);
+				if (!next) {
+					next = null;
+				}
+			}
+			var shouldCombine = false;
+			if (next) {
+				if (/^[0-9]+$/.test(current) && /^[a-z]+$/.test(next)) {
+					shouldCombine = true;
+				} else if (/^[a-z]+$/.test(current) && /^[0-9]+$/.test(next)) {
+					shouldCombine = true;
+				}
+			}
+			if (shouldCombine) {
+				tokens.push(current + next);
+				i++;
+				continue;
+			}
+			tokens.push(current);
+		}
+		var unique = [];
+		for (var j = 0; j < tokens.length; j++) {
+			if (unique.indexOf(tokens[j]) === -1) {
+				unique.push(tokens[j]);
+			}
+		}
+		unique.sort();
+		return unique;
+	}
+
+	function normaliseListSignature(value) {
+		var tokens = collectSignatureTokens(value);
+		return tokens.join('|');
+	}
+
+	function ensureCommaSpacing(value) {
+		if (!value) {
+			return '';
+		}
+		return value.replace(/,\s*/g, ', ').trim();
+	}
+
+	function applyColumnScaling(node) {
+		var grid = node.querySelector('.foyer-webuntis-room-display__grid');
+		if (!grid) {
+			return;
+		}
+		var schedule = (typeof window !== 'undefined' && window.requestAnimationFrame) ? window.requestAnimationFrame.bind(window) : function (callback) {
+			return setTimeout(callback, 16);
+		};
+		schedule(function () {
+			var columns = grid.querySelectorAll('.foyer-webuntis-room-display__column');
+			if (!columns.length) {
+				return;
+			}
+			var baseline = 480;
+			var minScale = 0.5;
+			var maxScale = 1.75;
+			for (var i = 0; i < columns.length; i++) {
+				var column = columns[i];
+				var rect = column.getBoundingClientRect();
+				if (!rect.height) {
+					column.style.removeProperty('--foyer-column-scale');
+					column.classList.remove('foyer-webuntis-room-display__column--spacious');
+					continue;
+				}
+				var scale = rect.height / baseline;
+				if (scale < minScale) {
+					scale = minScale;
+				} else if (scale > maxScale) {
+					scale = maxScale;
+				}
+				column.style.setProperty('--foyer-column-scale', scale.toFixed(3));
+				if (scale >= 1.15) {
+					column.classList.add('foyer-webuntis-room-display__column--spacious');
+				} else {
+					column.classList.remove('foyer-webuntis-room-display__column--spacious');
+				}
+			}
+		});
+	}
+
+	function buildMergeKey(entry) {
+		return [
+			entry ? normaliseRoom(entry.room) : '',
+			normaliseListSignature(entry ? entry.teachers : ''),
+			normaliseListSignature(entry ? entry.classes : ''),
+			normaliseSignature(entry ? entry.subject : '')
+		].join('||');
+	}
+
 	// Convert the WebUntis timestamp format into a Date object.
 	function parseDate(raw) {
 		if (!raw || raw === '-' ) {
@@ -113,17 +233,27 @@
 		if (!prev || !next) {
 			return false;
 		}
-		return prev.room === next.room &&
-			prev.endRaw === next.startRaw &&
-			prev.rooms === next.rooms &&
-			prev.teachers === next.teachers &&
-			prev.classes === next.classes &&
-			prev.subject === next.subject &&
-			prev.title === next.title &&
-			prev.status === next.status &&
-			prev.type === next.type &&
-			prev.textSubstitute === next.textSubstitute &&
-			prev.textBooking === next.textBooking;
+		if (prev.room !== next.room) {
+			return false;
+		}
+		if (normaliseListSignature(prev.teachers) !== normaliseListSignature(next.teachers)) {
+			return false;
+		}
+		if (normaliseListSignature(prev.classes) !== normaliseListSignature(next.classes)) {
+			return false;
+		}
+		if (normaliseSignature(prev.subject) !== normaliseSignature(next.subject)) {
+			return false;
+		}
+		var prevEnd = prev.endDate ? prev.endDate.getTime() : null;
+		var nextStart = next.startDate ? next.startDate.getTime() : null;
+		if (prevEnd === null || nextStart === null) {
+			return false;
+		}
+		if (nextStart <= prevEnd) {
+			return true;
+		}
+		return (nextStart - prevEnd) <= MERGE_GAP_MS;
 	}
 
 	// Merge adjacent entries that belong together so the display stays compact.
@@ -137,30 +267,55 @@
 			}
 			return a.endDate.getTime() - b.endDate.getTime();
 		});
-		var result = [entries[0]];
-		for (var i = 1; i < entries.length; i++) {
+		var result = [];
+		var lastByKey = new Map();
+		for (var i = 0; i < entries.length; i++) {
 			var current = entries[i];
-			var previous = result[result.length - 1];
+			var key = buildMergeKey(current);
+			var previous = lastByKey.get(key) || null;
+			if (!previous) {
+				result.push(current);
+				lastByKey.set(key, current);
+				continue;
+			}
 			if (shouldMerge(previous, current)) {
-				previous.endRaw = current.endRaw;
-				previous.endDate = current.endDate;
-				if (!previous.type && current.type) {
-					previous.type = current.type;
+				if (current.startDate.getTime() < previous.startDate.getTime()) {
+					previous.startRaw = current.startRaw;
+					previous.startDate = current.startDate;
 				}
-				if (!previous.textSubstitute && current.textSubstitute) {
-					previous.textSubstitute = current.textSubstitute;
+				if (current.endDate.getTime() > previous.endDate.getTime()) {
+					previous.endRaw = current.endRaw;
+					previous.endDate = current.endDate;
 				}
-				if (!previous.textBooking && current.textBooking) {
-					previous.textBooking = current.textBooking;
-				}
-				if (!previous.title && current.title) {
-					previous.title = current.title;
-				}
+				previous.type = mergeText(previous.type, current.type);
+				previous.textSubstitute = mergeText(previous.textSubstitute, current.textSubstitute);
+				previous.textBooking = mergeText(previous.textBooking, current.textBooking);
+				previous.title = mergeText(previous.title, current.title);
+				previous.cancelled = !!(previous.cancelled || current.cancelled);
+				lastByKey.set(key, previous);
 			} else {
 				result.push(current);
+				lastByKey.set(key, current);
 			}
 		}
 		return result;
+	}
+
+	function mergeText(first, second) {
+		var primary = normaliseDetail(first);
+		var secondary = normaliseDetail(second);
+		if (!primary) {
+			return secondary ? second : first;
+		}
+		if (!secondary) {
+			return first;
+		}
+		var lowerPrimary = primary.toLowerCase();
+		var lowerSecondary = secondary.toLowerCase();
+		if (lowerSecondary && lowerPrimary.indexOf(lowerSecondary) !== -1) {
+			return first;
+		}
+		return first + ' • ' + second;
 	}
 
 	// Parse the raw WebUntis export (pipe-separated text) into structured events.
@@ -181,9 +336,8 @@
 			}
 
 			var statusRaw = parts[7] ? parts[7].trim() : '';
-			if (statusRaw.toLowerCase() === 'cancelled' || statusRaw.toLowerCase() === 'gone') {
-				continue;
-			}
+			var statusNormalised = statusRaw.toLowerCase();
+			var isCancelled = statusNormalised === 'cancelled' || statusNormalised === 'gone';
 
 			var startRaw = parts[1] ? parts[1].trim() : '';
 			var endRaw = parts[2] ? parts[2].trim() : '';
@@ -195,12 +349,12 @@
 
 			var roomsDetail = parts[3] ? parts[3].trim() : '';
 			var teachersDetail = parts[4] ? parts[4].trim() : '';
-			var classesDetail = parts[5] ? parts[5].trim() : '';
+			var classesDetail = ensureCommaSpacing(parts[5] ? parts[5].trim() : '');
 			var subjectDetail = parts[6] ? parts[6].trim() : '';
 			var typeDetail = parts[8] ? parts[8].trim() : '';
 			var textSubstitute = parts[9] ? parts[9].trim() : '';
 			var textBooking = parts[10] ? parts[10].trim() : '';
-			var titleDetail = [classesDetail, subjectDetail].filter(Boolean).join(' • ');
+			var titleDetail = [subjectDetail, classesDetail].filter(Boolean).join(' • ');
 
 			entries.push({
 				roomOriginal: roomOriginal || room,
@@ -217,7 +371,8 @@
 				status: statusRaw,
 				type: typeDetail,
 				textSubstitute: textSubstitute,
-				textBooking: textBooking
+				textBooking: textBooking,
+				cancelled: isCancelled
 			});
 		}
 
@@ -317,6 +472,18 @@
 		time.textContent = formatTimeRange(event.startDate, event.endDate, locale, timezone);
 		heading.appendChild(time);
 
+		if (event.cancelled) {
+			container.classList.add('is-cancelled');
+			heading.classList.add('is-cancelled');
+			var cancellationBadge = document.createElement('span');
+			cancellationBadge.className = 'foyer-webuntis-room-display__badge foyer-webuntis-room-display__badge--cancelled';
+			cancellationBadge.textContent = labels.cancelled || 'Unterricht entfällt';
+			heading.insertBefore(cancellationBadge, time);
+			var breakNode = document.createElement('span');
+			breakNode.className = 'foyer-webuntis-room-display__break';
+			heading.insertBefore(breakNode, time);
+		}
+
 		var titleLine = createLine('', event.title, 'foyer-webuntis-room-display__title');
 		if (titleLine) {
 		heading.appendChild(titleLine);
@@ -360,6 +527,9 @@
 			var event = upcoming[i];
 			var item = document.createElement('li');
 			item.className = 'foyer-webuntis-room-display__list-item';
+			if (event.cancelled) {
+				item.classList.add('is-cancelled');
+			}
 
 			var time = document.createElement('div');
 			time.className = 'foyer-webuntis-room-display__list-time';
@@ -378,6 +548,9 @@
 			}
 
 			var subtitleParts = [];
+			if (event.cancelled && labels.cancelled) {
+				subtitleParts.push(labels.cancelled);
+			}
 			if (event.teachers) {
 				subtitleParts.push(event.teachers);
 			}
@@ -612,11 +785,11 @@
 			title.textContent = data.room;
 			header.appendChild(title);
 
-			var badge = document.createElement('span');
-			badge.className = 'foyer-webuntis-room-display__status';
-			var occupied = !!data.current;
-			badge.classList.add(occupied ? 'is-occupied' : 'is-free');
-			badge.textContent = occupied ? labels.occupied : labels.free;
+				var badge = document.createElement('span');
+				badge.className = 'foyer-webuntis-room-display__status';
+				var occupied = !!(data.current && !data.current.cancelled);
+				badge.classList.add(occupied ? 'is-occupied' : 'is-free');
+				badge.textContent = occupied ? labels.occupied : labels.free;
 			header.appendChild(badge);
 
 			column.appendChild(header);
@@ -634,11 +807,16 @@
 			var currentBlock = document.createElement('div');
 			currentBlock.className = 'foyer-webuntis-room-display__current';
 
-			if (data.current) {
-				currentBlock.appendChild(buildDetails(data.current, labels, locale, timezone));
-			} else {
-				var free = document.createElement('p');
-				free.className = 'foyer-webuntis-room-display__free';
+				if (data.current) {
+					if (data.current.cancelled) {
+						currentBlock.classList.add('is-cancelled');
+					} else {
+						currentBlock.classList.remove('is-cancelled');
+					}
+					currentBlock.appendChild(buildDetails(data.current, labels, locale, timezone));
+				} else {
+					var free = document.createElement('p');
+					free.className = 'foyer-webuntis-room-display__free';
 				free.textContent = labels.freeNow;
 				currentBlock.appendChild(free);
 			}
@@ -665,10 +843,12 @@
 
 				body.appendChild(upcomingBlock);
 			}
-			column.appendChild(body);
-			grid.appendChild(column);
+				column.appendChild(body);
+				grid.appendChild(column);
+			}
+
+			applyColumnScaling(node);
 		}
-	}
 
 	// Show an inline error message inside the widget.
 	function setError(node, message) {
@@ -706,6 +886,10 @@
 		if (state.clockTimer) {
 			clearTimeout(state.clockTimer);
 			state.clockTimer = null;
+		}
+		if (state.resizeHandler && typeof window !== 'undefined' && window.removeEventListener) {
+			window.removeEventListener('resize', state.resizeHandler);
+			state.resizeHandler = null;
 		}
 	}
 
@@ -819,6 +1003,7 @@
 			classes: node.getAttribute('data-label-classes') || 'Klasse(n)',
 			teachers: node.getAttribute('data-label-teachers') || 'Lehrperson(en)',
 			remarks: node.getAttribute('data-label-remarks') || 'Hinweis',
+			cancelled: node.getAttribute('data-label-cancelled') || 'Unterricht entfällt',
 			error: node.getAttribute('data-error-message') || 'Daten konnten nicht geladen werden.',
 			noRooms: node.getAttribute('data-error-no-rooms') || 'Bitte wählen Sie mindestens einen Raum aus.'
 		};
@@ -835,10 +1020,17 @@
 			lastUpdated: null,
 			clockTimer: null,
 			hideUpcoming: node.getAttribute('data-hide-upcoming') === '1',
-			hideCurrent: node.getAttribute('data-hide-current') === '1'
+			hideCurrent: node.getAttribute('data-hide-current') === '1',
+			resizeHandler: null
 		};
 
 		instances.set(node, state);
+		if (typeof window !== 'undefined' && window.addEventListener) {
+			state.resizeHandler = function () {
+				applyColumnScaling(node);
+			};
+			window.addEventListener('resize', state.resizeHandler);
+		}
 
 		if (!state.source) {
 			setError(node, labels.error + ' (no source available)');
