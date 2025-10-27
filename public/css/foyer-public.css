@@ -1394,7 +1394,7 @@ html {
   display: flex;
   flex-direction: column;
   gap: clamp(0.6vmin, calc(0.6vw + 0.4vmin), 1.2vmin);
-  font-size: clamp(calc(1.8vmin * var(--foyer-column-scale, 1)), calc((0.9vw + 1.3vmin) * var(--foyer-column-scale, 1)), calc(2.6vmin * var(--foyer-column-scale, 1)));
+  font-size: clamp(calc(1.8vmin * var(--foyer-card-scale, var(--foyer-column-scale, 1))), calc((0.9vw + 1.3vmin) * var(--foyer-card-scale, var(--foyer-column-scale, 1))), calc(2.6vmin * var(--foyer-card-scale, var(--foyer-column-scale, 1))));
 }
 .foyer-webuntis-room-display__details.is-cancelled .foyer-webuntis-room-display__line {
   color: inherit;
@@ -1444,14 +1444,14 @@ html {
   content: '';
 }
 .foyer-webuntis-room-display__time {
-  font-size: clamp(calc(2.2vmin * var(--foyer-column-scale, 1)), calc((1.2vw + 1.6vmin) * var(--foyer-column-scale, 1)), calc(3.4vmin * var(--foyer-column-scale, 1)));
+  font-size: clamp(calc(2.2vmin * var(--foyer-card-scale, var(--foyer-column-scale, 1))), calc((1.2vw + 1.6vmin) * var(--foyer-card-scale, var(--foyer-column-scale, 1))), calc(3.4vmin * var(--foyer-card-scale, var(--foyer-column-scale, 1))));
   font-weight: 600;
   margin: 0;
   flex: 0 0 auto;
   white-space: nowrap;
 }
 .foyer-webuntis-room-display__title {
-  font-size: clamp(calc(2.2vmin * var(--foyer-column-scale, 1)), calc((1.2vw + 1.6vmin) * var(--foyer-column-scale, 1)), calc(3.4vmin * var(--foyer-column-scale, 1)));
+  font-size: clamp(calc(2.2vmin * var(--foyer-card-scale, var(--foyer-column-scale, 1))), calc((1.2vw + 1.6vmin) * var(--foyer-card-scale, var(--foyer-column-scale, 1))), calc(3.4vmin * var(--foyer-card-scale, var(--foyer-column-scale, 1))));
   font-weight: 600;
   margin: 0;
   flex: 1 1 auto;
@@ -1479,6 +1479,15 @@ html {
   border-radius: 1.6vmin;
   background: rgba(15, 23, 42, 0.02);
   box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.05);
+}
+.foyer-webuntis-room-display__upcoming-grid {
+  display: grid;
+  gap: clamp(0.9vmin, calc(0.7vw + 0.6vmin), 1.6vmin);
+  grid-template-columns: repeat(var(--foyer-upcoming-columns, 1), minmax(0, 1fr));
+}
+.foyer-webuntis-room-display__upcoming-card {
+  height: 100%;
+  --foyer-card-scale: calc(var(--foyer-column-scale, 1) * 0.7);
 }
 .foyer-webuntis-room-display__list {
   list-style: none;

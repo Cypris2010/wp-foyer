@@ -942,26 +942,37 @@
 				body.appendChild(freeBlock);
 			}
 
-			if (!hideUpcoming) {
-				var upcomingTitle = document.createElement('h3');
-				upcomingTitle.className = 'foyer-webuntis-room-display__section-title foyer-webuntis-room-display__section-title--upcoming';
-				upcomingTitle.textContent = labels.upcoming;
-				body.appendChild(upcomingTitle);
+		if (!hideUpcoming) {
+			var upcomingTitle = document.createElement('h3');
+			upcomingTitle.className = 'foyer-webuntis-room-display__section-title foyer-webuntis-room-display__section-title--upcoming';
+			upcomingTitle.textContent = labels.upcoming;
+			body.appendChild(upcomingTitle);
 
+			var hasUpcoming = data.upcoming && data.upcoming.length;
+			if (hasUpcoming) {
+				var upcomingGrid = document.createElement('div');
+				upcomingGrid.className = 'foyer-webuntis-room-display__upcoming-grid';
+				var columnCount = Math.min(3, data.upcoming.length);
+				upcomingGrid.style.setProperty('--foyer-upcoming-columns', String(Math.max(columnCount, 1)));
+				for (var upcomingIndex = 0; upcomingIndex < data.upcoming.length; upcomingIndex++) {
+					var upcomingEntry = data.upcoming[upcomingIndex];
+					var upcomingBlock = buildCurrentBlock([upcomingEntry], labels, locale, timezone, !!upcomingEntry.cancelled);
+					upcomingBlock.classList.add('foyer-webuntis-room-display__upcoming-card');
+					upcomingGrid.appendChild(upcomingBlock);
+				}
+				body.appendChild(upcomingGrid);
+			} else {
 				var upcomingBlock = document.createElement('div');
 				upcomingBlock.className = 'foyer-webuntis-room-display__upcoming';
 
-				if (data.upcoming && data.upcoming.length) {
-					upcomingBlock.appendChild(buildUpcomingList(data.upcoming, labels, locale, timezone));
-				} else {
-					var empty = document.createElement('p');
-					empty.className = 'foyer-webuntis-room-display__empty';
-					empty.textContent = labels.noUpcoming;
-					upcomingBlock.appendChild(empty);
-				}
+				var empty = document.createElement('p');
+				empty.className = 'foyer-webuntis-room-display__empty';
+				empty.textContent = labels.noUpcoming;
+				upcomingBlock.appendChild(empty);
 
 				body.appendChild(upcomingBlock);
 			}
+		}
 				column.appendChild(body);
 				grid.appendChild(column);
 			}
