@@ -948,14 +948,15 @@
 			upcomingTitle.textContent = labels.upcoming;
 			body.appendChild(upcomingTitle);
 
-			var hasUpcoming = data.upcoming && data.upcoming.length;
+			var upcomingEntries = Array.isArray(data.upcoming) ? data.upcoming.slice(0, 3) : [];
+			var hasUpcoming = upcomingEntries.length;
 			if (hasUpcoming) {
 				var upcomingGrid = document.createElement('div');
 				upcomingGrid.className = 'foyer-webuntis-room-display__upcoming-grid';
-				var columnCount = Math.min(3, data.upcoming.length);
+				var columnCount = Math.min(3, upcomingEntries.length);
 				upcomingGrid.style.setProperty('--foyer-upcoming-columns', String(Math.max(columnCount, 1)));
-				for (var upcomingIndex = 0; upcomingIndex < data.upcoming.length; upcomingIndex++) {
-					var upcomingEntry = data.upcoming[upcomingIndex];
+				for (var upcomingIndex = 0; upcomingIndex < upcomingEntries.length; upcomingIndex++) {
+					var upcomingEntry = upcomingEntries[upcomingIndex];
 					var upcomingBlock = buildCurrentBlock([upcomingEntry], labels, locale, timezone, !!upcomingEntry.cancelled);
 					upcomingBlock.classList.add('foyer-webuntis-room-display__upcoming-card');
 					upcomingGrid.appendChild(upcomingBlock);
