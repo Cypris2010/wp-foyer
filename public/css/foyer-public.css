@@ -1383,12 +1383,16 @@ html {
 .foyer-webuntis-room-display__current.is-cancelled {
   background: rgba(248, 113, 113, 0.18);
   box-shadow: inset 0 0 0 1px rgba(248, 113, 113, 0.45);
+  text-decoration: line-through;
+  text-decoration-color: rgba(153, 27, 27, 0.5);
 }
 .foyer-webuntis-room-display__current.is-cancelled .foyer-webuntis-room-display__details,
 .foyer-webuntis-room-display__current.is-cancelled .foyer-webuntis-room-display__time,
 .foyer-webuntis-room-display__current.is-cancelled .foyer-webuntis-room-display__title,
 .foyer-webuntis-room-display__current.is-cancelled .foyer-webuntis-room-display__line {
   color: #991b1b;
+  text-decoration: line-through;
+  text-decoration-color: rgba(153, 27, 27, 0.5);
 }
 .foyer-webuntis-room-display__details {
   display: flex;
@@ -1510,11 +1514,15 @@ html {
 .foyer-webuntis-room-display__list-item.is-cancelled {
   background: rgba(248, 113, 113, 0.16);
   box-shadow: inset 0 0 0 1px rgba(248, 113, 113, 0.4);
+  text-decoration: line-through;
+  text-decoration-color: rgba(153, 27, 27, 0.5);
 }
 .foyer-webuntis-room-display__list-item.is-cancelled .foyer-webuntis-room-display__list-time,
 .foyer-webuntis-room-display__list-item.is-cancelled .foyer-webuntis-room-display__list-info,
 .foyer-webuntis-room-display__list-item.is-cancelled .foyer-webuntis-room-display__list-meta {
   color: #991b1b;
+  text-decoration: line-through;
+  text-decoration-color: rgba(153, 27, 27, 0.5);
 }
 .foyer-webuntis-room-display__list-time {
   font-size: clamp(calc(1.8vmin * var(--foyer-column-scale, 1)), calc((0.9vw + 1.3vmin) * var(--foyer-column-scale, 1)), calc(2.6vmin * var(--foyer-column-scale, 1)));
