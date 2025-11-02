@@ -12,7 +12,7 @@ class Foyer_Printer_Status_Slide {
 	const META_DEVICES  = '_foyer_printer_status_devices';
 	const META_REFRESH  = '_foyer_printer_status_refresh';
 
-	const DEFAULT_PROVIDER = '';
+	const DEFAULT_PROVIDER = 'bambulab';
 	const DEFAULT_REFRESH  = 45; // seconds
 
 	/**
@@ -23,7 +23,10 @@ class Foyer_Printer_Status_Slide {
 	 */
 	public static function get_provider( $slide_id ) {
 		$provider = get_post_meta( $slide_id, self::META_PROVIDER, true );
-		if ( empty( $provider ) || 'bambu' === $provider ) {
+		if ( 'bambu' === $provider ) {
+			$provider = 'bambulab';
+		}
+		if ( empty( $provider ) ) {
 			$provider = self::DEFAULT_PROVIDER;
 		}
 		return sanitize_key( $provider );

@@ -33,7 +33,7 @@ class Foyer_Printer_Status_Manager {
 	 * @return void
 	 */
 	public static function register_default_providers() {
-		// No default providers registered.
+		self::register_provider( new Foyer_Printer_Provider_Bambulab() );
 	}
 
 	/**

@@ -161,6 +161,7 @@ class Foyer {
 
 		/* Printer status infrastructure */
 		require_once FOYER_PLUGIN_PATH . 'includes/class-foyer-printer-provider.php';
+		require_once FOYER_PLUGIN_PATH . 'includes/printer-providers/class-foyer-printer-provider-bambulab.php';
 		require_once FOYER_PLUGIN_PATH . 'includes/class-foyer-printer-status-slide.php';
 		require_once FOYER_PLUGIN_PATH . 'includes/class-foyer-printer-status-manager.php';
 		require_once FOYER_PLUGIN_PATH . 'includes/class-foyer-printer-status-rest.php';
