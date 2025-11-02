@@ -1,0 +1,1039 @@
+# Translation of Plugins - Foyer &#8211; Digital Signage for WordPress - Development (trunk) in German
+# This file is distributed under the same license as the Plugins - Foyer &#8211; Digital Signage for WordPress - Development (trunk) package.
+msgid ""
+msgstr ""
+"Project-Id-Version: Plugins - Foyer &#8211; Digital Signage for WordPress - "
+"Development (trunk)\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-09-21 00:41+0200\n"
+"PO-Revision-Date: 2018-04-08 17:09:25+0000\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Generator: GlotPress/3.0.0-alpha.2\n"
+
+#: includes/class-foyer-slide-backgrounds.php:25
+msgctxt "slide-background"
+msgid "Default / none"
+msgstr "Standard / Kein"
+
+#: includes/class-foyer-slide-backgrounds.php:26
+msgid ""
+"Displays the default background for the chosen slide format, if any, or no "
+"background."
+msgstr ""
+"Zeigt den Standardhintergrund des gewählten Slide-Formats (wenn vorhanden) "
+"oder keinen Hintergrund an."
+
+#: includes/class-foyer-slide-backgrounds.php:42
+msgctxt "slide-background"
+msgid "Video"
+msgstr "Video"
+
+#: includes/class-foyer-slide-backgrounds.php:60
+msgctxt "slide-background"
+msgid "Image"
+msgstr "Bild"
+
+#: includes/class-foyer-slide-backgrounds.php:79
+msgctxt "slide-background"
+msgid "YouTube"
+msgstr "YouTube"
+
+#: includes/class-foyer-slide-formats.php:37
+msgctxt "slide-format"
+msgid "Default"
+msgstr "Standard"
+
+#: includes/class-foyer-slide-formats.php:38
+msgid "Displays a background only."
+msgstr "Zeigt nur den Hintergrund an."
+
+#: includes/class-foyer-slide-formats.php:59
+msgctxt "slide-format"
+msgid "Instagram"
+msgstr "Instagram"
+
+#: includes/class-foyer-slide-formats.php:60
+msgid "Displays the latest media from an Instagram account."
+msgstr "Zeigt die neuesten Medien eines Instagram-Kontos an."
+
+#: includes/class-foyer-slide-formats.php:91
+msgctxt "slide-format"
+msgid "External web page"
+msgstr "Externe Webseite"
+
+#: includes/class-foyer-slide-formats.php:92
+msgid "Displays a web page to your liking."
+msgstr "Zeigt eine Webseite deiner Wahl."
+
+#: includes/class-foyer-slide-formats.php:124
+msgctxt "slide-format"
+msgid "PDF"
+msgstr "PDF"
+
+#: includes/class-foyer-slide-formats.php:125
+msgid "Displays a slide for each page in the uploaded PDF."
+msgstr "Zeigt einen Slide für jede Seite der hochgeladenen PDF-Datei an."
+
+#: includes/class-foyer-slide-formats.php:156
+#: admin/class-foyer-admin-slide-format-post.php:72
+msgctxt "slide-format"
+msgid "Post"
+msgstr "Beitrag"
+
+#: includes/class-foyer-slide-formats.php:157
+msgid "Displays title, date and content of a post."
+msgstr "Zeigt Titel, Datum und Inhalt eines Beitrags an."
+
+#: includes/class-foyer-slide-formats.php:194
+#: admin/class-foyer-admin-slide-format-production.php:55
+msgctxt "slide-format"
+msgid "Event"
+msgstr "Veranstaltung"
+
+#: includes/class-foyer-slide-formats.php:195
+msgid ""
+"Displays title and details of an event, with its image as default background."
+msgstr ""
+"Zeigt Titel und Details einer Veranstaltung mit dessen Bild als Standard-"
+"Hintergrund an."
+
+#: includes/class-foyer-slide-formats.php:258
+msgctxt "slide-format"
+msgid "RSS feed"
+msgstr "RSS-Feed"
+
+#: includes/class-foyer-slide-formats.php:259
+msgid "Displays the latest entries from an RSS feed."
+msgstr "Zeigt die neuesten Einträge eines RSS-Feeds an."
+
+#: includes/class-foyer-slide-formats.php:292
+msgctxt "slide-format"
+msgid "Text"
+msgstr "Text"
+
+#: includes/class-foyer-slide-formats.php:293
+msgid "Displays some text."
+msgstr "Zeigt einen Text an."
+
+#: includes/class-foyer-setup.php:28
+msgctxt "display cpt"
+msgid "Displays"
+msgstr "Displays"
+
+#: includes/class-foyer-setup.php:29
+msgctxt "display cpt"
+msgid "Display"
+msgstr "Display"
+
+#: includes/class-foyer-setup.php:30
+msgctxt "display cpt"
+msgid "Add New"
+msgstr "Hinzufügen"
+
+#: includes/class-foyer-setup.php:31
+msgctxt "display cpt"
+msgid "New display"
+msgstr "Neues Display"
+
+#: includes/class-foyer-setup.php:32
+msgctxt "display cpt"
+msgid "View display"
+msgstr "Display anzeigen"
+
+#: includes/class-foyer-setup.php:33
+msgctxt "display cpt"
+msgid "Add new display"
+msgstr "Neues Display hinzufügen"
+
+#: includes/class-foyer-setup.php:34
+msgctxt "display cpt"
+msgid "Edit display"
+msgstr "Display bearbeiten"
+
+#: includes/class-foyer-setup.php:49
+msgctxt "channel cpt"
+msgid "Channels"
+msgstr "Kanäle"
+
+#: includes/class-foyer-setup.php:50 admin/class-foyer-admin-display.php:46
+msgctxt "channel cpt"
+msgid "Channel"
+msgstr "Kanal"
+
+#: includes/class-foyer-setup.php:51
+msgctxt "channel cpt"
+msgid "Add New"
+msgstr "Hinzufügen"
+
+#: includes/class-foyer-setup.php:52
+msgctxt "channel cpt"
+msgid "New channel"
+msgstr "Neuer Kanal"
+
+#: includes/class-foyer-setup.php:53
+msgctxt "channel cpt"
+msgid "View channel"
+msgstr "Kanal anzeigen"
+
+#: includes/class-foyer-setup.php:54
+msgctxt "channel cpt"
+msgid "Add new channel"
+msgstr "Neuen Kanal hinzufügen"
+
+#: includes/class-foyer-setup.php:55
+msgctxt "channel cpt"
+msgid "Edit channel"
+msgstr "Kanal bearbeiten"
+
+#: includes/class-foyer-setup.php:70 admin/class-foyer-admin-channel.php:96
+msgctxt "slide cpt"
+msgid "Slides"
+msgstr "Slides"
+
+#: includes/class-foyer-setup.php:71 admin/class-foyer-admin-channel.php:842
+msgctxt "slide cpt"
+msgid "Slide"
+msgstr "Slide"
+
+#: includes/class-foyer-setup.php:72
+msgctxt "slide cpt"
+msgid "Add New"
+msgstr "Hinzufügen"
+
+#: includes/class-foyer-setup.php:73
+msgctxt "slide cpt"
+msgid "New slide"
+msgstr "Neuer Slide"
+
+#: includes/class-foyer-setup.php:74
+msgctxt "slide cpt"
+msgid "View slide"
+msgstr "Slide anzeigen"
+
+#: includes/class-foyer-setup.php:75
+msgctxt "slide cpt"
+msgid "Add new slide"
+msgstr "Neuen Slide hinzufügen"
+
+#: includes/class-foyer-setup.php:76
+msgctxt "slide cpt"
+msgid "Edit slide"
+msgstr "Slide bearbeiten"
+
+#: includes/class-foyer-image-editor-imagick.php:25
+msgid "Could not read number of pages in image."
+msgstr "Die Anzahl Seiten konnte nicht ermittelt werden."
+
+#: admin/class-foyer-admin-preview.php:83
+msgid "Landscape"
+msgstr "Querformat"
+
+#: admin/class-foyer-admin-preview.php:84
+msgid "Portrait"
+msgstr "Hochformat"
+
+#: admin/class-foyer-admin-slide-format-post.php:86
+#: admin/class-foyer-admin-slide-format-recent-posts.php:102
+msgid "Display featured image?"
+msgstr "Beitragsbild anzeigen?"
+
+#: admin/class-foyer-admin-slide-format-post.php:91
+#: admin/class-foyer-admin-slide-format-recent-posts.php:107
+msgid "Yes, display the featured image."
+msgstr "Ja, Beitragsbild anzeigen."
+
+#: admin/class-foyer-admin-slide-format-post.php:96
+#: admin/class-foyer-admin-slide-format-recent-posts.php:112
+msgid "Use excerpt?"
+msgstr "Auszug benutzen?"
+
+#: admin/class-foyer-admin-slide-format-post.php:101
+#: admin/class-foyer-admin-slide-format-recent-posts.php:117
+msgid "Yes, use the manual excerpt instead of the post content."
+msgstr "Ja, manuellen Auszug anstelle des Beitrags-Inhalts benutzen."
+
+#: admin/class-foyer-admin-slide-format-iframe.php:39
+msgid "https://..."
+msgstr "https://..."
+
+#: admin/class-foyer-admin-slide-format-iframe.php:45
+msgid "Web page URL"
+msgstr "URL der Webseite"
+
+#: admin/class-foyer-admin-slide-format-iframe.php:51
+msgid "Be sure to use an https URL"
+msgstr "Stelle sicher, eine HTTPS-URL zu benutzen"
+
+#: admin/class-foyer-admin-slide-format-pdf.php:109
+msgid "Processing PDF pages failed."
+msgstr "Verarbeiten der PDF-Seiten gescheitert."
+
+#: admin/class-foyer-admin-slide-format-pdf.php:111
+msgid ""
+"Make sure you are on WordPress 4.7 or higher, and your webhosting has "
+"Imagick and Ghostscript installed."
+msgstr ""
+"Stelle sicher, dass WordPress 4.7 oder höher installiert ist und dein Hoster "
+"Imagick und Ghostscript installiert hat."
+
+#: admin/class-foyer-admin-slide-format-pdf.php:112
+msgid "Error message:"
+msgstr "Fehlermeldung:"
+
+#: admin/class-foyer-admin-slide-format-pdf.php:142
+msgid "Not a PDF file."
+msgstr "Keine PDF-Datei."
+
+#: admin/class-foyer-admin-slide-format-pdf.php:157
+msgid "Your WordPress version lacks support for PDF processing."
+msgstr "Deine WordPress-Version unterstützt keine PDF-Verarbeitung."
+
+#: admin/class-foyer-admin-slide-format-pdf.php:276
+msgid "PDF file"
+msgstr "PDF-Datei"
+
+#: admin/class-foyer-admin-slide-format-pdf.php:284
+#, fuzzy
+msgid "Select PDF file"
+msgstr "PDF-Datei entfernen"
+
+#: admin/class-foyer-admin-slide-format-pdf.php:285
+msgid "Remove PDF file"
+msgstr "PDF-Datei entfernen"
+
+#: admin/class-foyer-admin-scheduler.php:16
+#: admin/class-foyer-admin-scheduler.php:17
+#: admin/class-foyer-admin-scheduler.php:177
+msgid "Scheduler"
+msgstr "Zeitplan"
+
+#: admin/class-foyer-admin-scheduler.php:29
+#: admin/class-foyer-admin-channel.php:1468
+msgid "Invalid request."
+msgstr "Ungültige Anfrage."
+
+#: admin/class-foyer-admin-scheduler.php:36
+msgid "You are not allowed to edit this display."
+msgstr "Du darfst dieses Display nicht bearbeiten."
+
+#: admin/class-foyer-admin-scheduler.php:41
+#: admin/class-foyer-admin-scheduler.php:104
+msgid "Security check failed."
+msgstr "Sicherheitsprüfung fehlgeschlagen."
+
+#: admin/class-foyer-admin-scheduler.php:79
+#: admin/class-foyer-admin-scheduler.php:143
+#: admin/class-foyer-admin-display.php:1181
+msgid ""
+"Schedule conflict: time windows overlap. Please adjust the planned channels "
+"so they do not overlap."
+msgstr ""
+"Zeitplan-Konflikt: Die Zeitfenster überschneiden sich. Bitte passe die "
+"geplanten Kanäle so an, dass sie sich nicht überschneiden."
+
+#: admin/class-foyer-admin-scheduler.php:206
+msgid "Schedule saved."
+msgstr "Zeitplan gespeichert."
+
+#: admin/class-foyer-admin-scheduler.php:211
+#, php-format
+msgid "Template applied to %d displays. Skipped: %d"
+msgstr "Vorlage auf %d Displays angewendet. Übersprungen: %d"
+
+#: admin/class-foyer-admin-scheduler.php:214
+msgid "No displays selected."
+msgstr "Keine Displays ausgewählt."
+
+#: admin/class-foyer-admin-scheduler.php:220
+#, fuzzy
+msgid "Build schedule"
+msgstr "Zeitplan speichern"
+
+#: admin/class-foyer-admin-scheduler.php:221
+msgid "Create a schedule and apply it to selected displays below."
+msgstr "Erstelle einen Zeitplan und wende ihn unten auf die ausgewählten Displays an."
+
+#: admin/class-foyer-admin-scheduler.php:235
+#: admin/class-foyer-admin-display.php:222
+msgid "Add channels"
+msgstr "Kanäle hinzufügen"
+
+#: admin/class-foyer-admin-scheduler.php:237
+#: admin/class-foyer-admin-channel.php:364
+#: admin/class-foyer-admin-display.php:236
+#: admin/class-foyer-admin-display.php:656
+msgid "Search"
+msgstr "Suchen"
+
+#: admin/class-foyer-admin-scheduler.php:238
+#: admin/class-foyer-admin-channel.php:366
+#: admin/class-foyer-admin-display.php:238
+#: admin/class-foyer-admin-display.php:658
+msgid "Search by title or author…"
+msgstr "Nach Titel oder Autor suchen …"
+
+#: admin/class-foyer-admin-scheduler.php:239
+#: admin/class-foyer-admin-channel.php:372
+#: admin/class-foyer-admin-display.php:240
+#: admin/class-foyer-admin-display.php:660
+msgid "Rows per page"
+msgstr "Zeilen pro Seite"
+
+#: admin/class-foyer-admin-scheduler.php:245
+#: admin/class-foyer-admin-channel.php:32
+#: admin/class-foyer-admin-channel.php:243
+#: admin/class-foyer-admin-channel.php:1727
+#: admin/class-foyer-admin-display.php:253
+#: admin/class-foyer-admin-display.php:698
+msgid "Favorite"
+msgstr "Favorit"
+
+#: admin/class-foyer-admin-scheduler.php:246
+#: admin/class-foyer-admin-channel.php:404
+#: admin/class-foyer-admin-display.php:254
+#: admin/class-foyer-admin-display.php:699
+#, fuzzy
+msgctxt "post title"
+msgid "Title"
+msgstr "Titel"
+
+#: admin/class-foyer-admin-scheduler.php:247
+#: admin/class-foyer-admin-channel.php:405
+#: admin/class-foyer-admin-display.php:255
+#: admin/class-foyer-admin-display.php:700
+msgid "Author"
+msgstr "Autor"
+
+#: admin/class-foyer-admin-scheduler.php:248
+#: admin/class-foyer-admin-channel.php:406
+#: admin/class-foyer-admin-display.php:256
+#: admin/class-foyer-admin-display.php:701
+msgid "Date"
+msgstr "Datum"
+
+#: admin/class-foyer-admin-scheduler.php:249
+#: admin/class-foyer-admin-display.php:257
+#: admin/class-foyer-admin-display.php:702
+msgid "Slides"
+msgstr "Folien"
+
+#: admin/class-foyer-admin-scheduler.php:252
+#: admin/class-foyer-admin-display.php:262
+#: admin/class-foyer-admin-display.php:707
+msgid "No channels found."
+msgstr "Keine Kanäle gefunden."
+
+#: admin/class-foyer-admin-scheduler.php:261
+#: admin/class-foyer-admin-channel.php:446
+#: admin/class-foyer-admin-display.php:274
+msgid "Add"
+msgstr "Hinzufügen"
+
+#: admin/class-foyer-admin-scheduler.php:272
+#: admin/class-foyer-admin-channel.php:454
+#: admin/class-foyer-admin-display.php:289
+#: admin/class-foyer-admin-display.php:734
+msgid "Prev"
+msgstr "Zurück"
+
+#: admin/class-foyer-admin-scheduler.php:274
+#: admin/class-foyer-admin-channel.php:456
+#: admin/class-foyer-admin-display.php:291
+#: admin/class-foyer-admin-display.php:736
+msgid "Next"
+msgstr "Weiter"
+
+#: admin/class-foyer-admin-scheduler.php:278
+#: admin/class-foyer-admin-display.php:149
+msgid "Scheduled channels"
+msgstr "Geplante Kanäle"
+
+#: admin/class-foyer-admin-scheduler.php:281
+#: admin/class-foyer-admin-scheduler.php:483
+#: admin/class-foyer-admin-display.php:163
+msgid "Channel"
+msgstr "Kanal"
+
+#: admin/class-foyer-admin-scheduler.php:282
+#: admin/class-foyer-admin-scheduler.php:484
+#: admin/class-foyer-admin-display.php:164
+msgid "Show from"
+msgstr "Anzeigen ab"
+
+#: admin/class-foyer-admin-scheduler.php:283
+#: admin/class-foyer-admin-scheduler.php:485
+#: admin/class-foyer-admin-channel.php:935
+#: admin/class-foyer-admin-display.php:165
+msgid "Until"
+msgstr "Bis"
+
+#: admin/class-foyer-admin-scheduler.php:286
+#: admin/class-foyer-admin-scheduler.php:356
+#: admin/class-foyer-admin-scheduler.php:491
+#: admin/class-foyer-admin-scheduler.php:605
+#: admin/class-foyer-admin-display.php:171
+#: admin/class-foyer-admin-display.php:486
+msgid "No scheduled channels."
+msgstr "Keine Kanäle geplant."
+
+#: admin/class-foyer-admin-scheduler.php:290
+msgid "Select all displays"
+msgstr "Alle Displays auswählen"
+
+#: admin/class-foyer-admin-scheduler.php:291
+msgid "Apply to selected displays"
+msgstr "Auf ausgewählte Displays anwenden"
+
+#: admin/class-foyer-admin-scheduler.php:299
+#: admin/class-foyer-admin-display.php:296
+msgid "Validation failed"
+msgstr "Validierung fehlgeschlagen"
+
+#: admin/class-foyer-admin-scheduler.php:371
+#: admin/class-foyer-admin-scheduler.php:532
+#: admin/class-foyer-admin-channel.php:943
+#: admin/class-foyer-admin-display.php:212
+#: admin/class-foyer-admin-display.php:431
+msgid "Save"
+msgstr "Speichern"
+
+#: admin/class-foyer-admin-scheduler.php:372
+#: admin/class-foyer-admin-scheduler.php:534
+#: admin/class-foyer-admin-display.php:213
+#: admin/class-foyer-admin-display.php:430
+msgid "Edit"
+msgstr "Bearbeiten"
+
+#: admin/class-foyer-admin-scheduler.php:373
+#: admin/class-foyer-admin-scheduler.php:533
+#: admin/class-foyer-admin-display.php:214
+#: admin/class-foyer-admin-display.php:432
+msgid "Remove"
+msgstr "Entfernen"
+
+#: admin/class-foyer-admin-scheduler.php:422
+msgid "No displays found."
+msgstr "Keine Displays gefunden."
+
+#: admin/class-foyer-admin-scheduler.php:457
+msgid "Default:"
+msgstr "Standard:"
+
+#: admin/class-foyer-admin-scheduler.php:457
+#: admin/class-foyer-admin-scheduler.php:458
+#: admin/class-foyer-admin-display.php:565
+#: admin/class-foyer-admin-display.php:582
+msgid "None"
+msgstr "Keiner"
+
+#: admin/class-foyer-admin-scheduler.php:458
+msgid "Active:"
+msgstr "Aktiv:"
+
+#: admin/class-foyer-admin-scheduler.php:461
+msgid "Edit display"
+msgstr "Display bearbeiten"
+
+#: admin/class-foyer-admin-scheduler.php:541
+msgid "Save schedule"
+msgstr "Zeitplan speichern"
+
+#: admin/class-foyer-admin-slide-background-video.php:85
+msgid "YouTube video URL"
+msgstr "YouTube-Video-URL"
+
+#: admin/class-foyer-admin-slide-background-video.php:92
+#, php-format
+msgid "Not a valid YouTube video URL, eg. %s"
+msgstr "Keine gültige Youtube-Video-URL, z. B. %s"
+
+#: admin/class-foyer-admin-slide-background-video.php:98
+#: admin/class-foyer-admin-slide-background-html5-video.php:107
+msgid "Start at"
+msgstr "Start bei"
+
+#: admin/class-foyer-admin-slide-background-video.php:103
+#: admin/class-foyer-admin-slide-background-video.php:113
+#: admin/class-foyer-admin-slide-background-html5-video.php:112
+#: admin/class-foyer-admin-slide-background-html5-video.php:122
+msgid "seconds"
+msgstr "Sekunden"
+
+#: admin/class-foyer-admin-slide-background-video.php:108
+#: admin/class-foyer-admin-slide-background-html5-video.php:117
+msgid "End at"
+msgstr "Ende bei"
+
+#: admin/class-foyer-admin-slide-background-video.php:118
+#: admin/class-foyer-admin-slide-background-html5-video.php:127
+msgid "Hold slide until end?"
+msgstr "Slide anhalten bis zum Ende?"
+
+#: admin/class-foyer-admin-slide-background-video.php:123
+#: admin/class-foyer-admin-slide-background-html5-video.php:132
+msgid "Yes, hold the slide until the end of the video."
+msgstr "Ja, Slide bis zum Ende des Videos anhalten."
+
+#: admin/class-foyer-admin-slide-background-video.php:128
+#: admin/class-foyer-admin-slide-background-html5-video.php:137
+msgid "Enable sound?"
+msgstr "Ton einschalten?"
+
+#: admin/class-foyer-admin-slide-background-video.php:133
+#: admin/class-foyer-admin-slide-background-html5-video.php:142
+msgid "Yes, enable sound for this video."
+msgstr "Ja, Ton für dieses Video einschalten."
+
+#: admin/class-foyer-admin-slide-background-video.php:138
+#: admin/class-foyer-admin-channel.php:403
+#: admin/class-foyer-admin-slide.php:155
+#: admin/class-foyer-admin-slide-background-html5-video.php:147
+msgid "Preview"
+msgstr "Vorschau"
+
+#: admin/class-foyer-admin-slide-background-image.php:54
+msgid "Background image"
+msgstr "Hintergrundbild"
+
+#: admin/class-foyer-admin-slide-background-image.php:62
+#, fuzzy
+msgid "Select image"
+msgstr "Bild auswählen"
+
+#: admin/class-foyer-admin-slide-background-image.php:63
+msgid "Remove image"
+msgstr "Bild entfernen"
+
+#: admin/class-foyer-admin-slide-background-image.php:65
+msgid ""
+"For the best results use an image that is at least 1920 x 1080 pixels "
+"(landscape), or 1080 x 1920 pixels (portrait)."
+msgstr ""
+"Bitte Bilder mit mind. 1920 x 1080 Pixel (Querformat), oder 1080 x 1920 "
+"Pixel (Hochformat) verwenden."
+
+#: admin/class-foyer-admin-slide-format-recent-posts.php:82
+#: admin/class-foyer-admin-slide-format-upcoming-productions.php:61
+msgid "Display a maximum of"
+msgstr "Zeige höchstens"
+
+#: admin/class-foyer-admin-slide-format-recent-posts.php:85
+msgid "posts"
+msgstr "Beiträge"
+
+#: admin/class-foyer-admin-slide-format-recent-posts.php:90
+msgid "Only display posts from categories"
+msgstr "Nur Beiträge aus folgenden Kategorien anzeigen"
+
+#: admin/class-foyer-admin-slide-format-upcoming-productions.php:64
+#, fuzzy
+msgid "events"
+msgstr "Veranstaltung"
+
+#: admin/class-foyer-admin-slide-format-upcoming-productions.php:69
+msgid "Only display events from categories"
+msgstr "Nur Veranstaltungen aus folgenden Kategorien anzeigen"
+
+#: admin/class-foyer-admin-channel.php:33
+msgid "Number of slides"
+msgstr "Anzahl der Folien"
+
+#: admin/class-foyer-admin-channel.php:111
+msgid "Publish"
+msgstr "Veröffentlichen"
+
+#: admin/class-foyer-admin-channel.php:122
+msgid "Slide preview"
+msgstr "Folienvorschau"
+
+#: admin/class-foyer-admin-channel.php:139
+#: admin/class-foyer-admin-channel.php:250
+msgid "Slideshow settings"
+msgstr "Slideshow-Einstellungen"
+
+#: admin/class-foyer-admin-channel.php:155
+msgid "Channel settings"
+msgstr "Kanaleinstellungen"
+
+#: admin/class-foyer-admin-channel.php:212
+msgid "Preview ratio"
+msgstr "Vorschaubereich"
+
+#: admin/class-foyer-admin-channel.php:223
+msgid "Controls how slide previews are scaled inside the editor."
+msgstr "Bestimmt, wie Folienvorschauen im Editor skaliert werden."
+
+#: admin/class-foyer-admin-channel.php:246
+#: admin/class-foyer-admin-channel.php:1733
+msgid "Mark this channel as favorite"
+msgstr "Diesen Kanal als Favorit markieren"
+
+#: admin/class-foyer-admin-channel.php:282
+msgid "Unmark favorite"
+msgstr "Favorit entfernen"
+
+#: admin/class-foyer-admin-channel.php:282
+msgid "Mark favorite"
+msgstr "Als Favorit markieren"
+
+#: admin/class-foyer-admin-channel.php:300
+#: admin/class-foyer-admin-channel.php:1471
+#, fuzzy
+msgid "You are not allowed to do this."
+msgstr "Du darfst dieses Display nicht bearbeiten."
+
+#: admin/class-foyer-admin-channel.php:361
+msgid "Available slides"
+msgstr "Verfügbare Folien"
+
+#: admin/class-foyer-admin-channel.php:369
+msgid "Hide slides already in this channel"
+msgstr "Folien ausblenden, die bereits in diesem Kanal sind"
+
+#: admin/class-foyer-admin-channel.php:407
+#: admin/class-foyer-admin-channel.php:866
+#: admin/class-foyer-admin-channel.php:1869
+#: admin/class-foyer-admin-slide.php:400 admin/class-foyer-admin-slide.php:430
+msgid "Format"
+msgstr "Format"
+
+#: admin/class-foyer-admin-channel.php:408
+#: admin/class-foyer-admin-channel.php:870
+#: admin/class-foyer-admin-channel.php:1875
+#: admin/class-foyer-admin-slide.php:412 admin/class-foyer-admin-slide.php:458
+msgid "Background"
+msgstr "Hintergrund"
+
+#: admin/class-foyer-admin-channel.php:415
+msgid "No slides found."
+msgstr "Keine Folien gefunden."
+
+#: admin/class-foyer-admin-channel.php:446
+#: admin/class-foyer-admin-channel.php:598
+msgid "Added"
+msgstr "Hinzugefügt"
+
+#: admin/class-foyer-admin-channel.php:634
+#: admin/class-foyer-admin-channel.php:693
+msgid "Default"
+msgstr "Standard"
+
+#: admin/class-foyer-admin-channel.php:649
+msgid "Duration"
+msgstr "Dauer"
+
+#: admin/class-foyer-admin-channel.php:708
+msgid "Transition"
+msgstr "Übergang"
+
+#: admin/class-foyer-admin-channel.php:760
+msgid "second"
+msgid_plural "seconds"
+msgstr[0] "Sekunde"
+msgstr[1] "Sekunden"
+
+#: admin/class-foyer-admin-channel.php:820
+msgid "No slides in this channel yet."
+msgstr "In diesem Kanal sind noch keine Folien."
+
+#: admin/class-foyer-admin-channel.php:843
+#: admin/class-foyer-admin-channel.php:845
+msgid "Edit visibility time window"
+msgstr "Sichtbarkeitszeitfenster bearbeiten"
+
+#: admin/class-foyer-admin-channel.php:847
+msgid "Remove slide from channel"
+msgstr "Folie aus dem Kanal entfernen"
+
+#: admin/class-foyer-admin-channel.php:849
+msgid "Remove slide"
+msgstr "Folie entfernen"
+
+#: admin/class-foyer-admin-channel.php:929
+msgid "Visibility time window"
+msgstr "Sichtbarkeitszeitfenster"
+
+#: admin/class-foyer-admin-channel.php:931
+msgid "Visible from"
+msgstr "Sichtbar ab"
+
+#: admin/class-foyer-admin-channel.php:940
+msgid "Clear"
+msgstr "Zurücksetzen"
+
+#: admin/class-foyer-admin-channel.php:1279
+msgid "Fade"
+msgstr "Überblenden"
+
+#: admin/class-foyer-admin-channel.php:1280
+msgid "Slide"
+msgstr "Slide"
+
+#: admin/class-foyer-admin-channel.php:1281
+msgid "No transition"
+msgstr "Kein Übergang"
+
+#: admin/class-foyer-admin-channel.php:1305
+msgid "Are you sure you want to remove this slide from the channel?"
+msgstr "Möchtest du diese Folie wirklich aus dem Kanal entfernen?"
+
+#: admin/class-foyer-admin-channel.php:1495
+msgid "Required parameters are missing."
+msgstr "Erforderliche Parameter fehlen."
+
+#: admin/class-foyer-admin-channel.php:1526
+msgid "The end time must be after the start time."
+msgstr "Die Endzeit muss nach der Startzeit liegen."
+
+#: admin/class-foyer-admin-display.php:30
+#: admin/class-foyer-admin-display.php:650
+msgid "Default channel"
+msgstr "Standard-Kanal"
+
+#: admin/class-foyer-admin-display.php:31
+msgid "Active channel"
+msgstr "Aktiver Kanal"
+
+#: admin/class-foyer-admin-display.php:64
+msgid "Schedule channels"
+msgstr "Kanäle planen"
+
+# Newly added strings
+#: admin/class-foyer-admin-display.php:80
+msgid "Display settings"
+msgstr "Anzeigeeinstellungen"
+
+#: admin/class-foyer-admin-display.php:104
+msgid "Show display timer"
+msgstr "Anzeige-Timer anzeigen"
+
+#: admin/class-foyer-admin-display.php:220
+msgid ""
+"Use the selector below to add channels; then set the time window here. You "
+"have to Update the channel so that changes take effect."
+msgstr ""
+"Füge unten über den Selektor Kanäle hinzu und lege hier das Zeitfenster "
+"fest. Vergiss nicht, den Kanal zu aktualisieren, damit die Änderungen "
+"übernommen werden."
+
+#: admin/class-foyer-admin-display.php:1245
+msgid "Invalid payload"
+msgstr "Ungültige Nutzlast"
+
+#: admin/class-foyer-admin-display.php:1268
+msgid "Schedule conflict: time windows overlap."
+msgstr "Zeitplan-Konflikt: Die Zeitfenster überschneiden sich."
+
+#: admin/class-foyer-admin-slide-format-rss.php:81
+msgid "RSS feed URL"
+msgstr "RSS-Feed-URL"
+
+#: admin/class-foyer-admin-slide-format-rss.php:84
+msgid "https://example.com/feed/"
+msgstr "https://example.com/feed/"
+
+#: admin/class-foyer-admin-slide-format-rss.php:85
+msgid "Provide the feed that should be parsed for entries."
+msgstr "Gib den Feed an, der nach Einträgen durchsucht werden soll."
+
+#: admin/class-foyer-admin-slide-format-rss.php:90
+msgid "Maximum entries"
+msgstr "Maximale Einträge"
+
+#: admin/class-foyer-admin-slide-format-rss.php:94
+msgid "Leave empty to default to 5 items."
+msgstr "Leer lassen, um standardmäßig 5 Einträge zu verwenden."
+
+#: admin/class-foyer-admin-slide-format-rss.php:99
+msgid "Cache duration (minutes)"
+msgstr "Cache-Dauer (Minuten)"
+
+#: admin/class-foyer-admin-slide-format-rss.php:103
+msgid "Optional. Defaults to 15 minutes between feed refreshes."
+msgstr "Optional. Standardmäßig werden Feeds alle 15 Minuten aktualisiert."
+
+#: admin/class-foyer-admin-slide-format-rss.php:108
+#, fuzzy
+msgid "Display feed title?"
+msgstr "Beitragsbild anzeigen?"
+
+#: admin/class-foyer-admin-slide-format-rss.php:113
+msgid "Yes, show the website / feed title above entries."
+msgstr "Ja, den Website-/Feed-Titel über den Einträgen anzeigen."
+
+#: admin/class-foyer-admin-slide-format-text.php:79
+msgid "Pre-title"
+msgstr "Vortitel"
+
+#: admin/class-foyer-admin-slide-format-text.php:87
+msgid "Title"
+msgstr "Titel"
+
+#: admin/class-foyer-admin-slide-format-text.php:95
+msgid "Subtitle"
+msgstr "Untertitel"
+
+#: admin/class-foyer-admin-slide-format-text.php:103
+msgid "Content"
+msgstr "Inhalt"
+
+#: admin/class-foyer-admin-slide-format-text.php:111
+msgid "QR code"
+msgstr "QR-Code"
+
+#: admin/class-foyer-admin-slide-format-text.php:114
+msgid "URL or text to encode"
+msgstr "URL oder Text zum Kodieren"
+
+#: admin/class-foyer-admin-slide-format-text.php:115
+msgid "If filled, a QR will be generated server-side and shown on the slide."
+msgstr "Wenn ausgefüllt, wird serverseitig ein QR-Code erzeugt und auf der Folie angezeigt."
+
+#: admin/class-foyer-admin-slide-format-text.php:120
+msgid "QR error correction"
+msgstr "QR-Fehlerkorrektur"
+
+#: admin/class-foyer-admin-slide-format-text.php:128
+msgid "Higher levels make codes more robust but denser."
+msgstr "Höhere Stufen machen Codes robuster, aber dichter."
+
+#: admin/class-foyer-admin.php:100 admin/class-foyer-admin.php:101
+msgctxt "plugin name in admin menu"
+msgid "Foyer"
+msgstr "Foyer"
+
+#: admin/class-foyer-admin-slide.php:28
+msgid "Slide content"
+msgstr "Slide-Inhalt"
+
+#: admin/class-foyer-admin-slide.php:44
+#, fuzzy
+msgid "Slide Preview"
+msgstr "Folienvorschau"
+
+#: admin/class-foyer-admin-slide.php:63
+msgid "No preview available yet. Press publish to see the preview."
+msgstr "Noch keine Vorschau verfügbar. Klicke auf \"Veröffentlichen\", um die Vorschau zu sehen."
+
+#: admin/class-foyer-admin-slide.php:81
+#, fuzzy
+msgid "Preview ratio:"
+msgstr "Vorschaubereich"
+
+#: admin/class-foyer-admin-slide.php:160
+msgid "Slide format, background"
+msgstr "Slide-Format, Hintergrund"
+
+#: admin/class-foyer-admin-slide.php:232
+msgid "Select an image"
+msgstr "Bild auswählen"
+
+#: admin/class-foyer-admin-slide.php:233
+msgid "Use this image"
+msgstr "Dieses Bild benutzen"
+
+#: admin/class-foyer-admin-slide.php:236
+#, fuzzy
+msgid "Select a PDF"
+msgstr "Slide auswählen"
+
+#: admin/class-foyer-admin-slide.php:237
+#, fuzzy
+msgid "Use this PDF"
+msgstr "Dieses Bild benutzen"
+
+#: admin/class-foyer-admin-slide.php:240
+#, fuzzy
+msgid "Select a video"
+msgstr "Slide auswählen"
+
+#: admin/class-foyer-admin-slide.php:241
+#, fuzzy
+msgid "Use this video"
+msgstr "Dieses Bild benutzen"
+
+#: admin/class-foyer-admin-slide.php:402
+msgid "Single slides"
+msgstr "Einzelne Slides"
+
+#: admin/class-foyer-admin-slide.php:405
+msgid "Magic slide stacks"
+msgstr "Magic Slide Stacks"
+
+#: admin/class-foyer-admin-slide.php:439 admin/class-foyer-admin-slide.php:467
+msgid "No settings."
+msgstr "Keine Einstellungen."
+
+#: admin/class-foyer-admin-slide-background-html5-video.php:87
+#, fuzzy
+msgid "Video file"
+msgstr "Video"
+
+#: admin/class-foyer-admin-slide-background-html5-video.php:95
+#, php-format
+msgid "Unable to play video. Please check if the URL is valid, eg. %s"
+msgstr "Video kann nicht abgespielt werden. Bitte prüfe, ob die URL gültig ist, z. B. %s"
+
+#: admin/class-foyer-admin-slide-background-html5-video.php:98
+#, fuzzy
+msgid "Select video"
+msgstr "Slide auswählen"
+
+#: admin/class-foyer-admin-slide-background-html5-video.php:99
+#, fuzzy
+msgid "Remove video"
+msgstr "Folie entfernen"
+
+#: admin/class-foyer-admin-slide-background-html5-video.php:101
+msgid "Select a video or manually enter a video URL."
+msgstr "Wähle ein Video aus oder gib die Video-URL manuell ein."
+
+#: admin/class-foyer-admin-slide-background-html5-video.php:101
+#, fuzzy
+msgid ""
+"For the best results use an MP4 video that is at least 1920 x 1080 pixels "
+"(landscape), or 1080 x 1920 pixels (portrait)."
+msgstr ""
+"Bitte Bilder mit mind. 1920 x 1080 Pixel (Querformat), oder 1080 x 1920 "
+"Pixel (Hochformat) verwenden."
+
+#: public/templates/slides/rss-feed.php:34
+msgid "No RSS feed URL configured for this slide."
+msgstr "Für diese Folie wurde keine RSS-Feed-URL konfiguriert."
+
+#: public/templates/slides/rss-feed.php:201
+msgid "RSS feed"
+msgstr "RSS-Feed"
+
+#: public/templates/slides/rss-feed.php:204
+msgid "No entries found in the feed."
+msgstr "Keine Einträge im Feed gefunden."
+
+#~ msgid "Create slideshows and show them off on your networked displays."
+#~ msgstr "Erstelle Slideshows und zeige sie auf deinen vernetzten Displays."
+
+#~ msgid "Menno Luitjes"
+#~ msgstr "Menno Luitjes"
+
+#~ msgid "https://mennoluitjes.nl"
+#~ msgstr "https://mennoluitjes.nl"
+
+#~ msgid "Foyer - Digital Signage for WordPress"
+#~ msgstr "Foyer - Digital Signage for WordPress"
+
+#~ msgid "Add slide"
+#~ msgstr "Slide hinzufügen "
+
+#~ msgid "Temporary channel"
+#~ msgstr "Temporärer Kanal"
+
+#~ msgid "Select a channel"
+#~ msgstr "Kanal auswählen"
+
+#~ msgid "Schedule temporary channel"
+#~ msgstr "Temporären Kanal planen"
+

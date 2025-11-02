@@ -297,7 +297,7 @@ class Foyer_Admin_Channel {
         $post_id = intval( $_POST['post_id'] ?? 0 );
         $set     = sanitize_text_field( $_POST['set'] ?? '' );
         if ( empty( $post_id ) || ! current_user_can( 'edit_post', $post_id ) ) {
-            wp_send_json_error( array( 'message' => 'forbidden' ), 403 );
+            wp_send_json_error( array( 'message' => __( 'You are not allowed to do this.', 'foyer' ) ), 403 );
         }
         if ( $set === '1' ) {
             update_post_meta( $post_id, 'foyer_channel_is_favorite', '1' );
@@ -878,12 +878,37 @@ class Foyer_Admin_Channel {
 									<?php
 										$start_utc = null;
 										$end_utc   = null;
-										if ( isset( $slide_windows[ $slide->ID ]['start'] ) && ! empty( $slide_windows[ $slide->ID ]['start'] ) ) {
-											$start_utc = intval( $slide_windows[ $slide->ID ]['start'] );
-										}
-										if ( isset( $slide_windows[ $slide->ID ]['end'] ) && ! empty( $slide_windows[ $slide->ID ]['end'] ) ) {
-											$end_utc = intval( $slide_windows[ $slide->ID ]['end'] );
-										}
+                                    $scheduler_defaults = Foyer_Admin_Display::get_channel_scheduler_defaults();
+                                    $picker_format = ! empty( $scheduler_defaults['picker_format'] ) ? $scheduler_defaults['picker_format'] : $scheduler_defaults['datetime_format'];
+                                    $site_tz       = wp_timezone();
+                                    if ( isset( $slide_windows[ $slide->ID ]['start'] ) && ! empty( $slide_windows[ $slide->ID ]['start'] ) ) {
+                                        $raw = $slide_windows[ $slide->ID ]['start'];
+                                        if ( is_numeric( $raw ) ) {
+                                            $start_utc = intval( $raw );
+                                        } else {
+                                            $parsed = Foyer_Admin_Display::parse_schedule_input( $raw, $picker_format, $site_tz );
+                                            if ( ! is_null( $parsed ) ) {
+                                                $start_utc = intval( $parsed );
+                                            }
+                                        }
+                                        if ( ! is_null( $start_utc ) ) {
+                                            $slide_windows[ $slide->ID ]['start'] = $start_utc;
+                                        }
+                                    }
+                                    if ( isset( $slide_windows[ $slide->ID ]['end'] ) && ! empty( $slide_windows[ $slide->ID ]['end'] ) ) {
+                                        $raw = $slide_windows[ $slide->ID ]['end'];
+                                        if ( is_numeric( $raw ) ) {
+                                            $end_utc = intval( $raw );
+                                        } else {
+                                            $parsed = Foyer_Admin_Display::parse_schedule_input( $raw, $picker_format, $site_tz );
+                                            if ( ! is_null( $parsed ) ) {
+                                                $end_utc = intval( $parsed );
+                                            }
+                                        }
+                                        if ( ! is_null( $end_utc ) ) {
+                                            $slide_windows[ $slide->ID ]['end'] = $end_utc;
+                                        }
+                                    }
 
 										// Compact summary badge text based on configured window.
 										$summary_text = '';
@@ -919,10 +944,10 @@ class Foyer_Admin_Channel {
                                     $start_val = '';
                                     $end_val = '';
                                     if ( ! empty( $w['start'] ) ) {
-                                        $start_val = date_i18n( $scheduler_defaults['datetime_format'], intval( $w['start'] ) + get_option( 'gmt_offset' ) * HOUR_IN_SECONDS, true );
+                                    $start_val = Foyer_Admin_Display::format_schedule_display( intval( $w['start'] ), $picker_format );
                                     }
                                     if ( ! empty( $w['end'] ) ) {
-                                        $end_val = date_i18n( $scheduler_defaults['datetime_format'], intval( $w['end'] ) + get_option( 'gmt_offset' ) * HOUR_IN_SECONDS, true );
+                                        $end_val = Foyer_Admin_Display::format_schedule_display( intval( $w['end'] ), $picker_format );
                                     }
                                 ?>
                                 <div class="foyer_slides_editor_slides_slide_schedule" style="padding:8px 12px 12px; background:#f8f8f8; border:1px solid #e2e2e2; margin-top:6px; display:none;">
@@ -1115,7 +1140,7 @@ class Foyer_Admin_Channel {
                                 var $input = $(this);
                                 if ($input.data('picker-initialized')) return;
                                 $input.foyer_datetimepicker({
-                                    format: foyer_channel_scheduler_defaults.datetime_format,
+                                    format: foyer_channel_scheduler_defaults.picker_format || foyer_channel_scheduler_defaults.datetime_format,
                                     dayOfWeekStart: foyer_channel_scheduler_defaults.start_of_week,
                                     step: 15,
                                     validateOnBlur: false
@@ -1465,10 +1490,10 @@ JS;
         $channel_id = isset( $_POST['channel_id'] ) ? intval( $_POST['channel_id'] ) : 0;
         $ratio = isset( $_POST['ratio'] ) ? sanitize_text_field( wp_unslash( $_POST['ratio'] ) ) : '';
         if ( empty( $channel_id ) || ! in_array( $ratio, array( '9x16', '16x9' ), true ) ) {
-            wp_send_json_error( array( 'message' => 'bad_request' ), 400 );
+            wp_send_json_error( array( 'message' => __( 'Invalid request.', 'foyer' ) ), 400 );
         }
         if ( ! current_user_can( 'edit_post', $channel_id ) ) {
-            wp_send_json_error( array( 'message' => 'forbidden' ), 403 );
+            wp_send_json_error( array( 'message' => __( 'You are not allowed to do this.', 'foyer' ) ), 403 );
         }
         update_post_meta( $channel_id, 'foyer_channel_preview_ratio', $ratio );
         wp_send_json_success( array( 'ok' => true, 'ratio' => $ratio ) );
@@ -1492,12 +1517,12 @@ JS;
         $end_in     = isset( $_POST['end'] ) ? wp_unslash( $_POST['end'] ) : '';
 
         if ( empty( $channel_id ) || empty( $slide_id ) ) {
-            wp_send_json_error( array( 'message' => 'Missing ids' ), 400 );
+            wp_send_json_error( array( 'message' => __( 'Required parameters are missing.', 'foyer' ) ), 400 );
         }
 
         // Parse using site timezone, convert to UTC
         $defaults = Foyer_Admin_Display::get_channel_scheduler_defaults();
-        $fmt = isset( $defaults['datetime_format'] ) ? $defaults['datetime_format'] : 'Y-m-d H:i';
+        $fmt = isset( $defaults['picker_format'] ) ? $defaults['picker_format'] : 'Y-m-d H:i';
         $tz = wp_timezone();
         $start_ts_utc = null;
         $end_ts_utc   = null;
@@ -1523,7 +1548,7 @@ JS;
 
         // Validate order if both set
         if ( ! is_null( $start_ts_utc ) && ! is_null( $end_ts_utc ) && $end_ts_utc < $start_ts_utc ) {
-            wp_send_json_error( array( 'message' => 'End before start' ), 400 );
+            wp_send_json_error( array( 'message' => __( 'The end time must be after the start time.', 'foyer' ) ), 400 );
         }
 
         $windows = get_post_meta( $channel_id, 'foyer_channel_slide_windows', true );

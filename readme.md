@@ -6,21 +6,17 @@ Create slideshows and show them off on any networked display. Hardware not inclu
 
 # Forked and new development
 
-The project form mennolui seemed inactive but we are using the plugin and needed some more fratures:
+The project from mennolui seemed inactive, but we are using the plugin and needed some more features:
 
 * Scheduling of slides in a channel (implemented)
-* Scheduling of more than one channel for a display (implemented)
-* Scheduler for global scheduling for multiple channels on muliple displays (development)
+
+* Global scheduler covering multiple channels and displays, including a monthly list view (implemented)
+* RSS feed slide for external news sources (implemented)
+* QR codes on slides for quick links (implemented)
 * New types of slides (planned)
-* Splited channels for showing two channels on one display (planed)
+* Split channels for showing two channels on one display (planned)
 
 My code is not clean at the moment but it works ;)
-
-
-
-**Check out this demo sign:**
-[http://demo.foyer.tv](http://demo.foyer.tv) (This demo is for the 1.7 realese of mennolui)
-
 
 ## Features
 
@@ -32,6 +28,19 @@ My code is not clean at the moment but it works ;)
 ## Features for theaters, music venues, festivals
 
 Foyer comes with build in support for the [Theater for WordPress plugin](https://wordpress.org/plugins/theatre/). With Theater & Foyer you can easily publish your events on your website, and showcase them on your onsite displays.
+
+
+**Check out this demo sign:**
+[http://demo.foyer.tv](http://demo.foyer.tv) (This demo is for the 1.7 realese of mennolui)
+
+## Third-party components
+
+This project bundles the following external libraries:
+
+* EventCalendar v4.6.0 by Viktor Kurko – MIT License (https://github.com/vkurko/calendar)
+* Air Datepicker v3.5.1 by 101digital / Alexander Chernyaev (t1m0n) – MIT License (https://air-datepicker.com)
+
+
 
 ## Installation, FAQ & more
 

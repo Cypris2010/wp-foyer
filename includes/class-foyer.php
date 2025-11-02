@@ -64,7 +64,11 @@ class Foyer {
 		add_filter( 'foyer/slides/formats', array( 'Foyer_Slide_Formats', 'add_production_slide_format' ), 5 );
 		add_filter( 'foyer/slides/formats', array( 'Foyer_Slide_Formats', 'add_iframe_slide_format' ), 5 );
 		add_filter( 'foyer/slides/formats', array( 'Foyer_Slide_Formats', 'add_recent_posts_slide_format' ), 5 );
+		add_filter( 'foyer/slides/formats', array( 'Foyer_Slide_Formats', 'add_rss_feed_slide_format' ), 5 );
+		add_filter( 'foyer/slides/formats', array( 'Foyer_Slide_Formats', 'add_calendar_slide_format' ), 5 );
 			add_filter( 'foyer/slides/formats', array( 'Foyer_Slide_Formats', 'add_upcoming_productions_slide_format' ), 5 );
+		add_filter( 'foyer/slides/formats', array( 'Foyer_Slide_Formats', 'add_teacher_dashboard_slide_format' ), 5 );
+		add_filter( 'foyer/slides/formats', array( 'Foyer_Slide_Formats', 'add_webuntis_room_display_slide_format' ), 5 );
             add_filter( 'foyer/slides/formats', array( 'Foyer_Slide_Formats', 'add_pdf_slide_format' ), 5 );
             // Additional formats (Instagram removed)
 	}
@@ -125,6 +129,7 @@ class Foyer {
 		require_once FOYER_PLUGIN_PATH . 'includes/class-foyer-display.php';
 		require_once FOYER_PLUGIN_PATH . 'includes/class-foyer-channel.php';
 		require_once FOYER_PLUGIN_PATH . 'includes/class-foyer-slide.php';
+		require_once FOYER_PLUGIN_PATH . 'includes/class-foyer-ics.php';
 
 		/* Display, channel and slide helper functions. */
 		require_once FOYER_PLUGIN_PATH . 'includes/class-foyer-displays.php';
@@ -154,7 +159,11 @@ class Foyer {
 
 		/* Theater for WordPress helper functions. */
 		require_once FOYER_PLUGIN_PATH . 'includes/class-foyer-theater.php';
+		/* Central schedules API */
+		require_once FOYER_PLUGIN_PATH . 'includes/class-foyer-schedules.php';
 
+		/* Login redirect handler */
+		require_once FOYER_PLUGIN_PATH . 'includes/class-foyer-login.php';
 
 		/**
 		 * ------ Admin ------
@@ -162,6 +171,9 @@ class Foyer {
 
 		require_once FOYER_PLUGIN_PATH . 'admin/class-foyer-admin.php';
 		Foyer_Admin::init();
+
+		// Initialize login redirect handling
+		Foyer_Login::init();
 
 		/**
 		 * ------ Public ------

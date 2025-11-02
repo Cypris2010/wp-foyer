@@ -98,6 +98,67 @@ class Foyer_Slide_Formats {
 	}
 
 	/**
+	 * Adds the WebUntis Teacher Dashboard slide format.
+	 *
+	 * @since	1.?.?
+	 *
+	 * @param 	array	$slide_formats	The current slide formats.
+	 * @return	array					The slide formats with the WebUntis Teacher Dashboard slide format added.
+	 */
+	static function add_teacher_dashboard_slide_format( $slide_formats ) {
+
+		$slide_format_backgrounds = array( 'default' );
+
+		/**
+		 * Filter available slide backgrounds for this slide format.
+		 *
+		 * @since	1.?.?
+		 * @param	array	$slide_format_backgrounds	The currently available slide backgrounds for this slide format.
+		 */
+		$slide_format_backgrounds = apply_filters( 'foyer/slides/backgrounds/format=teacher-dashboard', $slide_format_backgrounds );
+
+		$slide_formats['teacher-dashboard'] = array(
+			'title' => _x( 'WebUntis Teacher Dashboard', 'slide-format', 'foyer' ),
+			'description' => __( 'Zeigt das WebUntis Teacher Dashboard mit auswählbaren Lehrpersonen.', 'foyer' ),
+			'meta_box' => array( 'Foyer_Admin_Slide_Format_Teacher_Dashboard', 'slide_meta_box' ),
+			'save_post' => array( 'Foyer_Admin_Slide_Format_Teacher_Dashboard', 'save_slide' ),
+			'slide_backgrounds' => $slide_format_backgrounds,
+		);
+		return $slide_formats;
+	}
+
+	/**
+	 * Adds the WebUntis Room Display slide format.
+	 *
+	 * @since	1.?.?
+	 *
+	 * @param array $slide_formats The current slide formats.
+		 * @return array The slide formats including the WebUntis Room Display.
+	 */
+	static function add_webuntis_room_display_slide_format( $slide_formats ) {
+
+		$slide_format_backgrounds = array( 'default' );
+
+		/**
+		 * Filter available slide backgrounds for this slide format.
+		 *
+		 * @since	1.?.?
+		 * @param	array	$slide_format_backgrounds	The currently available slide backgrounds for this slide format.
+		 */
+		$slide_format_backgrounds = apply_filters( 'foyer/slides/backgrounds/format=webuntis-room-display', $slide_format_backgrounds );
+
+			$slide_formats['webuntis-room-display'] = array(
+				'title' => _x( 'WebUntis Room Display', 'slide-format', 'foyer' ),
+				'description' => __( 'Zeigt das WebUntis Room Display mit aktuellen und kommenden Raumbelegungen.', 'foyer' ),
+			'meta_box' => array( 'Foyer_Admin_Slide_Format_Webuntis_Room_Display', 'slide_meta_box' ),
+			'save_post' => array( 'Foyer_Admin_Slide_Format_Webuntis_Room_Display', 'save_slide' ),
+			'slide_backgrounds' => $slide_format_backgrounds,
+		);
+
+		return $slide_formats;
+	}
+
+	/**
 	 * Adds the PDF slide format.
 	 *
 	 * @since	1.1.0
@@ -229,6 +290,69 @@ class Foyer_Slide_Formats {
 			'save_post' => array( 'Foyer_Admin_Slide_Format_Recent_Posts', 'save_slide'),
 			'slide_backgrounds' => $slide_format_backgrounds,
 			'stack' => true,
+		);
+
+		return $slide_formats;
+	}
+
+	/**
+	 * Adds the RSS Feed slide format.
+	 *
+	 * @since	1.9.1
+	 *
+	 * @param 	array	$slide_formats	The current slide formats.
+	 * @return	array					The slide formats with the RSS Feed slide format added.
+	 */
+	static function add_rss_feed_slide_format( $slide_formats ) {
+
+		$slide_format_backgrounds = array( 'default' );
+
+		/**
+		 * Filter available slide backgrounds for this slide format.
+		 *
+		 * @since	1.9.1
+		 * @param	array	$slide_format_backgrounds	The currently available slide backgrounds for this slide format.
+		 */
+		$slide_format_backgrounds = apply_filters( 'foyer/slides/backgrounds/format=rss-feed', $slide_format_backgrounds );
+
+		$slide_formats['rss-feed'] = array(
+			'title' => _x( 'RSS feed', 'slide-format', 'foyer' ),
+			'description' => __( 'Displays the latest entries from an RSS feed.', 'foyer' ),
+			'meta_box' => array( 'Foyer_Admin_Slide_Format_RSS', 'slide_meta_box' ),
+			'save_post' => array( 'Foyer_Admin_Slide_Format_RSS', 'save_slide' ),
+			'slide_backgrounds' => $slide_format_backgrounds,
+			'stack' => true,
+		);
+
+		return $slide_formats;
+	}
+
+	/**
+	 * Adds the Calendar slide format.
+	 *
+	 * @since	1.10.0
+	 *
+	 * @param array $slide_formats The current slide formats.
+	 * @return array The slide formats with the Calendar slide format added.
+	 */
+	static function add_calendar_slide_format( $slide_formats ) {
+
+		$slide_format_backgrounds = array( 'default', 'image', 'html5-video', 'video' );
+
+		/**
+		 * Filter available slide backgrounds for this slide format.
+		 *
+		 * @since	1.10.0
+		 * @param	array	$slide_format_backgrounds	The currently available slide backgrounds for this slide format.
+		 */
+		$slide_format_backgrounds = apply_filters( 'foyer/slides/backgrounds/format=calendar', $slide_format_backgrounds );
+
+		$slide_formats['calendar'] = array(
+			'title' => _x( 'Calendar', 'slide-format', 'foyer' ),
+			'description' => __( 'Displays upcoming events from one or more iCalendar feeds.', 'foyer' ),
+			'meta_box' => array( 'Foyer_Admin_Slide_Format_Calendar', 'slide_meta_box' ),
+			'save_post' => array( 'Foyer_Admin_Slide_Format_Calendar', 'save_slide' ),
+			'slide_backgrounds' => $slide_format_backgrounds,
 		);
 
 		return $slide_formats;

@@ -1,0 +1,122 @@
+.foyer-slide.foyer-slide-rss-feed {
+
+	.inner {
+		display: flex;
+		width: 100%;
+		height: 100%;
+		position: relative;
+	}
+
+	.foyer-slide-rss {
+		display: flex;
+		align-items: flex-end;
+		width: 100%;
+		position: relative;
+		z-index: 1;
+	}
+
+	.foyer-slide-fields {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+		padding: 4vmin;
+		max-width: 70%;
+	}
+
+	.foyer-slide-field.foyer-slide-field-pretitle span,
+	.foyer-slide-field.foyer-slide-field-title span,
+	.foyer-slide-field.foyer-slide-field-subtitle span,
+	.foyer-slide-field.foyer-slide-field-content {
+		display: inline-block;
+		padding: 0.75rem 1.25rem;
+		background-color: rgba(255, 255, 255, 0.8);
+		color: #111;
+		line-height: 1.5;
+		box-decoration-break: clone;
+	}
+
+	.foyer-slide-field.foyer-slide-field-title span {
+		font-size: 4.5rem;
+		font-weight: 700;
+		line-height: 1.2;
+	}
+
+	.foyer-slide-field.foyer-slide-field-subtitle span {
+		font-size: 3.5rem;
+		font-weight: 600;
+		line-height: 1.3;
+	}
+
+	.foyer-slide-field.foyer-slide-field-pretitle span {
+		font-size: 2.4rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		opacity: 0.85;
+	}
+
+	.foyer-slide-field.foyer-slide-field-content {
+		font-size: 2.4rem;
+		max-width: 80ch;
+	}
+
+	.foyer-slide-qr {
+		position: absolute;
+		right: 0;
+		bottom: 0;
+		padding: 2vmin;
+		background-color: rgba(255, 255, 255, 0.8);
+		display: flex;
+		align-items: flex-end;
+
+		svg,
+		img {
+			display: block;
+			width: 22vmin;
+			height: 22vmin;
+		}
+	}
+
+	.foyer-slide-background-zoom figure img {
+		transform: scale(1);
+		transform-origin: 50% 50%;
+		will-change: transform;
+	}
+
+	// .foyer-slide-rss-background {
+	// 	&::after {
+	// 		content: '';
+	// 		position: absolute;
+	// 		top: 0;
+	// 		right: 0;
+	// 		bottom: 0;
+	// 		left: 0;
+	// 		background: linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.2) 40%, rgba(255, 255, 255, 0.45) 100%);
+	// 		pointer-events: none;
+	// 	}
+	// }
+
+	@media (max-aspect-ratio: 1/1) {
+		.foyer-slide-rss {
+			flex-direction: column;
+			align-items: stretch;
+		}
+
+		.foyer-slide-fields {
+			max-width: 100%;
+			padding-bottom: 6vmin;
+		}
+
+		.foyer-slide-qr {
+			position: static;
+			justify-content: flex-end;
+			margin-top: auto;
+			align-self: flex-end;
+
+			svg,
+			img {
+				width: 28vmin;
+				height: 28vmin;
+			}
+		}
+	}
+}

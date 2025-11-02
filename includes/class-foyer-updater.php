@@ -152,6 +152,12 @@ class Foyer_Updater {
 		// Reset displays for certain updates only
 		self::reset_displays_for_certain_updates( $db_version );
 
+		// One-time migration: move per-display schedules to central schedules (idempotent)
+		if ( ! get_option( 'foyer_migrated_display_schedules_to_central' ) ) {
+			self::migrate_display_schedules_to_central();
+			update_option( 'foyer_migrated_display_schedules_to_central', 1 );
+		}
+
 		// All updates were successful, update db version to current plugin version
 		self::update_db_version( Foyer::get_version() );
 
@@ -230,5 +236,76 @@ class Foyer_Updater {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Migrates legacy per-display schedules (foyer_display_schedule) to central schedules (foyer_schedule CPT).
+	 *
+	 * Idempotent: attempts to find an existing central schedule by channel/start/end and merges display assignments.
+	 * After successful migration, removes the old per-display schedule meta.
+	 */
+	static function migrate_display_schedules_to_central() {
+		$displays = Foyer_Displays::get_posts( array( 'post_status' => array( 'publish', 'draft', 'pending', 'private' ) ) );
+		if ( empty( $displays ) ) { return; }
+
+		$groups = array(); // key => [ 'channel'=>int, 'start'=>int, 'end'=>int, 'displays'=>[] ]
+		foreach ( $displays as $disp ) {
+			$entries = get_post_meta( $disp->ID, 'foyer_display_schedule', false );
+			if ( empty( $entries ) || ! is_array( $entries ) ) { continue; }
+			foreach ( $entries as $e ) {
+				if ( ! is_array( $e ) ) { continue; }
+				$chan = isset( $e['channel'] ) ? intval( $e['channel'] ) : 0;
+				$start = isset( $e['start'] ) ? intval( $e['start'] ) : 0;
+				$end   = isset( $e['end'] ) ? intval( $e['end'] ) : 0;
+				if ( $chan <= 0 || $start <= 0 || $end <= 0 ) { continue; }
+				$key = $chan . '|' . $start . '|' . $end;
+				if ( ! isset( $groups[ $key ] ) ) {
+					$groups[ $key ] = array( 'channel' => $chan, 'start' => $start, 'end' => $end, 'displays' => array() );
+				}
+				$groups[ $key ]['displays'][] = intval( $disp->ID );
+			}
+		}
+
+		if ( empty( $groups ) ) { return; }
+
+		foreach ( $groups as $key => $g ) {
+			$chan = $g['channel']; $start = $g['start']; $end = $g['end']; $disp_ids = array_values( array_unique( array_filter( $g['displays'] ) ) );
+			// Try find existing central schedule
+			$existing = get_posts( array(
+				'post_type'      => 'foyer_schedule',
+				'post_status'    => array( 'publish', 'draft', 'pending', 'private' ),
+				'posts_per_page' => 1,
+				'meta_query'     => array(
+					'relation' => 'AND',
+					array( 'key' => 'foyer_schedule_channel',   'value' => $chan,  'compare' => '=' ),
+					array( 'key' => 'foyer_schedule_start_utc', 'value' => $start, 'compare' => '=' ),
+					array( 'key' => 'foyer_schedule_end_utc',   'value' => $end,   'compare' => '=' ),
+				),
+			) );
+
+			if ( ! empty( $existing ) ) {
+				$pid = $existing[0]->ID;
+				$cur = get_post_meta( $pid, 'foyer_schedule_displays', true );
+				if ( ! is_array( $cur ) ) { $cur = array(); }
+				$merged = array_values( array_unique( array_merge( array_map( 'intval', $cur ), $disp_ids ) ) );
+				update_post_meta( $pid, 'foyer_schedule_displays', $merged );
+			} else {
+				// Create new central schedule as single occurrence
+				$title = sprintf( 'Schedule: %s (%s – %s)', get_the_title( $chan ), gmdate( 'Y-m-d H:i', $start ), gmdate( 'Y-m-d H:i', $end ) );
+				$pid = wp_insert_post( array( 'post_type' => 'foyer_schedule', 'post_status' => 'publish', 'post_title' => $title ) );
+				if ( $pid && ! is_wp_error( $pid ) ) {
+					update_post_meta( $pid, 'foyer_schedule_channel', $chan );
+					update_post_meta( $pid, 'foyer_schedule_displays', $disp_ids );
+					update_post_meta( $pid, 'foyer_schedule_mode', 'single' );
+					update_post_meta( $pid, 'foyer_schedule_start_utc', $start );
+					update_post_meta( $pid, 'foyer_schedule_end_utc', $end );
+				}
+			}
+		}
+
+		// Cleanup old per-display schedule metas
+		foreach ( $displays as $disp ) {
+			delete_post_meta( $disp->ID, 'foyer_display_schedule' );
+		}
 	}
 }

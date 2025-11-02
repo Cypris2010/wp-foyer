@@ -24,7 +24,7 @@ class Foyer_Admin_Preview {
 	 */
 	static function enqueue_scripts() {
 
-		wp_register_script( Foyer::get_plugin_name() . '-admin', plugin_dir_url( __FILE__ ) . 'js/foyer-admin-min.js', array( 'jquery', 'jquery-ui-sortable' ), Foyer::get_version(), false );
+		wp_register_script( Foyer::get_plugin_name() . '-admin', plugin_dir_url( __FILE__ ) . 'js/foyer-admin-min.js', array( 'jquery', 'jquery-ui-sortable', 'wp-util' ), Foyer::get_version(), false );
 
 		wp_localize_script( Foyer::get_plugin_name() . '-admin', 'foyer_preview', array(
 			'ajax_url' => admin_url( 'admin-ajax.php' ),
