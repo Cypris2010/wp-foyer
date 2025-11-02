@@ -98,6 +98,67 @@ class Foyer_Slide_Formats {
 	}
 
 	/**
+	 * Adds the WebUntis Teacher Dashboard slide format.
+	 *
+	 * @since	1.?.?
+	 *
+	 * @param 	array	$slide_formats	The current slide formats.
+	 * @return	array					The slide formats with the WebUntis Teacher Dashboard slide format added.
+	 */
+	static function add_teacher_dashboard_slide_format( $slide_formats ) {
+
+		$slide_format_backgrounds = array( 'default' );
+
+		/**
+		 * Filter available slide backgrounds for this slide format.
+		 *
+		 * @since	1.?.?
+		 * @param	array	$slide_format_backgrounds	The currently available slide backgrounds for this slide format.
+		 */
+		$slide_format_backgrounds = apply_filters( 'foyer/slides/backgrounds/format=teacher-dashboard', $slide_format_backgrounds );
+
+		$slide_formats['teacher-dashboard'] = array(
+			'title' => _x( 'WebUntis Teacher Dashboard', 'slide-format', 'foyer' ),
+			'description' => __( 'Zeigt das WebUntis Teacher Dashboard mit auswählbaren Lehrpersonen.', 'foyer' ),
+			'meta_box' => array( 'Foyer_Admin_Slide_Format_Teacher_Dashboard', 'slide_meta_box' ),
+			'save_post' => array( 'Foyer_Admin_Slide_Format_Teacher_Dashboard', 'save_slide' ),
+			'slide_backgrounds' => $slide_format_backgrounds,
+		);
+		return $slide_formats;
+	}
+
+	/**
+	 * Adds the WebUntis Room Display slide format.
+	 *
+	 * @since	1.?.?
+	 *
+	 * @param array $slide_formats The current slide formats.
+		 * @return array The slide formats including the WebUntis Room Display.
+	 */
+	static function add_webuntis_room_display_slide_format( $slide_formats ) {
+
+		$slide_format_backgrounds = array( 'default' );
+
+		/**
+		 * Filter available slide backgrounds for this slide format.
+		 *
+		 * @since	1.?.?
+		 * @param	array	$slide_format_backgrounds	The currently available slide backgrounds for this slide format.
+		 */
+		$slide_format_backgrounds = apply_filters( 'foyer/slides/backgrounds/format=webuntis-room-display', $slide_format_backgrounds );
+
+			$slide_formats['webuntis-room-display'] = array(
+				'title' => _x( 'WebUntis Room Display', 'slide-format', 'foyer' ),
+				'description' => __( 'Zeigt das WebUntis Room Display mit aktuellen und kommenden Raumbelegungen.', 'foyer' ),
+			'meta_box' => array( 'Foyer_Admin_Slide_Format_Webuntis_Room_Display', 'slide_meta_box' ),
+			'save_post' => array( 'Foyer_Admin_Slide_Format_Webuntis_Room_Display', 'save_slide' ),
+			'slide_backgrounds' => $slide_format_backgrounds,
+		);
+
+		return $slide_formats;
+	}
+
+	/**
 	 * Adds the PDF slide format.
 	 *
 	 * @since	1.1.0

@@ -864,6 +864,7 @@ class Foyer_Admin_Display {
                             var $prev = $('#foyer_default_channels_prev');
                             var $next = $('#foyer_default_channels_next');
                             var $info = $('#foyer_default_channels_page_info');
+                            var $hiddenSelect = $('#foyer_channel_editor_default_channel_hidden');
                             var sortKey = 'title';
                             var sortDir = 'asc';
                             var currentPage = 1;
@@ -953,9 +954,13 @@ class Foyer_Admin_Display {
 
                             // Update green highlight when selection changes
                             $(document).on('change', 'input[name=foyer_channel_editor_default_channel]', function(){
+                                var selectedVal = $(this).val();
                                 $rows.removeClass('selected-channel').attr('data-selected','0');
                                 var $tr = $(this).closest('tr');
                                 $tr.addClass('selected-channel').attr('data-selected','1');
+                                if ($hiddenSelect.length) {
+                                    $hiddenSelect.val(selectedVal);
+                                }
                                 currentPage = 1; refresh();
                             });
 
