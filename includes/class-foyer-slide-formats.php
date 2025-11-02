@@ -78,6 +78,37 @@ class Foyer_Slide_Formats {
 	}
 
 	/**
+	 * Adds the Printer Status slide format.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $slide_formats Existing formats.
+	 * @return array
+	 */
+	static function add_printer_status_slide_format( $slide_formats ) {
+
+		$slide_format_backgrounds = array( 'default' );
+
+		/**
+		 * Filter available slide backgrounds for this slide format.
+		 *
+		 * @since 2.0.0
+		 * @param array $slide_format_backgrounds The currently available slide backgrounds.
+		 */
+		$slide_format_backgrounds = apply_filters( 'foyer/slides/backgrounds/format=printer-status', $slide_format_backgrounds );
+
+		$slide_formats['printer-status'] = array(
+			'title' => _x( '3D-Drucker Status', 'slide-format', 'foyer' ),
+			'description' => __( 'Zeigt mehrere 3D-Drucker mit Statusinformationen aus lokalen APIs.', 'foyer' ),
+			'meta_box' => array( 'Foyer_Admin_Slide_Format_Printer_Status', 'slide_meta_box' ),
+			'save_post' => array( 'Foyer_Admin_Slide_Format_Printer_Status', 'save_slide' ),
+			'slide_backgrounds' => $slide_format_backgrounds,
+		);
+
+		return $slide_formats;
+	}
+
+	/**
 	 * Adds the WebUntis Teacher Dashboard slide format.
 	 *
 	 * @since	1.?.?

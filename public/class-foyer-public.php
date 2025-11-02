@@ -135,6 +135,7 @@ class Foyer_Public {
 		wp_register_script( Foyer::get_plugin_name(), plugin_dir_url( __FILE__ ) . 'js/foyer-public-min.js', array( 'jquery' ), Foyer::get_version(), false );
 		wp_register_script( 'foyer-teacher-dashboard', plugin_dir_url( __FILE__ ) . 'js/teacher-dashboard.js', array(), Foyer::get_version(), true );
 		wp_register_script( 'foyer-webuntis-room-display', plugin_dir_url( __FILE__ ) . 'js/webuntis-room-display.js', array(), Foyer::get_version(), true );
+		wp_register_script( 'foyer-printer-status', plugin_dir_url( __FILE__ ) . 'js/printer-status.js', array(), Foyer::get_version(), true );
 
 		if ( ! is_singular( array( Foyer_Display::post_type_name, Foyer_Channel::post_type_name, Foyer_Slide::post_type_name) ) ) {
 			return;

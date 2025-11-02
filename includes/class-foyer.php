@@ -39,6 +39,10 @@ class Foyer {
 
 		self::load_dependencies();
 
+		/* Printer status */
+		Foyer_Printer_Status_Manager::init();
+		Foyer_Printer_Status_REST::init();
+
 		/* Foyer_Updater */
 		add_action( 'plugins_loaded', array( 'Foyer_Updater', 'update' ) );
 
@@ -60,6 +64,7 @@ class Foyer {
 		/* Foyer_Slide_Formats */
 		add_filter( 'foyer/slides/formats', array( 'Foyer_Slide_Formats', 'add_default_slide_format' ), 5 );
 		add_filter( 'foyer/slides/formats', array( 'Foyer_Slide_Formats', 'add_text_slide_format' ), 5 );
+		add_filter( 'foyer/slides/formats', array( 'Foyer_Slide_Formats', 'add_printer_status_slide_format' ), 5 );
 		add_filter( 'foyer/slides/formats', array( 'Foyer_Slide_Formats', 'add_post_slide_format' ), 5 );
 		add_filter( 'foyer/slides/formats', array( 'Foyer_Slide_Formats', 'add_production_slide_format' ), 5 );
 		add_filter( 'foyer/slides/formats', array( 'Foyer_Slide_Formats', 'add_iframe_slide_format' ), 5 );
@@ -153,6 +158,12 @@ class Foyer {
 
 		/* Slide formats. */
 		require_once FOYER_PLUGIN_PATH . 'includes/class-foyer-slide-formats.php';
+
+		/* Printer status infrastructure */
+		require_once FOYER_PLUGIN_PATH . 'includes/class-foyer-printer-provider.php';
+		require_once FOYER_PLUGIN_PATH . 'includes/class-foyer-printer-status-slide.php';
+		require_once FOYER_PLUGIN_PATH . 'includes/class-foyer-printer-status-manager.php';
+		require_once FOYER_PLUGIN_PATH . 'includes/class-foyer-printer-status-rest.php';
 
 		/* QR helper (for server-side SVG generation). */
 		require_once FOYER_PLUGIN_PATH . 'includes/class-foyer-qr.php';
